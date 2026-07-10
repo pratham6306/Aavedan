@@ -15,7 +15,7 @@ import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
 
 const quickLinks = [
   { label: 'Dashboard', to: '/dashboard' },
-  { label: 'File a Complaint', to: '/complaints/new' },
+  { label: 'File a Complaint', to: '/complaints/create' },
   { label: 'View Schemes', to: '/schemes' },
   { label: 'FAQs', to: '/faq' },
   { label: 'Privacy Policy', to: '/privacy' },
@@ -88,15 +88,10 @@ export default function Footer() {
 
       {/* ── Bottom bar ──────────────────── */}
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row">
-          <p className="text-xs text-gray-500">
+        <div className="mx-auto flex max-w-7xl items-center justify-center px-6 py-4">
+          <p className="text-center text-xs text-gray-500">
             &copy; {year} GovConnect. All rights reserved.
           </p>
-
-          {/* SIH badge */}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gov-800 px-3 py-1 text-[11px] font-semibold text-gov-300">
-            🏆 Made for Smart India Hackathon
-          </span>
         </div>
       </div>
     </footer>

@@ -69,18 +69,32 @@ class ComplaintListSerializer(serializers.ModelSerializer):
             "priority",
             "created_at",
         )
+class ComplaintStatusHistorySerializer(serializers.ModelSerializer):
+    old_status = serializers.StringRelatedField()
+    new_status = serializers.StringRelatedField()
+
+    class Meta:
+        from .models import ComplaintStatusHistory
+        model = ComplaintStatusHistory
+        fields = (
+            "id",
+            "old_status",
+            "new_status",
+            "remarks",
+            "created_at",
+        )
+
 class ComplaintDetailSerializer(serializers.ModelSerializer):
-
     status = ComplaintStatusSerializer(read_only=True)
-
-    images = ComplaintImageSerializer(
-        many=True,
-        read_only=True,
-    )
+    images = ComplaintImageSerializer(many=True, read_only=True)
+    department = serializers.StringRelatedField()
+    category = serializers.StringRelatedField()
+    state = serializers.StringRelatedField()
+    district = serializers.StringRelatedField()
+    status_history = ComplaintStatusHistorySerializer(many=True, read_only=True)
 
     class Meta:
         model = Complaint
-
         fields = (
             "id",
             "reference_number",
@@ -102,6 +116,7 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             "is_ai_processed",
             "is_anonymous",
             "images",
+            "status_history",
             "created_at",
             "updated_at",
         )

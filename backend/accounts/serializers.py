@@ -133,6 +133,8 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    total_complaints = serializers.SerializerMethodField()
+    resolved_complaints = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -144,13 +146,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "is_email_verified",
             "is_phone_verified",
             "created_at",
+            "total_complaints",
+            "resolved_complaints",
         )
         read_only_fields = (
             "id",
             "is_email_verified",
             "is_phone_verified",
             "created_at",
+            "total_complaints",
+            "resolved_complaints",
         )
+
+    def get_total_complaints(self, obj):
+        return obj.complaints.filter(is_deleted=False).count()
+
+    def get_resolved_complaints(self, obj):
+        return obj.complaints.filter(is_deleted=False, status__name__iexact="resolved").count()
 
     def validate_email(self, value):
         user = self.instance

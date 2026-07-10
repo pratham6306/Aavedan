@@ -264,7 +264,7 @@ export default function ComplaintList() {
                 >
                   <option value="">All Departments</option>
                   {departments.map((d) => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
+                    <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>

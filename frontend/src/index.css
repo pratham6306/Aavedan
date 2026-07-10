@@ -301,6 +301,23 @@ body {
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+/* Ensure padding-left and padding-right utility classes are not swallowed by the .form-input shorthand */
+.form-input.pl-9 {
+  padding-left: 2.25rem;
+}
+.form-input.pl-10 {
+  padding-left: 2.5rem;
+}
+.form-input.pr-8 {
+  padding-right: 2rem;
+}
+.form-input.pr-10 {
+  padding-right: 2.5rem;
+}
+.form-input.pr-11 {
+  padding-right: 2.75rem;
+}
+
 .form-input:focus {
   border-color: var(--color-primary-500);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);

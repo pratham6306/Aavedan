@@ -139,7 +139,7 @@ export default function Register() {
                 <input
                   id="fullName"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Enter your full name"
                   autoComplete="name"
                   className={`form-input pl-10 ${errors.fullName ? 'form-input-error' : ''}`}
                   {...register('fullName', nameRules)}

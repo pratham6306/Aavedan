@@ -85,8 +85,7 @@ export default function Navbar() {
     <>
       <header className="sticky top-0 z-50 h-16 border-b border-gray-100 bg-white/80 backdrop-blur-lg">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6">
-          {/* ── Left: Logo ─────────────────────────────────── */}
-          <Link to="/" className="flex items-center gap-2 select-none">
+          <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2 select-none">
             <HiShieldCheck className="h-7 w-7 text-gov-600" />
             <span className="text-lg font-extrabold gradient-text tracking-tight">
               GovConnect

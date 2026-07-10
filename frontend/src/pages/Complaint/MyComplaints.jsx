@@ -172,7 +172,7 @@ export default function MyComplaints() {
           </div>
 
           {/* create new CTA */}
-          <Link to="/create-complaint" className="btn btn-primary">
+          <Link to="/complaints/create" className="btn btn-primary">
             <HiPlusCircle className="w-5 h-5" />
             Create New
           </Link>
@@ -256,7 +256,7 @@ export default function MyComplaints() {
                 <select value={department} onChange={(e) => { setDepartment(e.target.value); setPage(1); }} className="form-input">
                   <option value="">All Departments</option>
                   {departments.map((d) => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
+                    <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>
@@ -323,7 +323,7 @@ export default function MyComplaints() {
           {debouncedSearch || activeFilterCount > 0 ? (
             <button onClick={clearFilters} className="btn btn-secondary">Clear Filters</button>
           ) : (
-            <Link to="/create-complaint" className="btn btn-primary">
+            <Link to="/complaints/create" className="btn btn-primary">
               <HiPlusCircle className="w-5 h-5" />
               Create Complaint
             </Link>

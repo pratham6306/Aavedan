@@ -334,33 +334,53 @@ const Dashboard = () => {
     },
   };
 
-  /** Bar — Monthly Complaints Trend (sample / mock data) */
+  /** Bar — Monthly Complaints Trend (real data grouped by month) */
   const barData = useMemo(() => {
     const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     const currentMonth = new Date().getMonth();
-    // Show last 6 months
+    const currentYear = new Date().getFullYear();
+
     const labels = [];
-    const data = [];
+    const counts = [];
+    const monthMap = {};
+
+    // Initialize mapping keys for the last 6 months
     for (let i = 5; i >= 0; i--) {
-      const idx = (currentMonth - i + 12) % 12;
-      labels.push(months[idx]);
-      // Generate sample data based on actual complaints count or random
-      data.push(
-        Math.max(1, Math.round(stats.total * (0.3 + Math.random() * 0.7)))
-      );
+      const date = new Date(currentYear, currentMonth - i, 1);
+      const mIdx = date.getMonth();
+      const yVal = date.getFullYear();
+      const key = `${yVal}-${mIdx}`;
+      
+      labels.push(months[mIdx]);
+      monthMap[key] = 0;
     }
-    // Make the current month reflect actual total
-    data[data.length - 1] = stats.total || 0;
+
+    // Accumulate count of real complaints
+    complaints.forEach((c) => {
+      if (!c.created_at) return;
+      const cDate = new Date(c.created_at);
+      const key = `${cDate.getFullYear()}-${cDate.getMonth()}`;
+      if (monthMap[key] !== undefined) {
+        monthMap[key] += 1;
+      }
+    });
+
+    // Populate counts array
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentYear, currentMonth - i, 1);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      counts.push(monthMap[key]);
+    }
 
     return {
       labels,
       datasets: [
         {
           label: 'Complaints Filed',
-          data,
+          data: counts,
           backgroundColor: 'rgba(37, 99, 235, 0.75)',
           borderColor: '#2563eb',
           borderWidth: 1,
@@ -369,7 +389,7 @@ const Dashboard = () => {
         },
       ],
     };
-  }, [stats.total]);
+  }, [complaints]);
 
   const barOptions = {
     responsive: true,
@@ -532,7 +552,7 @@ const Dashboard = () => {
             <h1 className="text-xl md:text-2xl font-bold text-gov-900 mb-1">
               {greeting},{' '}
               <span className="gradient-text">
-                {user?.first_name || user?.username || 'Citizen'}
+                {user?.full_name || user?.name || 'Citizen'}
               </span>
               ! 👋
             </h1>

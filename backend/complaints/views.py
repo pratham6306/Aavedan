@@ -188,13 +188,7 @@ class MyComplaintListView(ListAPIView):
     serializer_class = ComplaintListSerializer
     permission_classes = [IsAuthenticated]
 
-    filterset_fields = (
-        "status",
-        "priority",
-        "category",
-        "department",
-        "district",
-    )
+    filterset_class = ComplaintFilter
 
     search_fields = (
         "reference_number",

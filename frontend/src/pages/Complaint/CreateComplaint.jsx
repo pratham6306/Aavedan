@@ -64,6 +64,7 @@ export default function CreateComplaint() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -108,6 +109,7 @@ export default function CreateComplaint() {
   }, []);
 
   useEffect(() => {
+    setValue('district', ''); // Clear stale district selection when state changes
     if (!selectedState) {
       setDbDistricts([]);
       return;
@@ -124,7 +126,7 @@ export default function CreateComplaint() {
       }
     };
     fetchDistricts();
-  }, [selectedState]);
+  }, [selectedState, setValue]);
 
   /* ── image helpers ── */
   const addImages = useCallback((files) => {

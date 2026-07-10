@@ -262,8 +262,18 @@ class ComplaintStatusHistory(BaseModel):
             f"{self.new_status.name}"
         )
 
-from django.db.models.signals import post_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
+
+@receiver(pre_save, sender=Complaint)
+def cache_old_status(sender, instance, **kwargs):
+    if instance.id:
+        try:
+            instance._old_status_id = Complaint.objects.get(id=instance.id).status_id
+        except Complaint.DoesNotExist:
+            instance._old_status_id = None
+    else:
+        instance._old_status_id = None
 
 @receiver(post_save, sender=Complaint)
 def create_complaint_notification(sender, instance, created, **kwargs):
@@ -278,3 +288,31 @@ def create_complaint_notification(sender, instance, created, **kwargs):
             notification_type=NotificationType.COMPLAINT_CREATED,
             action_url=f"/complaints/{instance.id}"
         )
+    else:
+        old_status_id = getattr(instance, "_old_status_id", None)
+        if old_status_id and instance.status_id != old_status_id:
+            from notifications.models import Notification
+            from notifications.choices import NotificationType
+            
+            status_name = instance.status.name.lower()
+            if status_name == "resolved":
+                notif_type = NotificationType.COMPLAINT_RESOLVED
+                title = "Complaint Resolved"
+                msg = f"Good news! Your complaint '{instance.title}' (Ref: {instance.reference_number}) has been marked as resolved."
+            elif status_name == "rejected":
+                notif_type = NotificationType.COMPLAINT_UPDATED
+                title = "Complaint Rejected"
+                msg = f"Your complaint '{instance.title}' (Ref: {instance.reference_number}) has been rejected."
+            else:
+                notif_type = NotificationType.COMPLAINT_UPDATED
+                title = "Complaint Status Updated"
+                msg = f"The status of your complaint '{instance.title}' (Ref: {instance.reference_number}) has been updated to '{instance.status.name}'."
+
+            Notification.objects.create(
+                user=instance.user,
+                complaint=instance,
+                title=title,
+                message=msg,
+                notification_type=notif_type,
+                action_url=f"/complaints/{instance.id}"
+            )

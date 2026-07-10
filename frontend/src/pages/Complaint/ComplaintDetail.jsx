@@ -103,7 +103,14 @@ export default function ComplaintDetail() {
   /* ── derived data ── */
   const images   = complaint?.images ?? [];
   const timeline = complaint?.status_history ?? complaint?.timeline ?? [];
-  const location = complaint?.location ?? {};
+  const location = {
+    address: complaint?.address,
+    district: complaint?.district,
+    state: complaint?.state,
+    landmark: complaint?.landmark,
+    latitude: complaint?.latitude,
+    longitude: complaint?.longitude,
+  };
 
   /* ================================================================
      Loading State
@@ -176,7 +183,7 @@ export default function ComplaintDetail() {
     category, description, created_at, updated_at,
   } = complaint;
 
-  const statusBadge   = getStatusColor(status);
+  const statusBadge   = getStatusColor(status?.name || status);
   const priorityBadge = getPriorityColor(priority);
 
   /* ================================================================
@@ -203,7 +210,7 @@ export default function ComplaintDetail() {
               {title}
             </h1>
             <div className="flex flex-wrap gap-2">
-              <span className={`badge ${statusBadge}`}>{status}</span>
+              <span className={`badge ${statusBadge}`}>{status?.name || status}</span>
               <span className={`badge ${priorityBadge}`}>{priority} priority</span>
             </div>
           </div>
@@ -333,7 +340,8 @@ export default function ComplaintDetail() {
             <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-200" />
 
             {timeline.map((entry, idx) => {
-              const IconComponent = STATUS_ICONS[entry.status] || HiInformationCircle;
+              const statusName = entry.new_status || entry.status || 'pending';
+              const IconComponent = STATUS_ICONS[statusName.toLowerCase()] || HiInformationCircle;
               const isLast = idx === timeline.length - 1;
 
               return (
@@ -356,10 +364,10 @@ export default function ComplaintDetail() {
                   {/* content */}
                   <div className="ml-4 flex-1">
                     <p className={`text-sm font-semibold ${isLast ? 'text-gov-700' : 'text-gray-700'}`}>
-                      {entry.status?.replace(/_/g, ' ')}
+                      {statusName.replace(/_/g, ' ')}
                     </p>
-                    {entry.comment && (
-                      <p className="text-xs text-gray-500 mt-0.5">{entry.comment}</p>
+                    {(entry.remarks || entry.comment) && (
+                      <p className="text-xs text-gray-500 mt-0.5">{entry.remarks || entry.comment}</p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">
                       {formatDate(entry.created_at ?? entry.date)}
