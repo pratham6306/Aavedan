@@ -22,13 +22,13 @@ class MemoryManager:
 
         return self._sessions[session_id]
 
-    def update_session(self, session_id: str, **kwargs) -> dict:
-        """
-        Update one or more fields in a session.
-        """
+    def update_session(self, session_id: str, **kwargs):
+
         session = self.get_session(session_id)
+
         session.update(kwargs)
-        return session
+
+        self._sessions[session_id] = session
 
     def get_value(self, session_id: str, key: str):
         """

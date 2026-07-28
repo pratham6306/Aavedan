@@ -1,41 +1,48 @@
 from ai.services.intent_detector import IntentDetector
 from ai.services.memory import MemoryManager
-
-
-memory = MemoryManager()
+from ai.services.complaint_analyzer import ComplaintAnalyzer
+from ai.services.response_generator import ResponseGenerator
 
 
 class AIOrchestrator:
 
+    def __init__(self):
+        self.intent_detector = IntentDetector()
+        self.memory = MemoryManager()
+        self.complaint_analyzer = ComplaintAnalyzer()
+        self.response_generator = ResponseGenerator()
+
     def process(self, message: str, session_id: str):
 
-        # Detect intent
-        detector = IntentDetector()
-        intent = detector.detect(message)
+        # Step 1: Detect Intent
+        intent = self.intent_detector.detect(message)
 
-        # Save intent in memory
-        memory.update_session(
-            session_id,
-            intent=intent.value
+        # Step 2: Analyze Complaint
+        analysis = self.complaint_analyzer.analyze(
+            message=message,
+            intent=intent
         )
 
-        # Read updated session
-        session = memory.get_session(session_id)
+        # Step 3: Update Memory
+        self.memory.update_session(
+            session_id,
+            intent=intent.value,
+            complaint_type=analysis["complaint_type"],
+            category=analysis["category"],
+            department=analysis["department"],
+            awaiting_field=(
+                analysis["missing_fields"][0]
+                if analysis["missing_fields"]
+                else None
+            )
+        )
 
-        return {
-            "reply": (
-                "Hello! I'm Aavedan Saathi. "
-                "I received your message and the AI pipeline is working."
-            ),
-            "intent": intent.value,
-            "complaint_type": "",
-            "category": "",
-            "department": "",
-            "confidence": 1.0,
-            "needs_clarification": False,
-            "missing_fields": [],
-            "next_action": "none",
+        # Step 4: Read Updated Session
+        session = self.memory.get_session(session_id)
 
-            # Temporary (for debugging)
-            "memory": session
-        }
+        # Step 5: Generate Response
+        return self.response_generator.generate(
+            session=session,
+            analysis=analysis,
+            intent=intent
+        )
