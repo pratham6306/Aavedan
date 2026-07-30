@@ -1,0 +1,159 @@
+# ai/services/email_dispatcher.py
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
+from ai.services.office_finder import OfficeFinder
+
+class EmailDispatcher:
+    """
+    Constructs and sends a formal public grievance email to the verified department office,
+    automatically CCing the citizen and setting the Reply-To header.
+    """
+
+    def __init__(self):
+        self.office_finder = OfficeFinder()
+
+    def send_grievance_email(self, session_data: dict, user_email: str) -> bool:
+        """
+        Sends the compiled grievance report to the designated officer.
+        """
+        complaint_type = session_data.get("complaint_type")
+        category = session_data.get("category", "General")
+        department = session_data.get("department")
+        priority = session_data.get("priority", "MEDIUM")
+        entities = session_data.get("entities", {})
+        
+        state = entities.get("state")
+        district = entities.get("district")
+        address = entities.get("address", "Not provided")
+        landmark = entities.get("landmark", "Not provided")
+        description = session_data.get("description") or "Please see details below."
+
+        if not complaint_type or not department or not state or not district:
+            raise ValueError("Incomplete session data: complaint_type, department, state, and district are required.")
+
+        # 1. Retrieve the verified office email
+        office_info = self.office_finder.find_office(
+            department_name=department,
+            district_name=district,
+            state_name=state
+        )
+        recipient_email = office_info.get("email")
+        office_name = office_info.get("name", "Department Office")
+
+        # 2. Formulate Subject
+        subject = f"[Grievance Registration] {complaint_type} - {district}, {state}"
+
+        # 3. Formulate Plain Text Body
+        text_content = (
+            f"Dear Sir/Madam,\n\n"
+            f"Subject: Grievance regarding {complaint_type} in {district}\n\n"
+            f"This is to bring to your official notice a public grievance compiled by a citizen via the Aavedan Saathi platform. The details of the issue are listed below:\n\n"
+            f"--------------------------------------------------\n"
+            f"GRIEVANCE DETAILS:\n"
+            f"--------------------------------------------------\n"
+            f"• Department: {department}\n"
+            f"• Category: {category}\n"
+            f"• Complaint Type: {complaint_type}\n"
+            f"• Priority/Urgency: {priority}\n"
+            f"• Description: {description}\n\n"
+            f"LOCATION DETAILS:\n"
+            f"• Specific Address: {address}\n"
+            f"• Nearby Landmark: {landmark}\n"
+            f"• District: {district}\n"
+            f"• State: {state}\n\n"
+            f"CITIZEN CONTACT INFORMATION:\n"
+            f"• Email: {user_email}\n\n"
+            f"Please review the details and initiate corrective action at the earliest.\n\n"
+            f"Sincerely,\n"
+            f"Aavedan Saathi Grievance Assistant\n"
+        )
+
+        # 4. Formulate HTML Styled Body (with Premium Aesthetics)
+        html_content = f"""
+        <html>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; color: #333333; line-height: 1.6; background-color: #f9f9f9; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div style="background-color: #1e3a8a; padding: 20px; color: #ffffff; text-align: center;">
+                    <h2 style="margin: 0; font-size: 22px;">Aavedan Saathi</h2>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Official Public Grievance Dispatch</p>
+                </div>
+                <div style="padding: 25px;">
+                    <p style="font-size: 16px;">Dear Sir/Madam,</p>
+                    <p>A public grievance has been compiled by a citizen using <strong>Aavedan Saathi</strong> and directed to your division. Please review the details below:</p>
+                    
+                    <h3 style="color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 25px;">Issue Details</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; width: 150px;">Department:</td>
+                            <td style="padding: 8px 0;">{department}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold;">Office Name:</td>
+                            <td style="padding: 8px 0;">{office_name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold;">Complaint Type:</td>
+                            <td style="padding: 8px 0;"><span style="background-color: #eff6ff; color: #1e3a8a; padding: 2px 8px; border-radius: 4px; font-weight: 500;">{complaint_type}</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold;">Category:</td>
+                            <td style="padding: 8px 0;">{category}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold;">Priority:</td>
+                            <td style="padding: 8px 0;"><span style="background-color: #fffaf0; color: #dd6b20; padding: 2px 8px; border-radius: 4px; font-weight: 500;">{priority}</span></td>
+                        </tr>
+                    </table>
+                    
+                    <h3 style="color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 25px;">Description</h3>
+                    <div style="background-color: #f3f4f6; border-left: 4px solid #1e3a8a; padding: 15px; margin-top: 10px; border-radius: 0 4px 4px 0; font-style: italic;">
+                        {description}
+                    </div>
+                    
+                    <h3 style="color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 25px;">Location Details</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; width: 150px;">Address:</td>
+                            <td style="padding: 8px 0;">{address}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold;">Landmark:</td>
+                            <td style="padding: 8px 0;">{landmark}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold;">District:</td>
+                            <td style="padding: 8px 0;">{district}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold;">State:</td>
+                            <td style="padding: 8px 0;">{state}</td>
+                        </tr>
+                    </table>
+                    
+                    <h3 style="color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 25px;">Citizen Contact Info</h3>
+                    <p style="margin-top: 10px;">This report has been registered under: <strong>{user_email}</strong>. For any follow-up, you can reply directly to this email or contact the sender.</p>
+                </div>
+                <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #777777; border-top: 1px solid #e0e0e0;">
+                    This is an automated dispatch from the Aavedan Saathi Assistant on behalf of the citizen.
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # 5. Build Django Email Message
+        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@aavedan-saathi.gov.in")
+        
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=from_email,
+            to=[recipient_email],
+            cc=[user_email],
+            reply_to=[user_email]
+        )
+        email.attach_alternative(html_content, "text/html")
+
+        # 6. Send the email
+        email.send()
+        return True
