@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     "locations",
     "departments",
     "categories",
-    
+    "knowledge",
     "django_filters",
 ]
 
