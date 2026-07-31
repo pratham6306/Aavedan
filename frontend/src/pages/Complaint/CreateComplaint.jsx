@@ -34,6 +34,7 @@ import { useCreateComplaint, useUploadImages } from '../../hooks/useComplaints';
 import { requiredRule } from '../../utils/validators';
 import { departments } from '../../utils/helpers';
 import locationService from '../../services/locationService';
+import MapPicker from '../../components/MapPicker';
 
 /* ─── max images allowed ─── */
 const MAX_IMAGES = 5;
@@ -107,6 +108,34 @@ export default function CreateComplaint() {
     };
     fetchStates();
   }, []);
+
+  const handleMapLocationSelect = useCallback((loc) => {
+    setValue('address', loc.address || '');
+    setValue('latitude', loc.latitude || '');
+    setValue('longitude', loc.longitude || '');
+
+    if (loc.state && dbStates.length > 0) {
+      const matchedState = dbStates.find((s) => s.name.toLowerCase() === loc.state.toLowerCase());
+      if (matchedState) {
+        setValue('state', matchedState.id.toString());
+        setLoadingLocations(true);
+        locationService.getDistricts(matchedState.id)
+          .then((districtsData) => {
+            setDbDistricts(districtsData);
+            if (loc.district) {
+              const matchedDistrict = districtsData.find(
+                (d) => d.name.toLowerCase() === loc.district.toLowerCase()
+              );
+              if (matchedDistrict) {
+                setValue('district', matchedDistrict.id.toString());
+              }
+            }
+          })
+          .catch((err) => console.error('Error setting map district:', err))
+          .finally(() => setLoadingLocations(false));
+      }
+    }
+  }, [dbStates, setValue]);
 
   useEffect(() => {
     setValue('district', ''); // Clear stale district selection when state changes
@@ -305,6 +334,12 @@ export default function CreateComplaint() {
           className="card p-6 mb-5"
         >
           <SectionHeader icon={HiMapPin} title="Location Details" number={2} />
+
+          {/* Interactive Map Picker */}
+          <div className="mb-4">
+            <label className="form-label">Select Location on Map</label>
+            <MapPicker onLocationSelect={handleMapLocationSelect} />
+          </div>
 
           {/* Address */}
           <div className="mb-4">

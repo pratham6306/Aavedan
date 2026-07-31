@@ -8,7 +8,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useInView, useAnimation } from 'framer-motion';
+import { motion, useInView, useAnimation, useScroll, useTransform } from 'framer-motion';
 import {
   HiShieldCheck,
   HiLightBulb,
@@ -26,6 +26,7 @@ import {
   HiChatBubbleLeftRight,
   HiArrowDown,
 } from 'react-icons/hi2';
+import background from '../../assets/background.png';
 
 /* ────────────────────────────────────────────
    Animation Variants
@@ -103,13 +104,13 @@ function StatCard({ icon: Icon, value, suffix = '+', label, index }) {
       viewport={{ once: true, margin: '-50px' }}
       className="text-center p-6"
     >
-      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/20 mb-4">
-        <Icon className="w-7 h-7 text-white" />
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 border border-white/10 mb-4">
+        <Icon className="w-7 h-7 text-amber-300" />
       </div>
       <div className="text-4xl md:text-5xl font-extrabold text-white mb-1 tabular-nums">
         {animatedValue.toLocaleString()}{suffix}
       </div>
-      <div className="text-blue-100 text-sm font-medium uppercase tracking-wider">{label}</div>
+      <div className="text-amber-200/90 text-sm font-semibold uppercase tracking-wider">{label}</div>
     </motion.div>
   );
 }
@@ -125,13 +126,13 @@ function FeatureCard({ icon: Icon, title, description, index }) {
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: '-30px' }}
-      className="card card-hover p-8 group cursor-default"
+      className="card card-hover p-8 group cursor-default hover:border-amber-400/50 hover:shadow-amber-500/5 transition-all duration-300"
     >
-      <div className="w-14 h-14 rounded-2xl bg-gov-50 flex items-center justify-center mb-5 group-hover:bg-gov-100 transition-colors duration-300">
-        <Icon className="w-7 h-7 text-gov-600" />
+      <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mb-5 group-hover:bg-amber-100 transition-colors duration-300">
+        <Icon className="w-7 h-7 text-amber-700" />
       </div>
-      <h3 className="text-lg font-bold text-gov-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
+      <h3 className="text-lg font-bold text-[#081F4D] mb-2">{title}</h3>
+      <p className="text-sm text-slate-500 leading-relaxed">{description}</p>
     </motion.div>
   );
 }
@@ -151,21 +152,21 @@ function StepCard({ step, title, description, icon: Icon, index, isLast }) {
     >
       {/* Connector line */}
       {!isLast && (
-        <div className="hidden lg:block absolute top-10 left-[calc(50%+3rem)] w-[calc(100%-6rem)] h-0.5 bg-gradient-to-r from-gov-300 to-gov-100" />
+        <div className="hidden lg:block absolute top-10 left-[calc(50%+3rem)] w-[calc(100%-6rem)] h-0.5 bg-gradient-to-r from-amber-400 to-amber-100" />
       )}
 
       {/* Step number circle */}
-      <div className="relative z-10 w-20 h-20 rounded-full bg-gradient-to-br from-gov-600 to-gov-800 flex items-center justify-center shadow-lg shadow-gov-600/25 mb-5">
+      <div className="relative z-10 w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20 mb-5">
         <span className="text-2xl font-extrabold text-white">{step}</span>
       </div>
 
       {/* Icon */}
-      <div className="w-12 h-12 rounded-xl bg-gov-50 flex items-center justify-center mb-4">
-        <Icon className="w-6 h-6 text-gov-600" />
+      <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-4">
+        <Icon className="w-6 h-6 text-amber-700" />
       </div>
 
-      <h3 className="text-lg font-bold text-gov-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 leading-relaxed max-w-[280px]">{description}</p>
+      <h3 className="text-lg font-bold text-[#081F4D] mb-2">{title}</h3>
+      <p className="text-sm text-slate-500 leading-relaxed max-w-[280px]">{description}</p>
     </motion.div>
   );
 }
@@ -175,6 +176,20 @@ function StepCard({ step, title, description, icon: Icon, index, isLast }) {
    ════════════════════════════════════════════ */
 export default function Landing() {
   const featuresRef = useRef(null);
+  const heroRef = useRef(null);
+
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  });
+
+  // Parallax background image transforms
+  const yBg = useTransform(scrollYProgress, [0, 1], ["0%", "28%"]);
+  const scaleBg = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
+
+  // Content fade & minor scroll lift
+  const yText = useTransform(scrollYProgress, [0, 1], ["0%", "-8%"]);
+  const opacityHero = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
 
   /** Smooth-scroll to the Features section */
   const scrollToFeatures = () => {
@@ -233,10 +248,10 @@ export default function Landing() {
 
   /* ── Stats data ── */
   const stats = [
-    { icon: HiCheckBadge, value: 50000, label: 'Complaints Resolved' },
-    { icon: HiGlobeAlt, value: 1200, label: 'Schemes Listed' },
-    { icon: HiUserGroup, value: 200000, suffix: '+', label: 'Citizens Served' },
-    { icon: HiBuildingOffice2, value: 350, label: 'Departments Connected' },
+    { icon: HiCheckBadge, value: 10, label: 'Complaints Resolved' },
+    { icon: HiGlobeAlt, value: 15, label: 'Schemes Listed' },
+    { icon: HiUserGroup, value: 10, suffix: '+', label: 'Citizens Served' },
+    { icon: HiBuildingOffice2, value: 20, label: 'Departments Connected' },
   ];
 
   /* ── AI Capabilities ── */
@@ -266,51 +281,50 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       {/* ─────────────────── HERO SECTION ─────────────────── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gov-900 via-gov-800 to-gov-700" />
+      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#f6c548]">
+        {/* Parallax background image container */}
+        <div className="absolute inset-0 overflow-hidden">
+          <motion.img
+            src={background}
+            alt="Background"
+            style={{ y: yBg, scale: scaleBg }}
+            className="absolute inset-0 w-full h-[125%] -top-[12.5%] object-cover object-bottom"
+          />
+          {/* Fades the bottom monuments outline into the white background of the next section */}
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-white via-white/80 to-transparent" />
+        </div>
 
-        {/* Animated geometric shapes */}
+        {/* Floating warm sparkles/light indicators */}
         <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
-          className="absolute top-20 -right-20 w-96 h-96 rounded-full border border-white/5"
-        />
-        <motion.div
-          animate={{ rotate: -360 }}
-          transition={{ duration: 80, repeat: Infinity, ease: 'linear' }}
-          className="absolute -bottom-32 -left-32 w-[500px] h-[500px] rounded-full border border-white/5"
-        />
-        <motion.div
-          animate={{ y: [0, -30, 0] }}
+          animate={{ y: [0, -20, 0], opacity: [0.3, 0.7, 0.3] }}
           transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/4 left-[10%] w-3 h-3 rounded-full bg-blue-400/30"
+          className="absolute top-1/4 left-[15%] w-3 h-3 rounded-full bg-amber-400/50 blur-[1px]"
         />
         <motion.div
-          animate={{ y: [0, 20, 0] }}
+          animate={{ y: [0, 15, 0], opacity: [0.2, 0.5, 0.2] }}
           transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/3 right-[15%] w-4 h-4 rounded-full bg-cyan-400/20"
+          className="absolute top-1/3 right-[18%] w-4 h-4 rounded-full bg-orange-400/40 blur-[2px]"
         />
         <motion.div
-          animate={{ y: [0, -20, 0], x: [0, 10, 0] }}
+          animate={{ y: [0, -15, 0], x: [0, 10, 0], opacity: [0.3, 0.6, 0.3] }}
           transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute bottom-1/4 left-[20%] w-2 h-2 rounded-full bg-blue-300/25"
+          className="absolute bottom-1/3 left-[25%] w-2.5 h-2.5 rounded-full bg-yellow-300/60 blur-[1px]"
         />
-
-        {/* Radial glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gov-600/20 rounded-full blur-[120px]" />
 
         {/* Hero content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+        <motion.div 
+          style={{ y: yText, opacity: opacityHero }}
+          className="relative z-10 max-w-5xl mx-auto px-6 text-center"
+        >
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-5 py-2 mb-8"
+            className="inline-flex items-center gap-2 bg-amber-950/10 backdrop-blur-md border border-amber-950/20 rounded-full px-5 py-2 mb-8"
           >
-            <HiSparkles className="w-4 h-4 text-cyan-300" />
-            <span className="text-sm font-medium text-blue-100">AI-Powered Governance Platform</span>
+            <HiSparkles className="w-4 h-4 text-amber-700" />
+            <span className="text-sm font-semibold text-amber-950">AI-Powered Governance Platform</span>
           </motion.div>
 
           {/* Main heading */}
@@ -318,10 +332,10 @@ export default function Landing() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15 }}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-6"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-[#081F4D] leading-tight mb-6"
           >
             Empowering Citizens,{' '}
-            <span className="bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-orange-700 via-amber-800 to-[#8c2323] bg-clip-text text-transparent">
               Transforming Governance
             </span>
           </motion.h1>
@@ -331,7 +345,7 @@ export default function Landing() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="max-w-2xl mx-auto text-lg md:text-xl text-blue-100/80 mb-10 leading-relaxed"
+            className="max-w-2xl mx-auto text-lg md:text-xl text-slate-800/80 mb-10 leading-relaxed font-medium"
           >
             An AI-powered platform that bridges the gap between citizens and government.
             File complaints seamlessly, discover welfare schemes, and track resolutions — all in one place.
@@ -346,14 +360,14 @@ export default function Landing() {
           >
             <Link
               to="/register"
-              className="btn btn-primary px-8 py-3.5 text-base shadow-xl shadow-blue-900/30 hover:shadow-2xl hover:shadow-blue-900/40"
+              className="btn px-8 py-3.5 text-base bg-gradient-to-r from-amber-600 via-amber-700 to-orange-600 text-white font-bold rounded-xl shadow-xl shadow-amber-700/20 hover:shadow-2xl hover:shadow-orange-600/30 hover:scale-[1.02] transition-all duration-300"
             >
               Get Started
               <HiArrowRight className="w-5 h-5" />
             </Link>
             <button
               onClick={scrollToFeatures}
-              className="btn btn-ghost text-white border border-white/20 hover:bg-white/10 px-8 py-3.5 text-base"
+              className="btn bg-white/40 hover:bg-white/60 text-[#081F4D] border border-slate-300/50 backdrop-blur-sm px-8 py-3.5 text-base font-bold rounded-xl transition-all duration-300"
             >
               Learn More
               <HiArrowDown className="w-5 h-5" />
@@ -365,19 +379,19 @@ export default function Landing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.7 }}
-            className="mt-16 flex flex-wrap items-center justify-center gap-8 text-blue-200/50 text-xs uppercase tracking-widest font-medium"
+            className="mt-16 flex flex-wrap items-center justify-center gap-8 text-[#081F4D]/60 text-xs uppercase tracking-widest font-bold"
           >
             <span className="flex items-center gap-2">
-              <HiShieldCheck className="w-4 h-4" /> Govt. Verified
+              <HiShieldCheck className="w-4 h-4 text-orange-600" /> Govt. Verified
             </span>
             <span className="flex items-center gap-2">
-              <HiCpuChip className="w-4 h-4" /> AI-Powered
+              <HiCpuChip className="w-4 h-4 text-orange-600" /> AI-Powered
             </span>
             <span className="flex items-center gap-2">
-              <HiGlobeAlt className="w-4 h-4" /> Pan-India
+              <HiGlobeAlt className="w-4 h-4 text-orange-600" /> Pan-India
             </span>
           </motion.div>
-        </div>
+        </motion.div>
 
         {/* Scroll indicator */}
         <motion.div
@@ -385,14 +399,14 @@ export default function Landing() {
           transition={{ duration: 1.5, repeat: Infinity }}
           className="absolute bottom-8 left-1/2 -translate-x-1/2"
         >
-          <div className="w-6 h-10 border-2 border-white/20 rounded-full flex justify-center pt-2">
-            <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
+          <div className="w-6 h-10 border-2 border-slate-400/40 rounded-full flex justify-center pt-2 backdrop-blur-sm">
+            <div className="w-1.5 h-1.5 bg-slate-500 rounded-full" />
           </div>
         </motion.div>
       </section>
 
       {/* ─────────────────── FEATURES SECTION ─────────────────── */}
-      <section ref={featuresRef} className="py-24 md:py-32 bg-gray-50/70">
+      <section ref={featuresRef} className="py-24 md:py-32 bg-amber-50/20">
         <div className="max-w-6xl mx-auto px-6">
           {/* Section header */}
           <motion.div
@@ -402,13 +416,13 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="inline-block text-sm font-semibold text-gov-600 bg-gov-50 px-4 py-1.5 rounded-full mb-4 uppercase tracking-wider">
+            <span className="inline-block text-sm font-semibold text-amber-800 bg-amber-100/60 px-4 py-1.5 rounded-full mb-4 uppercase tracking-wider">
               Why Choose Us
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gov-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-[#081F4D] mb-4">
               Built for Modern Governance
             </h2>
-            <p className="max-w-xl mx-auto text-gray-500">
+            <p className="max-w-xl mx-auto text-slate-500">
               Every feature is designed to make government services more accessible, transparent, and efficient for every citizen.
             </p>
           </motion.div>
@@ -433,13 +447,13 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-20"
           >
-            <span className="inline-block text-sm font-semibold text-gov-600 bg-gov-50 px-4 py-1.5 rounded-full mb-4 uppercase tracking-wider">
+            <span className="inline-block text-sm font-semibold text-amber-800 bg-amber-100/60 px-4 py-1.5 rounded-full mb-4 uppercase tracking-wider">
               Simple Process
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gov-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-[#081F4D] mb-4">
               How It Works
             </h2>
-            <p className="max-w-xl mx-auto text-gray-500">
+            <p className="max-w-xl mx-auto text-slate-500">
               Three simple steps to get your voice heard and your issues resolved.
             </p>
           </motion.div>
@@ -460,7 +474,7 @@ export default function Landing() {
       </section>
 
       {/* ─────────────────── AI FEATURES SECTION ─────────────────── */}
-      <section className="py-24 md:py-32 bg-gray-50/70">
+      <section className="py-24 md:py-32 bg-amber-50/20">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             {/* Left – text */}
@@ -470,14 +484,16 @@ export default function Landing() {
               whileInView="visible"
               viewport={{ once: true }}
             >
-              <span className="inline-block text-sm font-semibold text-gov-600 bg-gov-50 px-4 py-1.5 rounded-full mb-4 uppercase tracking-wider">
+              <span className="inline-block text-sm font-semibold text-amber-800 bg-amber-100/60 px-4 py-1.5 rounded-full mb-4 uppercase tracking-wider">
                 AI Capabilities
               </span>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gov-900 mb-5 leading-tight">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-[#081F4D] mb-5 leading-tight">
                 Powered by{' '}
-                <span className="gradient-text">Artificial Intelligence</span>
+                <span className="bg-gradient-to-r from-amber-700 to-orange-600 bg-clip-text text-transparent">
+                  Artificial Intelligence
+                </span>
               </h2>
-              <p className="text-gray-500 mb-8 leading-relaxed">
+              <p className="text-slate-500 mb-8 leading-relaxed">
                 Our platform leverages cutting-edge AI and NLP models to automate complaint triage,
                 sentiment analysis, scheme matching, and predictive analytics — reducing resolution
                 time by up to 60%.
@@ -485,7 +501,7 @@ export default function Landing() {
 
               <Link
                 to="/register"
-                className="btn btn-primary px-6 py-3"
+                className="btn px-6 py-3 bg-gradient-to-r from-amber-600 via-amber-700 to-orange-600 text-white font-bold rounded-xl shadow-lg shadow-amber-600/20 hover:shadow-orange-600/35 hover:scale-[1.02] transition-all duration-300"
               >
                 Experience AI-Powered Governance
                 <HiArrowRight className="w-5 h-5" />
@@ -505,13 +521,13 @@ export default function Landing() {
                   key={cap.title}
                   custom={i}
                   variants={fadeUp}
-                  className="glass-card p-6 hover:shadow-lg transition-shadow duration-300"
+                  className="glass-card p-6 border border-amber-200/20 bg-white/60 hover:shadow-lg hover:border-amber-400/30 transition-all duration-300"
                 >
-                  <div className="w-11 h-11 rounded-xl bg-gov-100 flex items-center justify-center mb-4">
-                    <cap.icon className="w-5 h-5 text-gov-700" />
+                  <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center mb-4">
+                    <cap.icon className="w-5 h-5 text-amber-700" />
                   </div>
-                  <h4 className="text-sm font-bold text-gov-900 mb-1.5">{cap.title}</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed">{cap.description}</p>
+                  <h4 className="text-sm font-bold text-[#081F4D] mb-1.5">{cap.title}</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">{cap.description}</p>
                 </motion.div>
               ))}
             </motion.div>
@@ -520,10 +536,10 @@ export default function Landing() {
       </section>
 
       {/* ─────────────────── STATS SECTION ─────────────────── */}
-      <section className="py-20 bg-gradient-to-br from-gov-800 via-gov-900 to-gov-800 relative overflow-hidden">
+      <section className="py-20 bg-gradient-to-br from-[#2d1b0d] via-[#1c0f05] to-[#2d1b0d] relative overflow-hidden">
         {/* Decorative blobs */}
-        <div className="absolute top-0 left-1/4 w-72 h-72 bg-gov-600/10 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-cyan-500/10 rounded-full blur-[100px]" />
+        <div className="absolute top-0 left-1/4 w-72 h-72 bg-amber-600/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-orange-500/10 rounded-full blur-[100px]" />
 
         <div className="relative z-10 max-w-5xl mx-auto px-6">
           <motion.div
@@ -536,7 +552,7 @@ export default function Landing() {
             <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-3">
               Impact That Matters
             </h2>
-            <p className="text-blue-200/70 max-w-lg mx-auto">
+            <p className="text-amber-200/70 max-w-lg mx-auto">
               Numbers that reflect our commitment to transforming citizen-government interaction across India.
             </p>
           </motion.div>
@@ -558,27 +574,27 @@ export default function Landing() {
           viewport={{ once: true }}
           className="max-w-3xl mx-auto px-6 text-center"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gov-50 mb-6">
-            <HiSparkles className="w-8 h-8 text-gov-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-50 mb-6">
+            <HiSparkles className="w-8 h-8 text-amber-700" />
           </div>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gov-900 mb-5">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[#081F4D] mb-5">
             Ready to Make a Difference?
           </h2>
-          <p className="text-gray-500 mb-10 max-w-xl mx-auto leading-relaxed">
+          <p className="text-slate-500 mb-10 max-w-xl mx-auto leading-relaxed">
             Join thousands of citizens already using our AI-powered platform to file complaints,
             discover government schemes, and drive real change in their communities.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/register"
-              className="btn btn-primary px-8 py-3.5 text-base shadow-lg shadow-gov-600/20"
+              className="btn px-8 py-3.5 text-base bg-gradient-to-r from-amber-600 via-amber-700 to-orange-600 text-white font-bold rounded-xl shadow-lg shadow-amber-600/20 hover:shadow-orange-600/35 hover:scale-[1.02] transition-all duration-300"
             >
               Create Free Account
               <HiArrowRight className="w-5 h-5" />
             </Link>
             <Link
               to="/login"
-              className="btn btn-secondary px-8 py-3.5 text-base"
+              className="btn px-8 py-3.5 text-base bg-white text-[#081F4D] border border-slate-300/60 font-bold rounded-xl hover:bg-slate-50 transition-all duration-300"
             >
               Sign In
             </Link>
@@ -587,9 +603,9 @@ export default function Landing() {
       </section>
 
       {/* ─────────────────── FOOTER ─────────────────── */}
-      <footer className="py-8 bg-gov-900 text-center">
-        <p className="text-blue-200/40 text-sm">
-          © {new Date().getFullYear()} Government Complaint & Schemes Platform. Built for Smart India Hackathon.
+      <footer className="py-8 bg-[#1c0f05] text-center border-t border-amber-950/20">
+        <p className="text-amber-200/30 text-sm">
+          © {new Date().getFullYear()} Government Complaint & Schemes Platform. 
         </p>
       </footer>
     </div>

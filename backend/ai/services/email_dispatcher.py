@@ -157,3 +157,64 @@ class EmailDispatcher:
         # 6. Send the email
         email.send()
         return True
+
+    def get_email_preview(self, session_data: dict, user_email: str) -> dict:
+        """
+        Constructs and returns the email headers and body preview without sending it.
+        """
+        complaint_type = session_data.get("complaint_type")
+        category = session_data.get("category", "General")
+        department = session_data.get("department")
+        priority = session_data.get("priority", "MEDIUM")
+        entities = session_data.get("entities", {})
+        
+        state = entities.get("state")
+        district = entities.get("district")
+        address = entities.get("address", "Not provided")
+        landmark = entities.get("landmark", "Not provided")
+        description = session_data.get("description") or "Please see details below."
+
+        if not complaint_type or not department or not state or not district:
+            raise ValueError("Incomplete session data: complaint_type, department, state, and district are required.")
+
+        office_info = self.office_finder.find_office(
+            department_name=department,
+            district_name=district,
+            state_name=state
+        )
+        recipient_email = office_info.get("email")
+        office_name = office_info.get("name", "Department Office")
+
+        subject = f"[Grievance Registration] {complaint_type} - {district}, {state}"
+
+        text_content = (
+            f"Dear Sir/Madam,\n\n"
+            f"Subject: Grievance regarding {complaint_type} in {district}\n\n"
+            f"This is to bring to your official notice a public grievance compiled by a citizen via the Aavedan Saathi platform. The details of the issue are listed below:\n\n"
+            f"--------------------------------------------------\n"
+            f"GRIEVANCE DETAILS:\n"
+            f"--------------------------------------------------\n"
+            f"• Department: {department}\n"
+            f"• Category: {category}\n"
+            f"• Complaint Type: {complaint_type}\n"
+            f"• Priority/Urgency: {priority}\n"
+            f"• Description: {description}\n\n"
+            f"LOCATION DETAILS:\n"
+            f"• Specific Address: {address}\n"
+            f"• Nearby Landmark: {landmark}\n"
+            f"• District: {district}\n"
+            f"• State: {state}\n\n"
+            f"CITIZEN CONTACT INFORMATION:\n"
+            f"• Email: {user_email}\n\n"
+            f"Please review the details and initiate corrective action at the earliest.\n\n"
+            f"Sincerely,\n"
+            f"Aavedan Saathi Grievance Assistant\n"
+        )
+
+        return {
+            "sender_email": user_email,
+            "receiver_email": recipient_email,
+            "office_name": office_name,
+            "subject": subject,
+            "body_text": text_content,
+        }

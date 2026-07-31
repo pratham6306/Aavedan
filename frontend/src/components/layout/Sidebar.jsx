@@ -104,7 +104,7 @@ export default function Sidebar({ isOpen, onToggle }) {
           {/* Bottom branding */}
           {isOpen && (
             <div className="border-t border-gray-100 px-4 py-3 text-[11px] text-gray-400">
-              GovConnect v1.0
+              Aavedan-Setu v1.0
             </div>
           )}
         </div>

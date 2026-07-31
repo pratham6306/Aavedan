@@ -26,6 +26,7 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from './NotificationBell';
+import logo from '../../assets/logo.png';
 
 /* ── Desktop nav links (shown only when authenticated) ───── */
 const navLinks = [
@@ -34,13 +35,22 @@ const navLinks = [
   { label: 'Schemes',    to: '/schemes' },
 ];
 
-/* NavLink active / inactive style builder */
+/* NavLink active / inactive style builder (Desktop dark header) */
 function navLinkClass({ isActive }) {
   const base =
     'relative px-3 py-1.5 text-sm font-medium rounded-lg transition-colors';
   return isActive
-    ? `${base} text-gov-700 bg-gov-50`
-    : `${base} text-gray-600 hover:text-gov-700 hover:bg-gov-50`;
+    ? `${base} text-amber-200 bg-white/10`
+    : `${base} text-amber-200/60 hover:text-white hover:bg-white/5`;
+}
+
+/* NavLink active / inactive style builder (Mobile light drawer) */
+function mobileNavLinkClass({ isActive }) {
+  const base =
+    'relative block px-3 py-2.5 text-base font-semibold rounded-lg transition-colors';
+  return isActive
+    ? `${base} text-amber-700 bg-amber-50`
+    : `${base} text-gray-700 hover:text-amber-700 hover:bg-amber-50`;
 }
 
 /* ── Helper – user initials from name string ─────────────── */
@@ -83,12 +93,13 @@ export default function Navbar() {
   /* ────────────────────────────────────────────────────────── */
   return (
     <>
-      <header className="sticky top-0 z-50 h-16 border-b border-gray-100 bg-white/80 backdrop-blur-lg">
+      <header className="sticky top-0 z-50 h-16 border-b border-amber-950/20 bg-gradient-to-r from-[#2d1b0d] via-[#1c0f05] to-[#2d1b0d] backdrop-blur-lg">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2 select-none">
-            <HiShieldCheck className="h-7 w-7 text-gov-600" />
-            <span className="text-lg font-extrabold gradient-text tracking-tight">
-              GovConnect
+          {/* ── Left: Logo ─────────────────────────────────── */}
+          <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-3 select-none py-1.5">
+            <img src={logo} alt="Logo" className="h-10 w-10 object-contain bg-white p-1.5 rounded-xl shadow-md border border-white/20" />
+            <span className="text-[19px] font-extrabold text-white tracking-tight">
+              Aavedan Setu
             </span>
           </Link>
 
@@ -114,14 +125,14 @@ export default function Navbar() {
                 <div className="relative hidden md:block" ref={profileRef}>
                   <button
                     onClick={() => setProfileOpen((p) => !p)}
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gov-50 transition-colors"
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors"
                   >
                     {/* Avatar circle with initials */}
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gov-600 text-xs font-bold text-white">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-600 text-xs font-bold text-white">
                       {getInitials(user?.name)}
                     </span>
                     <HiChevronDown
-                      className={`h-4 w-4 text-gray-400 transition-transform ${
+                      className={`h-4 w-4 text-amber-200/50 transition-transform ${
                         profileOpen ? 'rotate-180' : ''
                       }`}
                     />
@@ -182,10 +193,10 @@ export default function Navbar() {
             ) : (
               /* Guest buttons */
               <div className="hidden md:flex items-center gap-2">
-                <Link to="/login" className="btn btn-ghost">
+                <Link to="/login" className="btn bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl shadow-md hover:scale-[1.02] transition-all">
                   Login
                 </Link>
-                <Link to="/register" className="btn btn-primary">
+                <Link to="/register" className="btn bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl shadow-md hover:scale-[1.02] transition-all">
                   Register
                 </Link>
               </div>
@@ -194,7 +205,7 @@ export default function Navbar() {
             {/* ── Mobile hamburger ──────────────────────────── */}
             <button
               onClick={() => setMobileOpen((p) => !p)}
-              className="rounded-lg p-2 text-gray-500 hover:bg-gov-50 md:hidden"
+              className="rounded-lg p-2 text-amber-200/60 hover:bg-white/5 md:hidden"
               aria-label="Toggle menu"
             >
               {mobileOpen ? (
@@ -232,7 +243,7 @@ export default function Navbar() {
             >
               {/* Drawer header */}
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
-                <span className="text-lg font-bold gradient-text">Menu</span>
+                <span className="text-lg font-bold text-amber-950">Menu</span>
                 <button
                   onClick={() => setMobileOpen(false)}
                   className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100"
@@ -249,7 +260,7 @@ export default function Navbar() {
                       key={to}
                       to={to}
                       onClick={() => setMobileOpen(false)}
-                      className={navLinkClass}
+                      className={mobileNavLinkClass}
                     >
                       {label}
                     </NavLink>
@@ -260,14 +271,14 @@ export default function Navbar() {
                     <NavLink
                       to="/profile"
                       onClick={() => setMobileOpen(false)}
-                      className={navLinkClass}
+                      className={mobileNavLinkClass}
                     >
                       Profile
                     </NavLink>
                     <NavLink
                       to="/settings"
                       onClick={() => setMobileOpen(false)}
-                      className={navLinkClass}
+                      className={mobileNavLinkClass}
                     >
                       Settings
                     </NavLink>
