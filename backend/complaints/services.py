@@ -19,19 +19,12 @@ class ComplaintService:
         return complaint
     @staticmethod
     def upload_images(*, complaint, images):
-        complaint_images = []
-
         for image in images:
-            complaint_images.append(
-                ComplaintImage(
-                    complaint=complaint,
-                    image=image,
-                )
+            ci = ComplaintImage(
+                complaint=complaint,
+                image=image,
             )
-
-        ComplaintImage.objects.bulk_create(
-            complaint_images
-        )
+            ci.save()
     @staticmethod
     def update_complaint(
         *,

@@ -30,10 +30,13 @@
 
 ## 🔒 Key Features
 * **Dual Auth Portal**: Secure JWT authentication supporting traditional Email/Password and OTP-based mobile logins.
-* **Dynamic Location Dropdowns**: Dropdowns for Indian states and districts mapped directly to database PKs, ensuring nested district filtering based on the selected state (prevents invalid location constraints).
+* **Dynamic Location Dropdowns**: Dropdowns for Indian states and districts mapped directly to database PKs, ensuring nested district filtering based on the selected state.
+* **Smart AI Grievance Assistant**: Conversational AI interface that helps citizens refine descriptions and compiles, reviews, and dispatches email drafts directly to verified local department offices.
+* **Inline Image Evidence Embedding**: Dynamic embedding of uploaded citizen evidence photos inline inside the HTML email drafts (using `MIMEImage` Content-IDs) so authorities see photos in the email body flow.
+* **Robust Edit & Soft Delete**: Full-featured complaint editing (categories, description, landmarks, map coordinate pinning) and soft-deletion views backed by user-owner permission checks.
 * **Automated Notification Signals**: Django `post_save` signals dynamically generate citizen alerts upon complaint submission, reflecting immediately in the frontend notification panel.
 * **Welfare Schemes Browser**: Explore government programs filtered by State, Department, and Category, with detailed eligibility, benefits, and required document criteria.
-* **Interactive Dashboard**: Modern visualization of complaint resolution statistics, status distribution (Doughnut Chart), and monthly filing trends (Bar Chart).
+* **Interactive Dashboard**: Modern visualization of complaint resolution statistics, status distribution (Doughnut Chart), and monthly trends (Bar Chart).
 
 ---
 
@@ -72,14 +75,14 @@ gov_complaint_schemes/
 │
 ├── frontend/                 # Vite + React 19 Frontend
 │   ├── src/
-│   │   ├── components/       # Layouts, Navbar, Sidebar, Loading elements
+│   │   ├── components/       # Layouts, Navbar, Sidebar, Loading elements, MapPicker
 │   │   ├── context/          # AuthContext with token refresh logic
 │   │   ├── hooks/            # TanStack Queries (useComplaints, useSchemes, useNotifications)
-│   │   ├── pages/            # Dashboard, Complaint Management, Schemes, Auth
-│   │   ├── services/         # Axios instance, API services wrapper
+│   │   ├── pages/            # Dashboard, Schemes, Auth, and Complaint Pages (List, Detail, Create, Edit)
+│   │   ├── services/         # Axios instance, location & AI API services wrapper
 │   │   ├── utils/            # Validators, formatting helpers, and constants
-│   │   └── App.jsx           # Routing mapping
-│   ├── tailwind.config.js
+│   │   └── App.jsx           # Router config including /complaints/:id/edit route
+│   ├── vite.config.js        # Forwarding rules for /api and /media to Django
 │   └── package.json
 ```
 
@@ -115,15 +118,40 @@ erDiagram
 * `POST /api/auth/token/refresh/` - Refresh expired JWT access token.
 
 ### Grievances Endpoints (`/api/complaints/`)
-* `POST /api/complaints/create/` - Submit a new complaint (anonymous or public).
-* `GET /api/complaints/` - List all complaints (supports search & filters).
+* `POST /api/complaints/create/` - Submit a new complaint with categories, departments, and location details.
+* `PATCH /api/complaints/{id}/update/` - Update complaint basic data, category, or department classification.
+* `DELETE /api/complaints/{id}/delete/` - Soft delete a complaint (sets `is_deleted=True` flag).
+* `GET /api/complaints/` - List all active complaints (supports search & filters).
 * `GET /api/complaints/my/` - Fetch complaints submitted by the authenticated citizen.
-* `GET /api/complaints/{id}/` - Retrieve full complaint metadata & resolution timeline.
-* `POST /api/complaints/{id}/upload-images/` - Attach up to 5 supporting images.
+* `GET /api/complaints/{id}/` - Retrieve full complaint metadata, resolution timeline, and attached evidence.
+* `POST /api/complaints/{id}/upload-images/` - Upload supporting photos (images are sequentially saved and written to disk).
+
+### AI Grievance Assistant Endpoints (`/api/ai/`)
+* `POST /api/ai/chat/` - Chat with Aavedan Saathi AI Assistant (processes user inputs, detects file intent, and retains session state).
+* `GET /api/ai/email-preview/` - Get official grievance email plain text body preview, CC addresses, and dynamic attachment lists.
+* `POST /api/ai/email-dispatch/` - Send grievance email with inline evidence photos via Central SMTP relay.
 
 ### Welfare Schemes Endpoints (`/api/schemes/`)
 * `GET /api/schemes/` - Browse welfare schemes (supports search & filters by category, state, and department).
 * `GET /api/schemes/{id}/` - View scheme details, benefit description, and required documents.
+
+## 📧 AI Grievance Assistant & Email Dispatch Workflow
+
+The platform features an advanced automated and manual dispatch workflow powered by a stateful conversational AI assistant:
+
+### 1. Manual Classification & Priority Selection
+* Citizens can explicitly select the **Category** and **Department** from dropdowns synced directly with backend PostgreSQL databases.
+* The AI engine prioritizes manually selected metadata over keyword-extracted inferences to guarantee that citizen preferences are never overwritten.
+
+### 2. Supporting Evidence & Photo Uploads
+* Citizen photos uploaded via the frontend are saved sequentially to Django storage disk and linked to the complaint database records.
+* During email generation, the system scans for linked records, compiling an inline visual evidence gallery inside the HTML body using Content-IDs (`cid:evidence_X`).
+* The visual evidence is attached inline via `MIMEImage` configurations, presenting a professional email layout to authorities.
+
+### 3. Automated Grievance Dispatching
+* When dispatch is initiated, the system finds the official verified office contact email based on department, district, and state.
+* The draft can be reviewed in a slide-out drawer presenting a live preview of headers, recipients, attachments, and body contents.
+* Emails are dispatched using a centralized administrator SMTP routing channel, adding the citizen's email in `Reply-To` and `CC` headers for continuous communication.
 
 ---
 

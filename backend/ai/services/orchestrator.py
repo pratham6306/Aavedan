@@ -40,6 +40,11 @@ class AIOrchestrator:
         # 3. Detect intent
         intent = self.intent_detector.detect(clean_msg)
 
+        # Save initial description if a complaint flow is triggered and description is empty
+        if (intent == Intent.FILE_COMPLAINT or session.get("complaint_type")) and not session.get("description"):
+            if not message.strip().startswith("Please help me"):
+                self.memory.update_session(session_id, description=message.strip())
+
         # 4. Handle context-aware answers in active flows
         prev_action = session.get("next_action")
         active_complaint = session.get("complaint_type")

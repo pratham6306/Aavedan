@@ -14,6 +14,12 @@ from .services.memory import MemoryManager
 from .services.office_finder import OfficeFinder
 from rest_framework.permissions import IsAuthenticated
 
+# Models for database sync
+from complaints.models import Complaint, ComplaintStatus
+from locations.models import State, District
+from departments.models import Department, DepartmentOffice
+from categories.models import ComplaintCategory
+
 
 class ChatAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -21,11 +27,36 @@ class ChatAPIView(APIView):
         serializer = ChatRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        session_id = str(serializer.validated_data["session_id"])
+        
+        # If preloaded entities are passed, inject them directly into session memory
+        preloaded_entities = serializer.validated_data.get("entities")
+        if preloaded_entities:
+            memory = MemoryManager()
+            
+            # Extract root level keys
+            description = preloaded_entities.pop("description", None)
+            category = preloaded_entities.pop("category", None)
+            complaint_type = preloaded_entities.pop("complaint_type", None)
+            department = preloaded_entities.pop("department", None)
+            complaint_id = preloaded_entities.pop("complaint_id", None)
+            
+            # Map clean entities
+            memory.update_session(
+                session_id,
+                entities=preloaded_entities,
+                description=description,
+                category=category,
+                complaint_type=complaint_type,
+                department=department,
+                complaint_id=complaint_id
+            )
+
         orchestrator = AIOrchestrator()
 
         result = orchestrator.process(
             message=serializer.validated_data["message"],
-            session_id=str(serializer.validated_data["session_id"]),
+            session_id=session_id,
         )
 
         response_serializer = ChatResponseSerializer(result)
@@ -49,9 +80,39 @@ class SendGrievanceEmailAPIView(APIView):
 
         complaint_type = session_data.get("complaint_type")
         department = session_data.get("department")
+        category = session_data.get("category")
+        priority = session_data.get("priority", "medium")
         entities = session_data.get("entities", {})
         state = entities.get("state")
         district = entities.get("district")
+
+        # Fallback chain for missing department
+        if not department:
+            if category:
+                from knowledge.models import ComplaintType
+                ct = ComplaintType.objects.filter(category__name__iexact=category).first()
+                if not ct:
+                    ct = ComplaintType.objects.filter(category__name__icontains=category).first()
+                if ct and ct.department:
+                    department = ct.department.name
+            
+            # If still missing, check if we can match by complaint_type title keywords (e.g. "road" -> PWD)
+            if not department and complaint_type:
+                from knowledge.models import ComplaintType
+                ct = ComplaintType.objects.filter(name__icontains=complaint_type).first()
+                if ct and ct.department:
+                    department = ct.department.name
+                    
+            # If still missing, fallback to the first department in the DB
+            if not department:
+                dept_obj = Department.objects.first()
+                if dept_obj:
+                    department = dept_obj.name
+                else:
+                    department = "General Administration Department"
+            
+            # Save the resolved department back to session state so it propagates to emails and summaries
+            memory.update_session(session_id, department=department)
 
         if not complaint_type or not department or not state or not district:
             return Response(
@@ -78,6 +139,72 @@ class SendGrievanceEmailAPIView(APIView):
         try:
             dispatcher.send_grievance_email(session_data, user_email)
             
+            # Automatically register the grievance in the central database
+            try:
+                # 1. Resolve State & District with robust fallbacks
+                state_obj = State.objects.filter(name__iexact=state).first()
+                if not state_obj:
+                    # Fallback to the first state available in the seeded DB
+                    state_obj = State.objects.first()
+                
+                district_obj = None
+                if state_obj:
+                    district_obj = District.objects.filter(name__iexact=district, state=state_obj).first()
+                    if not district_obj:
+                        district_obj = District.objects.filter(state=state_obj).first()
+                if not district_obj:
+                    district_obj = District.objects.first()
+                
+                # 2. Resolve Department with robust fallback
+                dept_obj = Department.objects.filter(name__iexact=department).first()
+                if not dept_obj and department:
+                    # Look up by partial/contains match
+                    dept_obj = Department.objects.filter(name__icontains=department).first()
+                
+                # 3. Resolve Category (fallback to default)
+                cat_obj = None
+                if category:
+                    cat_obj = ComplaintCategory.objects.filter(name__iexact=category).first()
+                    if not cat_obj:
+                        cat_obj = ComplaintCategory.objects.filter(name__icontains=category).first()
+                
+                # 4. Resolve Status
+                status_obj, _ = ComplaintStatus.objects.get_or_create(
+                    name="pending",
+                    defaults={"order": 1, "description": "Awaiting review"}
+                )
+                
+                # 5. Resolve Office
+                office_obj = None
+                if dept_obj and district_obj and state_obj:
+                    office_obj = DepartmentOffice.objects.filter(
+                        department=dept_obj,
+                        district=district_obj,
+                        state=state_obj,
+                        is_active=True
+                    ).first()
+
+                # 6. Create the Complaint record (reference_number is auto-generated on save)
+                Complaint.objects.create(
+                    user=request.user,
+                    title=f"AI Grievance: {complaint_type}",
+                    description=session_data.get("description") or f"Grievance filed regarding {complaint_type}.",
+                    address=entities.get("address", "Not provided"),
+                    landmark=entities.get("landmark", ""),
+                    state=state_obj,
+                    district=district_obj,
+                    department=dept_obj,
+                    category=cat_obj,
+                    department_office=office_obj,
+                    status=status_obj,
+                    priority=priority,
+                )
+            except Exception as db_err:
+                # Print warning and traceback but don't fail the response if DB save fails
+                import traceback
+                print(f"Warning: Failed to sync AI complaint to database: {str(db_err)}")
+                traceback.print_exc()
+
             # Clear session memory upon successful dispatch
             memory.clear_session(session_id)
 
@@ -122,6 +249,36 @@ class GrievanceEmailPreviewAPIView(APIView):
         entities = session_data.get("entities", {})
         state = entities.get("state")
         district = entities.get("district")
+
+        # Fallback chain for missing department
+        if not department:
+            # Try to resolve category from session first if missing
+            category = session_data.get("category")
+            if category:
+                from knowledge.models import ComplaintType
+                ct = ComplaintType.objects.filter(category__name__iexact=category).first()
+                if not ct:
+                    ct = ComplaintType.objects.filter(category__name__icontains=category).first()
+                if ct and ct.department:
+                    department = ct.department.name
+            
+            # If still missing, check if we can match by complaint_type title keywords (e.g. "road" -> PWD)
+            if not department and complaint_type:
+                from knowledge.models import ComplaintType
+                ct = ComplaintType.objects.filter(name__icontains=complaint_type).first()
+                if ct and ct.department:
+                    department = ct.department.name
+                    
+            # If still missing, fallback to the first department in the DB
+            if not department:
+                dept_obj = Department.objects.first()
+                if dept_obj:
+                    department = dept_obj.name
+                else:
+                    department = "General Administration Department"
+            
+            # Save the resolved department back to session state so it propagates to emails and summaries
+            memory.update_session(session_id, department=department)
 
         if not complaint_type or not department or not state or not district:
             return Response(

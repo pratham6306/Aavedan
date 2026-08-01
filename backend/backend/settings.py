@@ -189,15 +189,15 @@ SIMPLE_JWT = {
 # CHOICE A: CONSOLE BACKEND (Recommended for testing and presentation)
 # This logs the email content to your terminal console instead of trying to send a real email.
 # It prevents connection refused errors on machines without an active SMTP server.
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # CHOICE B: SMTP GMAIL BACKEND (Uncomment and configure for real email dispatch)
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = "smtp.gmail.com"
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = "your-gmail-address@gmail.com"
-# EMAIL_HOST_PASSWORD = "your-app-specific-password" # Obtain from Google Account -> App Passwords
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 
 # Default system sender email
-DEFAULT_FROM_EMAIL = "Aavedan Saathi <no-reply@aavedan-saathi.gov.in>"
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Aavedan Saathi <no-reply@aavedan-saathi.gov.in>")

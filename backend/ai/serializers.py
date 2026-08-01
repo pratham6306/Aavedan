@@ -5,6 +5,7 @@ from rest_framework import serializers
 class ChatRequestSerializer(serializers.Serializer):
     session_id = serializers.UUIDField()
     message = serializers.CharField(max_length=5000)
+    entities = serializers.JSONField(required=False)
 
 
 class ChatResponseSerializer(serializers.Serializer):

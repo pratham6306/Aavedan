@@ -8,6 +8,8 @@ from .views import (
     ComplaintDeleteView,
     ComplaintImageUploadView,
     MyComplaintListView,
+    CategoryListAPIView,
+    DepartmentListAPIView,
 )
 
 urlpatterns = [
@@ -21,6 +23,18 @@ urlpatterns = [
         "create/",
         ComplaintCreateView.as_view(),
         name="complaint-create",
+    ),
+
+    path(
+        "categories/",
+        CategoryListAPIView.as_view(),
+        name="complaint-categories",
+    ),
+
+    path(
+        "departments/",
+        DepartmentListAPIView.as_view(),
+        name="complaint-departments",
     ),
 
     path(

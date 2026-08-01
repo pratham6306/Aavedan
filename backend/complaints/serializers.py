@@ -39,6 +39,8 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
             "landmark",
             "state",
             "district",
+            "category",
+            "department",
             "latitude",
             "longitude",
             "is_anonymous",
@@ -130,6 +132,8 @@ class ComplaintUpdateSerializer(serializers.ModelSerializer):
             "description",
             "address",
             "landmark",
+            "category",
+            "department",
             "latitude",
             "longitude",
         )

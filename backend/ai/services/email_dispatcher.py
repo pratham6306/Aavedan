@@ -43,6 +43,37 @@ class EmailDispatcher:
         # 2. Formulate Subject
         subject = f"[Grievance Registration] {complaint_type} - {district}, {state}"
 
+        # Resolve attachments details for HTML and Text
+        evidence_list = ""
+        text_attachments = ""
+        complaint_id = session_data.get("complaint_id")
+        if complaint_id:
+            try:
+                from complaints.models import Complaint
+                complaint_obj = Complaint.objects.get(id=complaint_id)
+                images = complaint_obj.images.all()
+                if images.exists():
+                    import os
+                    evidence_list = "<h3 style='color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 25px;'>Attached Evidence</h3>"
+                    evidence_list += "<p style='margin-top: 10px;'>The following evidence photos have been attached to this email dispatch:</p>"
+                    evidence_list += "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;'>"
+                    text_attachments = "ATTACHED EVIDENCE:\n"
+                    for img in images:
+                        if img.image:
+                            img_name = os.path.basename(img.image.name)
+                            cid = f"evidence_{img.id}"
+                            evidence_list += f"""
+                            <div style='border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; background-color: #f9f9f9; padding: 10px; text-align: center; max-width: 180px;'>
+                                <img src='cid:{cid}' style='max-width: 100%; max-height: 120px; object-fit: contain; border-radius: 4px;' alt='{img_name}' />
+                                <p style='margin: 5px 0 0 0; font-size: 10px; color: #777777; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>{img_name}</p>
+                            </div>
+                            """
+                            text_attachments += f"- {img_name}\n"
+                    evidence_list += "</div>"
+                    text_attachments += "\n"
+            except Exception:
+                pass
+
         # 3. Formulate Plain Text Body
         text_content = (
             f"Dear Sir/Madam,\n\n"
@@ -61,6 +92,7 @@ class EmailDispatcher:
             f"• Nearby Landmark: {landmark}\n"
             f"• District: {district}\n"
             f"• State: {state}\n\n"
+            f"{text_attachments}"
             f"CITIZEN CONTACT INFORMATION:\n"
             f"• Email: {user_email}\n\n"
             f"Please review the details and initiate corrective action at the earliest.\n\n"
@@ -130,6 +162,8 @@ class EmailDispatcher:
                         </tr>
                     </table>
                     
+                    {evidence_list}
+                    
                     <h3 style="color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 25px;">Citizen Contact Info</h3>
                     <p style="margin-top: 10px;">This report has been registered under: <strong>{user_email}</strong>. For any follow-up, you can reply directly to this email or contact the sender.</p>
                 </div>
@@ -154,7 +188,30 @@ class EmailDispatcher:
         )
         email.attach_alternative(html_content, "text/html")
 
-        # 6. Send the email
+        # 6. Query and attach images/photos if it is linked to a database complaint
+        complaint_id = session_data.get("complaint_id")
+        if complaint_id:
+            try:
+                from complaints.models import Complaint
+                complaint_obj = Complaint.objects.get(id=complaint_id)
+                for img in complaint_obj.images.all():
+                    if img.image:
+                        import os
+                        from email.mime.image import MIMEImage
+                        img_name = os.path.basename(img.image.name)
+                        # Open and read file bytes
+                        img.image.open()
+                        content = img.image.read()
+                        
+                        # Create MIMEImage inline attachment mapped to CID
+                        mime_image = MIMEImage(content)
+                        mime_image.add_header('Content-ID', f'<evidence_{img.id}>')
+                        mime_image.add_header('Content-Disposition', 'inline', filename=img_name)
+                        email.attach(mime_image)
+            except Exception as img_err:
+                print(f"Warning: Failed to attach complaint image inline: {str(img_err)}")
+
+        # 7. Send the email
         email.send()
         return True
 
@@ -185,6 +242,27 @@ class EmailDispatcher:
         recipient_email = office_info.get("email")
         office_name = office_info.get("name", "Department Office")
 
+        # Compile attachments for preview text body
+        text_attachments = ""
+        attachment_names = []
+        complaint_id = session_data.get("complaint_id")
+        if complaint_id:
+            try:
+                from complaints.models import Complaint
+                complaint_obj = Complaint.objects.get(id=complaint_id)
+                images = complaint_obj.images.all()
+                if images.exists():
+                    import os
+                    text_attachments = "ATTACHED EVIDENCE:\n"
+                    for img in images:
+                        if img.image:
+                            img_name = os.path.basename(img.image.name)
+                            text_attachments += f"- {img_name}\n"
+                            attachment_names.append(img_name)
+                    text_attachments += "\n"
+            except Exception:
+                pass
+
         subject = f"[Grievance Registration] {complaint_type} - {district}, {state}"
 
         text_content = (
@@ -204,6 +282,7 @@ class EmailDispatcher:
             f"• Nearby Landmark: {landmark}\n"
             f"• District: {district}\n"
             f"• State: {state}\n\n"
+            f"{text_attachments}"
             f"CITIZEN CONTACT INFORMATION:\n"
             f"• Email: {user_email}\n\n"
             f"Please review the details and initiate corrective action at the earliest.\n\n"
@@ -217,4 +296,5 @@ class EmailDispatcher:
             "office_name": office_name,
             "subject": subject,
             "body_text": text_content,
+            "attachments": attachment_names,
         }

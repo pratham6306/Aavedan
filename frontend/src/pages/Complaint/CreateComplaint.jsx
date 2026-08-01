@@ -34,6 +34,7 @@ import { useCreateComplaint, useUploadImages } from '../../hooks/useComplaints';
 import { requiredRule } from '../../utils/validators';
 import { departments } from '../../utils/helpers';
 import locationService from '../../services/locationService';
+import complaintService from '../../services/complaintService';
 import MapPicker from '../../components/MapPicker';
 
 /* ─── max images allowed ─── */
@@ -78,6 +79,7 @@ export default function CreateComplaint() {
       latitude: '',
       longitude: '',
       is_anonymous: false,
+      category: '',
       department: '',
     },
   });
@@ -96,6 +98,8 @@ export default function CreateComplaint() {
   const [dbStates, setDbStates] = useState([]);
   const [dbDistricts, setDbDistricts] = useState([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
+  const [dbCategories, setDbCategories] = useState([]);
+  const [dbDepartments, setDbDepartments] = useState([]);
 
   useEffect(() => {
     const fetchStates = async () => {
@@ -107,6 +111,22 @@ export default function CreateComplaint() {
       }
     };
     fetchStates();
+  }, []);
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const [cats, depts] = await Promise.all([
+          complaintService.getCategories(),
+          complaintService.getDepartments(),
+        ]);
+        setDbCategories(cats);
+        setDbDepartments(depts);
+      } catch (err) {
+        console.error('Failed to fetch categories/departments', err);
+      }
+    };
+    fetchMetadata();
   }, []);
 
   const handleMapLocationSelect = useCallback((loc) => {
@@ -207,6 +227,8 @@ export default function CreateComplaint() {
         landmark: formData.landmark.trim() || undefined,
         state: parseInt(formData.state, 10),
         district: parseInt(formData.district, 10),
+        category: formData.category ? parseInt(formData.category, 10) : undefined,
+        department: formData.department ? parseInt(formData.department, 10) : undefined,
         latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
         longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
         is_anonymous: formData.is_anonymous,
@@ -216,14 +238,19 @@ export default function CreateComplaint() {
       const result = await createComplaint(payload);
 
       /* 3. Upload images if any */
-      if (images.length > 0 && result?.id) {
+      if (images.length > 0 && result?.data?.id) {
         const fd = new FormData();
         images.forEach((img) => fd.append('images', img));
-        await uploadImages({ id: result.id, data: fd });
+        await uploadImages({ id: result.data.id, formData: fd });
       }
 
       toast.success('Complaint submitted successfully!');
-      navigate('/my-complaints');
+      if (result?.data?.id) {
+        sessionStorage.setItem('trigger_ai_assistance_for_complaint_id', String(result.data.id));
+        navigate(`/complaints/${result.data.id}`);
+      } else {
+        navigate('/complaints');
+      }
     } catch (err) {
       const errorData = err?.response?.data;
       let errMsg = 'Failed to submit complaint. Please try again.';
@@ -476,6 +503,24 @@ export default function CreateComplaint() {
             />
           </div>
 
+          {/* Category */}
+          <div className="mb-4">
+            <label htmlFor="category" className="form-label">Category</label>
+            <select
+              id="category"
+              className={`form-input ${errors.category ? 'form-input-error' : ''}`}
+              {...register('category', { required: 'Category is required' })}
+            >
+              <option value="">Select Category</option>
+              {dbCategories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            {errors.category && (
+              <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>
+            )}
+          </div>
+
           {/* Department */}
           <div>
             <label htmlFor="department" className="form-label">Department</label>
@@ -485,8 +530,8 @@ export default function CreateComplaint() {
               {...register('department')}
             >
               <option value="">Select Department (optional)</option>
-              {departments.map((d) => (
-                <option key={d} value={d}>{d}</option>
+              {dbDepartments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
           </div>

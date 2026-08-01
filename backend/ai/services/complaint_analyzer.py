@@ -48,14 +48,14 @@ class ComplaintAnalyzer:
 
         # 3. Default analysis structure
         analysis = {
-            "complaint_type": retriever_result["complaint_type"],
-            "category": retriever_result["category"],
-            "department": retriever_result["department"],
-            "priority": retriever_result["priority"],
-            "estimated_resolution_days": retriever_result["estimated_resolution_days"],
-            "confidence": retriever_result["confidence_score"],
+            "complaint_type": session_data.get("complaint_type") or retriever_result["complaint_type"],
+            "category": session_data.get("category") or retriever_result["category"],
+            "department": session_data.get("department") or retriever_result["department"],
+            "priority": session_data.get("priority") or retriever_result["priority"] or "medium",
+            "estimated_resolution_days": retriever_result["estimated_resolution_days"] or 7,
+            "confidence": session_data.get("confidence", 1.0) if session_data.get("complaint_type") else (retriever_result["confidence_score"] if retriever_result["complaint_type"] else 1.0),
             "missing_fields": [],
-            "required_fields_list": retriever_result["required_fields"],
+            "required_fields_list": retriever_result["required_fields"] if retriever_result["complaint_type"] else [],
             "matching_keywords": retriever_result["matching_keywords"],
             "needs_clarification": False
         }
@@ -70,12 +70,19 @@ class ComplaintAnalyzer:
                 missing_fields.append("state")
 
             # Check fields required by the specific ComplaintType from DB
-            for field in retriever_result["required_fields"]:
-                if field["is_required"]:
-                    name = field["field_name"]
-                    val = session_data.get(name) or session_data.get("entities", {}).get(name)
+            if retriever_result["required_fields"]:
+                for field in retriever_result["required_fields"]:
+                    if field["is_required"]:
+                        name = field["field_name"]
+                        val = session_data.get(name) or session_data.get("entities", {}).get(name)
+                        if not val:
+                            missing_fields.append(name)
+            else:
+                # For fallback/preloaded complaints, make sure district and address are present
+                for req_f in ["district", "address"]:
+                    val = session_data.get(req_f) or session_data.get("entities", {}).get(req_f)
                     if not val:
-                        missing_fields.append(name)
+                        missing_fields.append(req_f)
             
             # Sort missing fields logically: state, then district, then address, then landmark, then any others
             logical_order = ["state", "district", "address", "landmark"]

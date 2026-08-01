@@ -78,7 +78,8 @@ class IntentDetector:
 
         # Help
         if any(re.search(pattern, text) for pattern in self.HELP_PATTERNS):
-            return Intent.HELP
+            if "official grievance" not in text:
+                return Intent.HELP
 
         # Scheme Query
         if any(re.search(pattern, text) for pattern in self.SCHEME_PATTERNS):

@@ -32,6 +32,7 @@ import ComplaintList from './pages/Complaint/ComplaintList.jsx';
 import MyComplaints from './pages/Complaint/MyComplaints.jsx';
 import CreateComplaint from './pages/Complaint/CreateComplaint.jsx';
 import ComplaintDetail from './pages/Complaint/ComplaintDetail.jsx';
+import EditComplaint from './pages/Complaint/EditComplaint.jsx';
 import GovernmentSchemes from './pages/GovernmentSchemes/GovernmentSchemes.jsx';
 import SchemeDetail from './pages/GovernmentSchemes/SchemeDetail.jsx';
 import Notifications from './pages/Notifications/Notifications.jsx';
@@ -143,6 +144,7 @@ function App() {
         <Route path="/complaints" element={<ComplaintList />} />
         <Route path="/complaints/create" element={<CreateComplaint />} />
         <Route path="/complaints/:id" element={<ComplaintDetail />} />
+        <Route path="/complaints/:id/edit" element={<EditComplaint />} />
         <Route path="/my-complaints" element={<MyComplaints />} />
         <Route path="/schemes" element={<GovernmentSchemes />} />
         <Route path="/schemes/:id" element={<SchemeDetail />} />

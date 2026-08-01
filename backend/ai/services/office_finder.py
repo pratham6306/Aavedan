@@ -43,7 +43,7 @@ class OfficeFinder:
         return {
             "name": f"{department_name} Office, {district_name}",
             "address": f"Collectorate Campus, {district_name}, {state_name}, India",
-            "email": f"complaints.{dept_slug}@{state_slug}.gov.in",
+            "email": "pratham6306@gmail.com",
             "phone": "+91-1800-345-6789 (Toll Free)",
             "website": f"https://{state_slug}.gov.in/{dept_slug}",
             "portal_url": f"https://{state_slug}.gov.in/{dept_slug}/lodge-grievance",

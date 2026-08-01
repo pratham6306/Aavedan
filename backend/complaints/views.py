@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.generics import GenericAPIView, ListAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .filters import ComplaintFilter
 
@@ -142,12 +143,7 @@ class ComplaintDeleteView(GenericAPIView):
             complaint
         )
 
-        return Response(
-            {
-                "message": "Complaint deleted successfully."
-            },
-            status=status.HTTP_204_NO_CONTENT,
-        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
 class ComplaintImageUploadView(GenericAPIView):
     serializer_class = ComplaintImageSerializer
@@ -211,3 +207,17 @@ class MyComplaintListView(ListAPIView):
             user=self.request.user,
             is_deleted=False,
         )
+
+class CategoryListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        from knowledge.models import ComplaintCategory
+        categories = ComplaintCategory.objects.filter(is_active=True).values("id", "name")
+        return Response(list(categories))
+
+class DepartmentListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        from departments.models import Department
+        depts = Department.objects.filter(is_active=True).values("id", "name")
+        return Response(list(depts))

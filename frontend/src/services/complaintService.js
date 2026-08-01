@@ -131,6 +131,16 @@ export const uploadImages = async (id, formData) => {
   return response.data;
 };
 
+export const getCategories = async () => {
+  const response = await api.get('/complaints/categories/');
+  return response.data;
+};
+
+export const getDepartments = async () => {
+  const response = await api.get('/complaints/departments/');
+  return response.data;
+};
+
 const complaintService = {
   getComplaints,
   getMyComplaints,
@@ -139,6 +149,8 @@ const complaintService = {
   updateComplaint,
   deleteComplaint,
   uploadImages,
+  getCategories,
+  getDepartments,
 };
 
 export default complaintService;

@@ -1,5 +1,5 @@
 // frontend/src/components/layout/FloatingAIAssistant.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Bot, Sparkles, SendHorizontal, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -25,6 +25,7 @@ export default function FloatingAIAssistant() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [smtpError, setSmtpError] = useState(null);
+  const [preloadedEntities, setPreloadedEntities] = useState(null);
 
   const chatEndRef = useRef(null);
 
@@ -50,7 +51,7 @@ export default function FloatingAIAssistant() {
     "Show me welfare schemes"
   ];
 
-  const handleSendMessage = async (textToSend) => {
+  const handleSendMessage = useCallback(async (textToSend, entitiesOverride = null) => {
     const trimmed = textToSend.trim();
     if (!trimmed) return;
 
@@ -67,7 +68,12 @@ export default function FloatingAIAssistant() {
     setIsTyping(true);
 
     try {
-      const response = await aiService.sendChatMessage(trimmed, sessionId);
+      const payloadEntities = entitiesOverride || preloadedEntities;
+      const response = await aiService.sendChatMessage(trimmed, sessionId, payloadEntities);
+      
+      if (payloadEntities) {
+        setPreloadedEntities(null);
+      }
       
       const botMsg = {
         id: (Date.now() + 1).toString(),
@@ -90,7 +96,35 @@ export default function FloatingAIAssistant() {
     } finally {
       setIsTyping(false);
     }
-  };
+  }, [sessionId, preloadedEntities]);
+
+  // Event listener to open assistant with custom complaint details
+  useEffect(() => {
+    const handleOpenWithData = (event) => {
+      const data = event.detail;
+      if (!data) return;
+
+      // Clear existing messages to start a clean contextual thread
+      setMessages([]);
+      setIsOpen(true);
+      setPreloadedEntities(data);
+
+      const prompt = `Please help me file an official grievance email for this complaint:
+Category: ${data.category || ''}
+Description: ${data.description || ''}
+Address: ${data.address || ''}
+State: ${data.state || ''}
+District: ${data.district || ''}
+Landmark: ${data.landmark || ''}`;
+
+      handleSendMessage(prompt, data);
+    };
+
+    window.addEventListener('open_ai_assistant_with_data', handleOpenWithData);
+    return () => {
+      window.removeEventListener('open_ai_assistant_with_data', handleOpenWithData);
+    };
+  }, [sessionId, handleSendMessage]);
 
   const handleOpenPreview = async () => {
     setLoadingPreview(true);
@@ -353,6 +387,20 @@ export default function FloatingAIAssistant() {
                       {previewData.subject}
                     </span>
                   </div>
+
+                  {/* Attachments */}
+                  {previewData.attachments && previewData.attachments.length > 0 && (
+                    <div className="grid grid-cols-4 items-start">
+                      <span className="font-semibold text-slate-500 col-span-1 mt-1">Attachments:</span>
+                      <div className="col-span-3 flex flex-wrap gap-1.5">
+                        {previewData.attachments.map((name, index) => (
+                          <span key={index} className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-lg text-xs font-mono">
+                            📎 {name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Content Preview */}
                   <div className="flex flex-col gap-1.5">

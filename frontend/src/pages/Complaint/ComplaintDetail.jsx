@@ -14,7 +14,7 @@
  *   .btn-*, .skeleton
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -111,6 +111,35 @@ export default function ComplaintDetail() {
     latitude: complaint?.latitude,
     longitude: complaint?.longitude,
   };
+
+  const handleTriggerAIEmail = useCallback(() => {
+    if (!complaint) return;
+    const event = new CustomEvent('open_ai_assistant_with_data', {
+      detail: {
+        complaint_id: complaint.id,
+        complaint_type: complaint.title || 'Grievance Report',
+        category: complaint.category?.name || complaint.category || '',
+        department: complaint.department?.name || complaint.department || '',
+        description: complaint.description || '',
+        address: complaint.address || '',
+        state: complaint.state?.name || complaint.state || '',
+        district: complaint.district?.name || complaint.district || '',
+        landmark: complaint.landmark || ''
+      }
+    });
+    window.dispatchEvent(event);
+  }, [complaint]);
+
+  // Auto trigger AI assistant if redirected after manual submission
+  useEffect(() => {
+    if (complaint) {
+      const triggerId = sessionStorage.getItem('trigger_ai_assistance_for_complaint_id');
+      if (triggerId && triggerId === id) {
+        sessionStorage.removeItem('trigger_ai_assistance_for_complaint_id');
+        handleTriggerAIEmail();
+      }
+    }
+  }, [id, complaint, handleTriggerAIEmail]);
 
   /* ================================================================
      Loading State
@@ -215,25 +244,34 @@ export default function ComplaintDetail() {
             </div>
           </div>
 
-          {/* owner actions */}
-          {isOwner && (
-            <div className="flex gap-2 shrink-0">
-              <Link
-                to={`/complaints/${id}/edit`}
-                className="btn btn-secondary text-sm"
-              >
-                <HiPencilSquare className="w-4 h-4" />
-                Edit
-              </Link>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="btn btn-danger text-sm"
-              >
-                <HiTrash className="w-4 h-4" />
-                Delete
-              </button>
-            </div>
-          )}
+          {/* AI email dispatch integration & owner actions */}
+          <div className="flex flex-wrap gap-2 shrink-0 items-center">
+            <button
+              onClick={handleTriggerAIEmail}
+              className="btn btn-primary text-sm flex items-center gap-1.5"
+            >
+              <span className="text-base">📧</span>
+              Dispatch Grievance Email via AI
+            </button>
+            {isOwner && (
+              <>
+                <Link
+                  to={`/complaints/${id}/edit`}
+                  className="btn btn-secondary text-sm"
+                >
+                  <HiPencilSquare className="w-4 h-4" />
+                  Edit
+                </Link>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="btn btn-danger text-sm"
+                >
+                  <HiTrash className="w-4 h-4" />
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </motion.div>
 
