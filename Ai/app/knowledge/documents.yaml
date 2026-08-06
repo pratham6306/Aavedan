@@ -1,0 +1,40 @@
+# knowledge/documents.yaml
+#
+# Documents suggested/required per category. Used by
+# services/form_service.py to validate submitted forms and by
+# services/draft_service.py to suggest attachments to citizens.
+
+document_types:
+  - code: PHOTO_EVIDENCE
+    label:
+      en: "Photo evidence of the issue"
+      hi: "समस्या का फोटो प्रमाण"
+      or: "ସମସ୍ୟାର ଫଟୋ ପ୍ରମାଣ"
+
+  - code: ID_PROOF
+    label:
+      en: "Valid ID proof"
+      hi: "मान्य पहचान प्रमाण"
+      or: "ବୈଧ ପରିଚୟ ପ୍ରମାଣ"
+
+  - code: ADDRESS_PROOF
+    label:
+      en: "Address proof"
+      hi: "पता प्रमाण"
+      or: "ଠିକଣା ପ୍ରମାଣ"
+
+  - code: PREVIOUS_COMPLAINT_RECEIPT
+    label:
+      en: "Receipt of any earlier complaint filed for this issue"
+      hi: "इस समस्या के लिए पूर्व शिकायत की रसीद"
+      or: "ଏହି ସମସ୍ୟା ପାଇଁ ପୂର୍ବ ଅଭିଯୋଗର ରସିଦ"
+
+category_required_documents:
+  ROAD_DAMAGE: [PHOTO_EVIDENCE]
+  STREETLIGHT: [PHOTO_EVIDENCE]
+  WATER_SUPPLY: [PHOTO_EVIDENCE, ADDRESS_PROOF]
+  GARBAGE_COLLECTION: [PHOTO_EVIDENCE]
+  ELECTRICITY: [PHOTO_EVIDENCE]
+  DRAINAGE: [PHOTO_EVIDENCE]
+  PUBLIC_SAFETY: [PHOTO_EVIDENCE]
+  OTHER: []

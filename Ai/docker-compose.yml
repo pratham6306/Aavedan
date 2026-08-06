@@ -1,0 +1,57 @@
+# docker-compose.yml
+#
+# Local development stack: the FastAPI AI service + PostgreSQL.
+# The Django main backend is intentionally NOT included here — it's a
+# separate service/repo in the overall Aavedan Setu architecture;
+# this compose file covers only the AI module's own dependencies.
+
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENVIRONMENT: local
+      APP_DEBUG: "true"
+      APP_LOG_LEVEL: DEBUG
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY must be set in .env}
+      GEMINI_MODEL_NAME: ${GEMINI_MODEL_NAME:-gemini-1.5-pro}
+      DB_DSN: postgresql://aavedan:aavedan@db:5432/aavedan_setu
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Mount source for live reload during local dev; remove for a
+      # production-like image build.
+      - ./app:/app/app
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aavedan
+      POSTGRES_PASSWORD: aavedan
+      POSTGRES_DB: aavedan_setu
+    ports:
+      - "5432:5432"
+    volumes:
+      - aavedan_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aavedan -d aavedan_setu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  aavedan_pg_data:

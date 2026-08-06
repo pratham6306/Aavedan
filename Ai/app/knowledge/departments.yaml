@@ -1,0 +1,50 @@
+# knowledge/departments.yaml
+#
+# Government departments complaints can be routed to. No contact
+# details (email/phone) live here by design — that data belongs to
+# the Django backend's own department records. This file only maps
+# department identity to the categories it handles, for cross-
+# validating (category, department) pairs the LLM proposes.
+
+departments:
+  - code: PWD
+    name:
+      en: "Public Works Department"
+      hi: "लोक निर्माण विभाग"
+      or: "ଲୋକ ନିର୍ମାଣ ବିଭାଗ"
+    handles_category_codes: [ROAD_DAMAGE]
+
+  - code: MUNICIPAL_CORP
+    name:
+      en: "Municipal Corporation"
+      hi: "नगर निगम"
+      or: "ପୌର ନିଗମ"
+    handles_category_codes: [STREETLIGHT, GARBAGE_COLLECTION, DRAINAGE]
+
+  - code: WATER_BOARD
+    name:
+      en: "Water Supply Board"
+      hi: "जल आपूर्ति बोर्ड"
+      or: "ଜଳ ଯୋଗାଣ ବୋର୍ଡ"
+    handles_category_codes: [WATER_SUPPLY]
+
+  - code: ELECTRICITY_BOARD
+    name:
+      en: "Electricity Board"
+      hi: "विद्युत बोर्ड"
+      or: "ବିଦ୍ୟୁତ ବୋର୍ଡ"
+    handles_category_codes: [ELECTRICITY]
+
+  - code: POLICE
+    name:
+      en: "Police Department"
+      hi: "पुलिस विभाग"
+      or: "ପୋଲିସ୍ ବିଭାଗ"
+    handles_category_codes: [PUBLIC_SAFETY]
+
+  - code: GENERAL_ADMIN
+    name:
+      en: "General Administration"
+      hi: "सामान्य प्रशासन"
+      or: "ସାଧାରଣ ପ୍ରଶାସନ"
+    handles_category_codes: [OTHER]

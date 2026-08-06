@@ -1,0 +1,38 @@
+# knowledge/priority_rules.yaml
+#
+# Deterministic priority rules. The LLM proposes signals (severity
+# keywords, urgency language detected in the complaint) but the FINAL
+# priority level is always decided here in Python, applying rules in
+# listed order — first match wins — so priority assignment is
+# auditable and reproducible, not a black-box LLM decision. This
+# matters for a government system where citizens can ask why their
+# complaint received a given priority.
+
+rules:
+  - id: PUBLIC_SAFETY_ALWAYS_HIGH
+    category_codes: [PUBLIC_SAFETY]
+    level: high
+    reason: "Public safety complaints are always treated as high priority."
+
+  - id: WATER_SUPPLY_URGENT_KEYWORDS
+    category_codes: [WATER_SUPPLY]
+    requires_llm_signal: "no_water_extended_outage"
+    level: critical
+    reason: "Extended water outage (24+ hours) reported."
+
+  - id: ELECTRICITY_URGENT_KEYWORDS
+    category_codes: [ELECTRICITY]
+    requires_llm_signal: "safety_hazard"
+    level: critical
+    reason: "Electrical safety hazard reported (exposed wires, sparking, etc.)."
+
+# Fallback priority per category when no rule above matches.
+category_default_priority:
+  ROAD_DAMAGE: medium
+  STREETLIGHT: low
+  WATER_SUPPLY: medium
+  GARBAGE_COLLECTION: low
+  ELECTRICITY: medium
+  DRAINAGE: medium
+  PUBLIC_SAFETY: high
+  OTHER: low

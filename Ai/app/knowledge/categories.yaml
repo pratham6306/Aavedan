@@ -1,0 +1,71 @@
+# knowledge/categories.yaml
+#
+# Predefined complaint categories. This is the fixed set the LLM is
+# prompted to classify into — it must never invent a category code
+# outside this list. Edited by non-engineers as department scope
+# changes; loaded and validated by knowledge/knowledge_service.py.
+
+categories:
+  - code: ROAD_DAMAGE
+    default_department_code: PWD
+    display_name:
+      en: "Road Damage"
+      hi: "सड़क क्षति"
+      or: "ରାସ୍ତା କ୍ଷତି"
+    description: "Potholes, broken roads, damaged footpaths."
+
+  - code: STREETLIGHT
+    default_department_code: MUNICIPAL_CORP
+    display_name:
+      en: "Streetlight Not Working"
+      hi: "स्ट्रीटलाइट खराब"
+      or: "ଷ୍ଟ୍ରିଟ୍ ଲାଇଟ୍ କାମ କରୁନାହିଁ"
+    description: "Non-functional or damaged public streetlights."
+
+  - code: WATER_SUPPLY
+    default_department_code: WATER_BOARD
+    display_name:
+      en: "Water Supply Issue"
+      hi: "जल आपूर्ति समस्या"
+      or: "ଜଳ ଯୋଗାଣ ସମସ୍ୟା"
+    description: "No water supply, contaminated water, pipeline leakage."
+
+  - code: GARBAGE_COLLECTION
+    default_department_code: MUNICIPAL_CORP
+    display_name:
+      en: "Garbage Collection"
+      hi: "कचरा संग्रहण"
+      or: "ଆବର୍ଜନା ସଂଗ୍ରହ"
+    description: "Uncollected waste, overflowing bins, illegal dumping."
+
+  - code: ELECTRICITY
+    default_department_code: ELECTRICITY_BOARD
+    display_name:
+      en: "Electricity Issue"
+      hi: "बिजली समस्या"
+      or: "ବିଦ୍ୟୁତ ସମସ୍ୟା"
+    description: "Power outage, damaged transformers/lines."
+
+  - code: DRAINAGE
+    default_department_code: MUNICIPAL_CORP
+    display_name:
+      en: "Drainage / Sewage"
+      hi: "जल निकासी / सीवेज"
+      or: "ନିଷ୍କାସନ / ଡ୍ରେନେଜ୍"
+    description: "Blocked drains, sewage overflow."
+
+  - code: PUBLIC_SAFETY
+    default_department_code: POLICE
+    display_name:
+      en: "Public Safety"
+      hi: "सार्वजनिक सुरक्षा"
+      or: "ସାର୍ବଜନୀନ ସୁରକ୍ଷା"
+    description: "Unsafe public spaces, missing signage, safety hazards."
+
+  - code: OTHER
+    default_department_code: GENERAL_ADMIN
+    display_name:
+      en: "Other"
+      hi: "अन्य"
+      or: "ଅନ୍ୟାନ୍ୟ"
+    description: "Complaints that do not fit another category."

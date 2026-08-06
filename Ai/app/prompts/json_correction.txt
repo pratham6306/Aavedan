@@ -1,0 +1,14 @@
+Your previous response could not be parsed as valid JSON matching the
+required schema. Respond again with ONLY a valid JSON object matching
+this exact schema — no prose, no markdown code fences, no leading or
+trailing text of any kind.
+
+Required schema:
+{{ schema_description }}
+
+Your previous (invalid) response was:
+"""
+{{ previous_response }}
+"""
+
+Return only the corrected JSON object now.
