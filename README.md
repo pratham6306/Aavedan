@@ -174,7 +174,12 @@ gov_complaint_schemes/
    python manage.py migrate
    ```
 
-6. Run the server:
+6. Create a Superuser (Mandatory for Django Admin Access):
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+7. Run the server:
    ```bash
    python manage.py runserver
    ```
@@ -236,19 +241,16 @@ gov_complaint_schemes/
 
 ## 📊 Database Seeding & CSV Import Specifications
 
-GovConnect includes database seeding scripts to load base location and schemes metadata:
+GovConnect includes database seeding scripts to load all base categories, departments, complaint types, Indian locations, and welfare schemes. 
+
+You can seed everything in one unified command:
 
 ```bash
 cd backend
-# 1. Seed Core Metadata (Departments, categories, base user rules)
-python manage.py seed_data
-
-# 2. Seed Indian States & Districts List
-python seed_locations.py
-
-# 3. Seed Base Government Schemes & Required Documents
-python seed_schemes.py
+python seed_all.py
 ```
+
+*(Under the hood, this executes `seed_categories.py`, `seed_departments.py`, `seed_knowledge.py`, `seed_locations.py`, and `seed_schemes.py` in the correct database dependency order).*
 
 ### 📋 Custom CSV Seeding Specifications
 If you wish to import custom schemes or department office contact lists via CSV files, a professional PDF specifications sheet has been compiled in the workspace root:
