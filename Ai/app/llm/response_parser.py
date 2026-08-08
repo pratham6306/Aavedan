@@ -97,6 +97,7 @@ async def parse_with_retries(
     client: GeminiClient,
     prompt_builder: PromptBuilder,
     max_retries: int,
+    image_data: dict | None = None,
 ) -> _SchemaT:
     """Attempt to parse `initial_response`, retrying against Gemini
     with a corrective prompt up to `max_retries` times on failure.
@@ -112,6 +113,7 @@ async def parse_with_retries(
             template for each retry.
         max_retries: Maximum number of corrective retry calls (in
             addition to the initial attempt).
+        image_data: Optional dictionary containing image mimeType and base64 data.
 
     Raises:
         LLMInvalidJSONError: if valid JSON still isn't obtained after
@@ -142,7 +144,7 @@ async def parse_with_retries(
                 schema_description=_schema_description(schema),
                 previous_response=current_response,
             )
-            current_response = await client.generate(correction_prompt)
+            current_response = await client.generate(correction_prompt, image_data=image_data)
 
     assert last_error is not None  # loop always sets this before breaking
     raise LLMInvalidJSONError(

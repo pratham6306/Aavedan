@@ -69,4 +69,8 @@ class DecisionEngine:
                 return NextAction.FILE_COMPLAINT
 
         # 5. Default Fallback
+        # Retain active scheme search context if user is still explaining their query
+        if session_data.get("next_action") == NextAction.SHOW_SCHEME.value:
+            return NextAction.SHOW_SCHEME
+
         return NextAction.ASK_COMPLAINT_DETAILS

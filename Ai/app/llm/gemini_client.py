@@ -55,12 +55,13 @@ class GeminiClient:
         self._temperature = temperature
         self._max_output_tokens = max_output_tokens
 
-    async def generate(self, prompt: str) -> str:
+    async def generate(self, prompt: str, image_data: dict | None = None) -> str:
         """Send `prompt` to Gemini and return the raw text response.
 
         Args:
             prompt: Fully-rendered prompt text (already built via
                 PromptBuilder — this method does no templating).
+            image_data: Optional dictionary containing "mimeType" and "data" (base64 string).
 
         Returns:
             The raw text content of the model's response. May or may
@@ -74,8 +75,16 @@ class GeminiClient:
                 (e.g. blocked by safety filters).
         """
         url = f"{_GEMINI_BASE_URL}/{self._model_name}:generateContent"
+        parts = [{"text": prompt}]
+        if image_data:
+            parts.append({
+                "inlineData": {
+                    "mimeType": image_data["mimeType"],
+                    "data": image_data["data"]
+                }
+            })
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": [{"parts": parts}],
             "generationConfig": {
                 "temperature": self._temperature,
                 "maxOutputTokens": self._max_output_tokens,

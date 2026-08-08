@@ -1,5 +1,6 @@
 """
 main.py
+# Triggering uvicorn reload with new API key configuration.
 
 Application entrypoint. Responsible only for assembling the FastAPI
 app object: configure logging, construct the app, register exception

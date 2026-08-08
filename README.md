@@ -2,41 +2,71 @@
 
 > **Smart India Hackathon (SIH) Project**
 > 
-> A complete, enterprise-grade citizen portal featuring a modern **React 19 Frontend** and a robust **Django REST Framework Backend** with PostgreSQL, JWT Auth, dynamic Indian locations, automated notification signals, and a personalized welfare schemes recommender.
+> GovConnect is an enterprise-grade citizen empowerment portal. It features a modern **React 19 Frontend**, a robust **Django REST Framework (DRF) Backend** for complaint tracking and core database services, and a dedicated **FastAPI AI Microservice** powered by the **Google Gemini SDK** for intent classification, language translation, email drafting, and eligibility evaluations.
 
 ---
 
 ## 📖 Table of Contents
-- [Project Overview](#-project-overview)
+- [System Architecture](#-system-architecture)
 - [Key Features](#-key-features)
 - [Tech Stack](#-tech-stack)
-- [Project Structure](#-project-structure)
-- [Database Architecture](#-database-architecture)
-- [System Architecture](#-system-architecture)
-- [API Documentation](#-api-documentation)
+- [Project Directory Structure](#-project-directory-structure)
 - [Installation & Setup](#-installation--setup)
-  - [Backend Setup](#1-backend-setup)
-  - [Location & Schemes Seeding](#2-seeding-database-locations--schemes)
-  - [Frontend Setup](#3-frontend-setup)
-- [Docker Support](#-docker-support)
-- [Development Guidelines](#-development-guidelines)
+  - [1. Backend Setup (Django REST Framework)](#1-backend-setup-django-rest-framework)
+  - [2. AI Microservice Setup (FastAPI)](#2-ai-microservice-setup-fastapi)
+  - [3. Frontend Setup (React 19 + Vite)](#3-frontend-setup-react-19--vite)
+- [Database Seeding & CSV Import Specifications](#-database-seeding--csv-import-specifications)
+- [API Documentation](#-api-documentation)
+- [Core Workflows](#-core-workflows)
+  - [AI Grievance Assistant & Email Dispatching](#1-ai-grievance-assistant--email-dispatching)
+  - [Welfare Scheme Recommendation & Residency Matching](#2-welfare-scheme-recommendation--residency-matching)
+  - [Robust Keyword Fallback Search](#3-robust-keyword-fallback-search-when-llm-rate-limited)
 
 ---
 
-## 📌 Project Overview
-**GovConnect** empowers citizens to bridge the gap between their grievances and administrative resolutions. The platform uses AI to classify complaints, automatically assign them to respective departments, track status history via an interactive timeline, and recommend eligible central/state welfare schemes based on user details and complaint context.
+## 📊 System Architecture
+
+GovConnect divides operations into three independent service layers to maximize speed, scalability, and modularity:
+
+```
+                  ┌─────────────────────────────────────────┐
+                  │          React 19 Frontend              │
+                  │        (Citizen Portal - Port 5173)     │
+                  └────────────────────┬────────────────────┘
+                                       │
+                                       │ (JSON over HTTP / JWT Auth)
+                                       ▼
+                  ┌─────────────────────────────────────────┐
+                  │          Django DRF Backend             │
+                  │         (Core Services - Port 8000)     │
+                  └──────────┬───────────────────▲──────────┘
+                             │                   │
+  (Read/Write DB Sync)       │                   │ (JSON / API Calls)
+                             ▼                   ▼
+┌──────────────────────────────┐       ┌──────────────────────────────┐
+│     PostgreSQL Database      │       │     FastAPI AI Service       │
+│     (State, District,        │       │  (Gemini Pipeline - Port 8010)│
+│    Schemes, Complaints)      │       └──────────────┬───────────────┘
+└──────────────────────────────┘                      │
+                                                      │ (Gemini API SDK)
+                                                      ▼
+                                       ┌──────────────────────────────┐
+                                       │     Google Gemini Pro /      │
+                                       │       Flash LLM Client       │
+                                       └──────────────────────────────┘
+```
 
 ---
 
 ## 🔒 Key Features
-* **Dual Auth Portal**: Secure JWT authentication supporting traditional Email/Password and OTP-based mobile logins.
-* **Dynamic Location Dropdowns**: Dropdowns for Indian states and districts mapped directly to database PKs, ensuring nested district filtering based on the selected state.
-* **Smart AI Grievance Assistant**: Conversational AI interface that helps citizens refine descriptions and compiles, reviews, and dispatches email drafts directly to verified local department offices.
-* **Inline Image Evidence Embedding**: Dynamic embedding of uploaded citizen evidence photos inline inside the HTML email drafts (using `MIMEImage` Content-IDs) so authorities see photos in the email body flow.
-* **Robust Edit & Soft Delete**: Full-featured complaint editing (categories, description, landmarks, map coordinate pinning) and soft-deletion views backed by user-owner permission checks.
-* **Automated Notification Signals**: Django `post_save` signals dynamically generate citizen alerts upon complaint submission, reflecting immediately in the frontend notification panel.
-* **Welfare Schemes Browser**: Explore government programs filtered by State, Department, and Category, with detailed eligibility, benefits, and required document criteria.
-* **Interactive Dashboard**: Modern visualization of complaint resolution statistics, status distribution (Doughnut Chart), and monthly trends (Bar Chart).
+
+* **Multi-Layered AI Pipeline**: Context-aware intent classification, translation, and extraction powered by a FastAPI coordinator with automatic JSON validations and retry policies.
+* **Dual-Mechanism Auth**: Standard Email/Password login along with JWT generation and token-refresh interceptors.
+* **Interactive Dashboard**: Modern statistics visualizations showing resolution times, monthly trends, and department distribution charts (built with Chart.js).
+* **AI-Assisted Grievance Dispatcher**: State-based conversation flow to draft grievance emails automatically, locating official department offices based on the citizen's district and state.
+* **Inline Image Evidence Embedding**: Dynamic embedding of evidence photos inside email body templates via Content-IDs (`cid:evidence_X`) rather than simple attachments.
+* **State-Based Schemes Recommender**: Recommends regional and national yojanas based on eligibility parameters (family income, study levels, age, caste, and state residency).
+* **Fuzzy Typo Tolerant Fallback Matcher**: If the Gemini API is rate-limited (429 error), a backup database search engine takes over, processing inputs with typo-tolerant prefix checks (e.g. mapping `"schlorshipp"` or `"sttudy"` to `Education`).
 
 ---
 
@@ -44,233 +74,223 @@
 
 ### Frontend
 * **Core**: React 19, Vite, React Router DOM v6
-* **State & Query**: TanStack Query (React Query v5), Context API
-* **Styling**: Tailwind CSS v4, Framer Motion (for premium micro-animations)
-* **Form & Validation**: React Hook Form, Custom Validator utilities
-* **Visualizations**: Chart.js, React-ChartJS-2
+* **Data Fetching**: TanStack Query v5 (React Query), Axios
+* **Styling**: Tailwind CSS v4, Framer Motion (premium micro-animations)
+* **Visualization**: Chart.js, React-Chartjs-2
 * **Feedback**: React Toastify, React Icons (Hi2 & Fi)
 
-### Backend
-* **Core Framework**: Django 5.x, Django REST Framework (DRF)
-* **Authentication**: JWT via SimpleJWT
-* **Database**: PostgreSQL (Dockerized or Local)
-* **Filtering & Searches**: django-filter
+### Backend (Core Services)
+* **Framework**: Django 5.x, Django REST Framework (DRF)
+* **Auth**: SimpleJWT (JSON Web Tokens)
+* **Database**: PostgreSQL / SQLite (for testing)
+* **Integrations**: Django Signals (`post_save`), SMTP Mailer Client
+
+### AI Microservice
+* **Framework**: FastAPI, Uvicorn
+* **SDK**: Google GenAI / Gemini Client
+* **Parsing**: Pydantic v2 (Strict schema validation)
 
 ---
 
-## 📂 Project Structure
+## 📂 Project Directory Structure
 
 ```
 gov_complaint_schemes/
-├── backend/                  # Django REST Framework backend
-│   ├── accounts/             # Authentication & user profile management
-│   ├── complaints/           # Grievance processing, services, & signals
-│   ├── departments/          # Government departments registry
-│   ├── categories/           # Complaint categories
-│   ├── locations/            # Indian states & districts registry
-│   ├── schemes/              # Welfare schemes & required documents
-│   ├── backend/              # Core project settings and URL configuration
-│   ├── manage.py             # Django entrypoint
-│   └── requirements.txt      # Python dependencies
+├── backend/                   # Django DRF Core Backend
+│   ├── accounts/              # User account registration and authentication
+│   ├── complaints/            # Grievance registration, updates, and timeline history
+│   ├── departments/           # Government departments registry
+│   ├── categories/            # Core complaint categories
+│   ├── locations/             # States and districts lists (Indian geo-data)
+│   ├── schemes/               # Welfare schemes and requirements database
+│   ├── ai/                    # Django-side AI orchestrator proxies and memory handlers
+│   └── manage.py              # Django entrypoint
 │
-├── frontend/                 # Vite + React 19 Frontend
+├── Ai/                        # FastAPI AI Microservice
+│   ├── app/
+│   │   ├── api/               # Router endpoints (classify, recommend, translate)
+│   │   ├── core/              # Config variables and custom logging
+│   │   ├── llm/               # Gemini client wrappers and JSON response parsers
+│   │   ├── prompts/           # LLM templates (classification, scheme recommendation)
+│   │   └── services/          # AI pipeline orchestrators and business services
+│   └── requirements.txt       # FastAPI pip dependencies
+│
+├── frontend/                  # React 19 Client Dashboard
 │   ├── src/
-│   │   ├── components/       # Layouts, Navbar, Sidebar, Loading elements, MapPicker
-│   │   ├── context/          # AuthContext with token refresh logic
-│   │   ├── hooks/            # TanStack Queries (useComplaints, useSchemes, useNotifications)
-│   │   ├── pages/            # Dashboard, Schemes, Auth, and Complaint Pages (List, Detail, Create, Edit)
-│   │   ├── services/         # Axios instance, location & AI API services wrapper
-│   │   ├── utils/            # Validators, formatting helpers, and constants
-│   │   └── App.jsx           # Router config including /complaints/:id/edit route
-│   ├── vite.config.js        # Forwarding rules for /api and /media to Django
-│   └── package.json
+│   │   ├── components/        # Sidebar, Navbar, Loading Spinner, Map coordinate pickers
+│   │   ├── context/           # Authentication state context
+│   │   ├── hooks/             # TanStack Query bindings
+│   │   ├── pages/             # Dashboard, Schemes, Grievance creation & editing forms
+│   │   └── services/          # REST endpoints API wrappers
+│   └── vite.config.js         # Port proxy configurations to avoid CORS
+│
+└── requirements.txt           # Unified base Python requirements
 ```
-
----
-
-## 📊 Database Design
-
-```mermaid
-erDiagram
-    USER ||--o{ COMPLAINT : files
-    USER ||--o{ NOTIFICATION : receives
-    STATE ||--o{ DISTRICT : contains
-    STATE ||--o{ COMPLAINT : references
-    DISTRICT ||--o{ COMPLAINT : references
-    COMPLAINT_STATUS ||--o{ COMPLAINT : tracks
-    COMPLAINT ||--o{ COMPLAINT_IMAGE : contains
-    COMPLAINT ||--o{ COMPLAINT_STATUS_HISTORY : transitions
-    DEPARTMENT ||--o{ COMPLAINT : handles
-    DEPARTMENT ||--o{ GOVERNMENT_SCHEME : owns
-    SCHEME_CATEGORY ||--o{ GOVERNMENT_SCHEME : classifies
-    GOVERNMENT_SCHEME ||--o{ REQUIRED_DOCUMENT : demands
-```
-
----
-
-## 🔐 API Documentation
-
-### Authentication Endpoints (`/api/auth/`)
-* `POST /api/auth/register/` - Create a citizen account.
-* `POST /api/auth/login/` - Authenticate via email/phone + password (returns JWT access/refresh tokens).
-* `GET /api/auth/profile/` - Fetch authenticated user details.
-* `PATCH /api/auth/profile/` - Update profile address, state, district, or phone.
-* `POST /api/auth/token/refresh/` - Refresh expired JWT access token.
-
-### Grievances Endpoints (`/api/complaints/`)
-* `POST /api/complaints/create/` - Submit a new complaint with categories, departments, and location details.
-* `PATCH /api/complaints/{id}/update/` - Update complaint basic data, category, or department classification.
-* `DELETE /api/complaints/{id}/delete/` - Soft delete a complaint (sets `is_deleted=True` flag).
-* `GET /api/complaints/` - List all active complaints (supports search & filters).
-* `GET /api/complaints/my/` - Fetch complaints submitted by the authenticated citizen.
-* `GET /api/complaints/{id}/` - Retrieve full complaint metadata, resolution timeline, and attached evidence.
-* `POST /api/complaints/{id}/upload-images/` - Upload supporting photos (images are sequentially saved and written to disk).
-
-### AI Grievance Assistant Endpoints (`/api/ai/`)
-* `POST /api/ai/chat/` - Chat with Aavedan Saathi AI Assistant (processes user inputs, detects file intent, and retains session state).
-* `GET /api/ai/email-preview/` - Get official grievance email plain text body preview, CC addresses, and dynamic attachment lists.
-* `POST /api/ai/email-dispatch/` - Send grievance email with inline evidence photos via Central SMTP relay.
-
-### Welfare Schemes Endpoints (`/api/schemes/`)
-* `GET /api/schemes/` - Browse welfare schemes (supports search & filters by category, state, and department).
-* `GET /api/schemes/{id}/` - View scheme details, benefit description, and required documents.
-
-## 📧 AI Grievance Assistant & Email Dispatch Workflow
-
-The platform features an advanced automated and manual dispatch workflow powered by a stateful conversational AI assistant:
-
-### 1. Manual Classification & Priority Selection
-* Citizens can explicitly select the **Category** and **Department** from dropdowns synced directly with backend PostgreSQL databases.
-* The AI engine prioritizes manually selected metadata over keyword-extracted inferences to guarantee that citizen preferences are never overwritten.
-
-### 2. Supporting Evidence & Photo Uploads
-* Citizen photos uploaded via the frontend are saved sequentially to Django storage disk and linked to the complaint database records.
-* During email generation, the system scans for linked records, compiling an inline visual evidence gallery inside the HTML body using Content-IDs (`cid:evidence_X`).
-* The visual evidence is attached inline via `MIMEImage` configurations, presenting a professional email layout to authorities.
-
-### 3. Automated Grievance Dispatching
-* When dispatch is initiated, the system finds the official verified office contact email based on department, district, and state.
-* The draft can be reviewed in a slide-out drawer presenting a live preview of headers, recipients, attachments, and body contents.
-* Emails are dispatched using a centralized administrator SMTP routing channel, adding the citizen's email in `Reply-To` and `CC` headers for continuous communication.
 
 ---
 
 ## 🚀 Installation & Setup
 
-### Prerequisite System Requirements
-* Python 3.11+
-* Node.js 18+ (npm)
-* PostgreSQL (Local database or Docker container)
+### Prerequisite Requirements
+* **Python 3.11+**
+* **Node.js 18+ (npm)**
+* **PostgreSQL** (Optional, falls back to SQLite if database environment keys are omitted)
 
 ---
 
-### 1. Backend Setup
+### 1. Backend Setup (Django REST Framework)
 
-Navigate to the backend directory and set up a virtual environment:
+1. Navigate to the backend directory and set up a virtual environment:
+   ```bash
+   cd backend
+   python -m venv myenv
+   ```
+
+2. Activate the virtual environment:
+   * **Windows**: `myenv\Scripts\activate`
+   * **Linux/macOS**: `source myenv/bin/activate`
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Create a `.env` file in the `backend/` folder:
+   ```env
+   SECRET_KEY=your_django_secret_key_here
+   DEBUG=True
+   
+   # Optional: Configure local PostgreSQL credentials 
+   DB_NAME=gov_complaint_db
+   DB_USER=postgres
+   DB_PASSWORD=your_postgres_password
+   DB_HOST=localhost
+   DB_PORT=5432
+   ```
+
+5. Run migrations:
+   ```bash
+   python manage.py makemigrations
+   python manage.py migrate
+   ```
+
+6. Run the server:
+   ```bash
+   python manage.py runserver
+   ```
+   *The backend will boot up at:* `http://127.0.0.1:8000/`
+
+---
+
+### 2. AI Microservice Setup (FastAPI)
+
+1. Navigate to the `Ai` folder:
+   ```bash
+   cd ../Ai
+   ```
+
+2. Reuse your virtual environment or create a new one, then install requirements:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Create a `.env` file in the `Ai/` folder:
+   ```env
+   APP_ENVIRONMENT=local
+   APP_DEBUG=true
+   
+   # Provide your Gemini API key (essential for AI chat and recommendations)
+   GEMINI_API_KEY=your_gemini_api_key_here
+   GEMINI_MODEL_NAME=gemini-flash-latest
+   
+   DB_DSN=postgresql://postgres:postgres123@localhost:5432/gov_assist_db
+   ```
+
+4. Start the FastAPI development server:
+   ```bash
+   python -m uvicorn app.main:app --host 127.0.0.1 --port 8010 --reload
+   ```
+   *The AI service will boot up at:* `http://127.0.0.1:8010/`
+
+---
+
+### 3. Frontend Setup (React 19 + Vite)
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd ../frontend
+   ```
+
+2. Install npm packages:
+   ```bash
+   npm install
+   ```
+
+3. Start the Vite server:
+   ```bash
+   npm run dev
+   ```
+   *The Citizen dashboard will boot up at:* `http://localhost:5173/`
+
+---
+
+## 📊 Database Seeding & CSV Import Specifications
+
+GovConnect includes database seeding scripts to load base location and schemes metadata:
+
 ```bash
 cd backend
-python -m venv myenv
-```
-
-Activate the environment:
-* **Windows**: `myenv\Scripts\activate`
-* **Linux/macOS**: `source myenv/bin/activate`
-
-Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-Create a `.env` file in the `backend/` folder:
-```env
-SECRET_KEY=your_production_secret_key
-DEBUG=True
-DB_NAME=gov_complaint_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_HOST=localhost
-DB_PORT=5432
-```
-
-Run database migrations:
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
-
----
-
-### 2. Seeding Database (Locations & Schemes)
-
-The database includes a default seed command as well as custom scripts targeting Smart India Hackathon location datasets.
-
-**Seed Core Metadata (Departments, Statuses, Base Categories)**:
-```bash
+# 1. Seed Core Metadata (Departments, categories, base user rules)
 python manage.py seed_data
-```
 
-**Seed Complete Indian States & District Lists** (Seeds all 30 districts of Odisha, all 24 districts of Jharkhand, all 38 districts of Bihar, and major districts for other states):
-```bash
+# 2. Seed Indian States & Districts List
 python seed_locations.py
-```
 
-**Seed Government Welfare Schemes & Requirements**:
-```bash
+# 3. Seed Base Government Schemes & Required Documents
 python seed_schemes.py
 ```
 
-Create a superuser to access the Django Administration Dashboard (`/admin`):
-```bash
-python manage.py createsuperuser
-```
+### 📋 Custom CSV Seeding Specifications
+If you wish to import custom schemes or department office contact lists via CSV files, a professional PDF specifications sheet has been compiled in the workspace root:
 
-Run the development server:
-```bash
-python manage.py runserver
-```
-The API backend will boot up at `http://127.0.0.1:8000/`.
+* 📄 **Specifications Document:** [CSV_Seeding_Templates_Specifications.pdf](file:///e:/Starting%20new/gov_complaint_schemes/CSV_Seeding_Templates_Specifications.pdf)
+* It details all required column headers for `schemes.csv` (name, code, eligibility, required_documents) and `offices.csv` (office_name, district, state, official grievance email address).
 
 ---
 
-### 3. Frontend Setup
+## 🔐 API Documentation
 
-Navigate to the frontend directory:
-```bash
-cd ../frontend
-```
+### Auth Module (`/api/auth/`)
+* `POST /api/auth/register/` - Create a citizen account.
+* `POST /api/auth/login/` - Login and get JWT access & refresh tokens.
+* `GET /api/auth/profile/` - Fetch citizen contact/location profile details.
 
-Install dependencies:
-```bash
-npm install
-```
+### Grievances Module (`/api/complaints/`)
+* `POST /api/complaints/create/` - Create a new complaint.
+* `PATCH /api/complaints/{id}/update/` - Edit complaint category, location, or descriptions.
+* `DELETE /api/complaints/{id}/delete/` - Soft-delete a complaint record (`is_deleted=True`).
+* `GET /api/complaints/my/` - List complaints filed by the active citizen.
 
-Start the Vite React development server:
-```bash
-npm run dev
-```
-The React citizen portal will boot up at `http://localhost:5173/`. 
-
-*(Vite configuration includes a proxy mapping `/api` requests automatically to the backend at `http://127.0.0.1:8000` to prevent CORS issues).*
+### AI Assistant Module (`/api/ai/`)
+* `POST /api/ai/chat/` - Chat with Aavedan Saathi AI Assistant (processes user inputs, detects file intent, and retains session state).
+* `GET /api/ai/email-preview/` - Slide-out drawer preview of the drafted grievance email.
+* `POST /api/ai/email-dispatch/` - Send email with embedded base64 evidence images inline.
 
 ---
 
-## 🐳 Docker Support
+## 📧 Core Workflows
 
-You can spin up a dedicated local PostgreSQL database using Docker Compose:
-```bash
-# Start container in detached background mode
-docker compose up -d
+### 1. AI Grievance Assistant & Email Dispatching
+* **Interaction**: The citizen talks to Aavedan Saathi to explain their public issues (e.g. water leakage, broken streetlights).
+* **Metadata Override**: If the user overrides categories or departments in the form, the AI respects human inputs over its automated inferences.
+* **Email Compilation**: The system compiles the complaint text, looks up the corresponding department office's email in that district, embeds uploaded images as inline attachments via `cid:evidence_X`, and routes the email through the SMTP channel.
 
-# Verify postgres container is running
-docker ps
+### 2. Welfare Scheme Recommendation & Residency Matching
+* **Parameters**: The recommender uses eligibility metadata (income, state, age, caste) and matches it against database schemes.
+* **Residency Enforcement**: If a scheme is region-locked (e.g., Biju Pucca Ghar Yojana is exclusive to Odisha), the system checks the user's active state (e.g., Bihar) and flags the scheme accordingly.
 
-# Tear down container
-docker compose down
-```
-
----
-
-## 💻 Development Guidelines
-* **Service Layer Pattern**: Keep all core business logic inside `services.py` layers. Views should focus purely on deserializing request inputs and returning API response maps.
-* **Circular Import Safety**: Import models inside method definitions (local scope) where cross-referencing occurs (e.g. referencing `Notification` inside `Complaint` signal hooks).
-* **React Rendering**: Always safeguard nested JSON objects from the API when rendering directly inside JSX (e.g. using `{scheme.department?.name || scheme.department}` to prevent DOM representation exceptions).
+### 3. Robust Keyword Fallback Search (When LLM Rate-Limited)
+If the Gemini API returns a `429 Too Many Requests` error, the system initiates the local backup matcher:
+* **Fuzzy Typos**: Handles spelling typos like `"sttudy"` (double-t) or `"schlorshipp"` (missing a) using root-prefix checks.
+* **Topic Exclusivity**: If a citizen requests a housing scheme, the fallback matcher limits results exclusively to the `Housing` category, avoiding showing unrelated scholarships or crop yojanas.
+* **Smart Filtering**: Filters out all ineligible schemes by default to prevent cluttered cards with red crosses (`❌`), showing a clean "No eligible schemes found" message. If a user asks *"why not Biju Pucca Ghar Yojana"*, the system bypasses this filter to explain the exact eligibility failure reason.

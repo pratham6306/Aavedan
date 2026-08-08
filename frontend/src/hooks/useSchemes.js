@@ -35,12 +35,13 @@ import * as schemeService from '../services/schemeService';
  * @example
  * const { data, isLoading, isError } = useSchemes({ search: 'housing', page: 1 });
  */
-export const useSchemes = (params = {}) => {
+export const useSchemes = (params = {}, options = {}) => {
   return useQuery({
     queryKey: ['schemes', params],
     queryFn: () => schemeService.getSchemes(params),
     placeholderData: (previousData) => previousData,
     staleTime: 1000 * 60 * 5, // 5 minutes — scheme data changes infrequently
+    ...options,
   });
 };
 

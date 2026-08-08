@@ -14,7 +14,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -55,6 +55,7 @@ const sectionVariants = {
    ==================================================================== */
 export default function CreateComplaint() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   /* ── mutations ── */
   const { mutateAsync: createComplaint, isPending: isCreating } = useCreateComplaint();
@@ -176,6 +177,63 @@ export default function CreateComplaint() {
     };
     fetchDistricts();
   }, [selectedState, setValue]);
+
+  /* ── auto-fill from router state (AI hand-off) ── */
+  useEffect(() => {
+    if (location.state) {
+      const { title, description, category, department, address, landmark, state, district } = location.state;
+      if (title) setValue('title', title);
+      if (description) setValue('description', description);
+      if (address) setValue('address', address);
+      if (landmark) setValue('landmark', landmark);
+      
+      // Match Category by Name or Code from DB
+      if (category && dbCategories.length > 0) {
+        const matched = dbCategories.find(c => c.name.toLowerCase() === category.toLowerCase() || c.id.toString() === category.toString());
+        if (matched) setValue('category', matched.id.toString());
+      }
+      
+      // Match Department
+      if (department && dbDepartments.length > 0) {
+        const matched = dbDepartments.find(d => d.name.toLowerCase() === department.toLowerCase() || d.id.toString() === department.toString());
+        if (matched) setValue('department', matched.id.toString());
+      }
+
+      // Match State and load its districts
+      if (state && dbStates.length > 0) {
+        const matchedState = dbStates.find(s => s.name.toLowerCase() === state.toLowerCase() || s.id.toString() === state.toString());
+        if (matchedState) {
+          setValue('state', matchedState.id.toString());
+          locationService.getDistricts(matchedState.id).then((districtsData) => {
+            setDbDistricts(districtsData);
+            if (district) {
+              const matchedDistrict = districtsData.find(
+                d => d.name.toLowerCase() === district.toLowerCase() || d.id.toString() === district.toString()
+              );
+              if (matchedDistrict) {
+                setValue('district', matchedDistrict.id.toString());
+              }
+            }
+          });
+        }
+      }
+    }
+  }, [location.state, dbCategories, dbDepartments, dbStates, setValue]);
+
+  const handleAIAssist = () => {
+    const currentValues = {
+      title: watch('title'),
+      description: watch('description'),
+      category: watch('category') ? dbCategories.find(c => c.id.toString() === watch('category'))?.name : '',
+      department: watch('department') ? dbDepartments.find(d => d.id.toString() === watch('department'))?.name : '',
+      address: watch('address'),
+      landmark: watch('landmark'),
+      state: watch('state') ? dbStates.find(s => s.id.toString() === watch('state'))?.name : '',
+      district: watch('district') ? dbDistricts.find(d => d.id.toString() === watch('district'))?.name : ''
+    };
+    const event = new CustomEvent('open_ai_assistant_with_data', { detail: currentValues });
+    window.dispatchEvent(event);
+  };
 
   /* ── image helpers ── */
   const addImages = useCallback((files) => {
@@ -333,9 +391,18 @@ export default function CreateComplaint() {
 
           {/* Description */}
           <div>
-            <label htmlFor="description" className="form-label">
-              Description <span className="text-danger">*</span>
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label htmlFor="description" className="form-label mb-0">
+                Description <span className="text-danger">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleAIAssist}
+                className="inline-flex items-center gap-1.5 text-xs bg-gov-100 hover:bg-gov-200 text-gov-800 px-2.5 py-1 rounded-xl border border-gov-200 font-bold shadow-sm transition"
+              >
+                ✨ AI Assist
+              </button>
+            </div>
             <textarea
               id="description"
               rows={5}

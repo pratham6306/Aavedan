@@ -30,6 +30,10 @@ class ClassifyComplaintRequest(BaseModel):
         description="Language selected by the citizen in the UI, if known. "
         "If omitted, the service will auto-detect it.",
     )
+    image_base64: str | None = Field(
+        default=None,
+        description="Base64 encoded image content for vision analysis.",
+    )
 
 
 class EntitiesResponse(BaseModel):
@@ -62,3 +66,18 @@ class ClassifyComplaintResponse(BaseModel):
         description="Model confidence in the category prediction, "
         "as self-reported by the LLM classification step.",
     )
+
+
+class DetectIntentRequest(BaseModel):
+    """Request body for detecting user intent and language."""
+    text: str = Field(
+        min_length=1,
+        max_length=5000,
+        description="Raw user message.",
+    )
+
+
+class DetectIntentResponse(BaseModel):
+    """Result of intent and language detection."""
+    intent: str
+    language: str

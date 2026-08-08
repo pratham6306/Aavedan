@@ -34,7 +34,8 @@ class IntentDetector:
     ]
 
     SCHEME_PATTERNS = [
-        r"\bscheme\b", r"\bschemes\b", r"\byojana\b", r"\bscholarship\b",
+        r"\bscheme\b", r"\bschemes\b", r"\byojana\b", r"\byojna\b", r"\byojanas\b", r"\byojnas\b",
+        r"\bscholarship\b", r"\bscholarships\b", r"\bscholorship\b", r"\bscholorships\b",
         r"\bbenefit\b", r"\bbenefits\b", r"\bsubsidy\b", r"\bwelfare\b"
     ]
 

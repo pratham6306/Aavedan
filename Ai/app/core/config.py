@@ -29,7 +29,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class AppSettings(BaseSettings):
     """General application-level configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="APP_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="APP_", env_file=".env", extra="ignore")
 
     name: str = Field(default="Aavedan Setu AI Assistant")
     environment: Literal["local", "development", "staging", "production"] = Field(
@@ -48,7 +48,7 @@ class GeminiSettings(BaseSettings):
     application must not boot with a missing or empty API key.
     """
 
-    model_config = SettingsConfigDict(env_prefix="GEMINI_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="GEMINI_", env_file=".env", extra="ignore")
 
     api_key: SecretStr = Field(...)
     model_name: str = Field(default="gemini-1.5-pro")
@@ -71,7 +71,7 @@ class DatabaseSettings(BaseSettings):
     migrated out of static files) or its own audit/logging tables.
     """
 
-    model_config = SettingsConfigDict(env_prefix="DB_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="DB_", env_file=".env", extra="ignore")
 
     dsn: PostgresDsn = Field(...)
     pool_min_size: int = Field(default=1, ge=1)

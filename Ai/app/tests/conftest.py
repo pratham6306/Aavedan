@@ -69,7 +69,7 @@ class FakeGeminiClient:
         self._responses = [responses] if isinstance(responses, str) else list(responses)
         self.calls: list[str] = []
 
-    async def generate(self, prompt: str) -> str:
+    async def generate(self, prompt: str, image_data: dict | None = None) -> str:
         self.calls.append(prompt)
         if len(self._responses) == 1:
             return self._responses[0]

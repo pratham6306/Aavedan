@@ -6,6 +6,7 @@ class ChatRequestSerializer(serializers.Serializer):
     session_id = serializers.UUIDField()
     message = serializers.CharField(max_length=5000)
     entities = serializers.JSONField(required=False)
+    image_base64 = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
 
 class ChatResponseSerializer(serializers.Serializer):
@@ -49,6 +50,7 @@ class ChatResponseSerializer(serializers.Serializer):
     )
     
     next_action = serializers.CharField()
+    recommendations = serializers.JSONField(required=False)
 
 
 class SendEmailRequestSerializer(serializers.Serializer):

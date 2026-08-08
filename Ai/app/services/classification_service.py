@@ -37,6 +37,7 @@ class LLMClassificationSignal(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     entities: ExtractedEntities
     llm_signals: list[str] = Field(default_factory=list)
+    image_priority: str | None = Field(default=None, description="Priority determined by image analysis.")
 
 
 class ClassificationResult(BaseModel):
@@ -86,7 +87,30 @@ class ClassificationService:
         """
         category = self._knowledge.get_category(signal.category_code)
         department = self._knowledge.get_department(category.default_department_code)
-        priority = self._resolve_priority(category.code, signal.llm_signals)
+        
+        priority = None
+        if signal.image_priority:
+            from app.models.enums import PriorityLevel
+            try:
+                img_lvl = PriorityLevel(signal.image_priority.lower().strip())
+                priority = PriorityAssessment(
+                    level=img_lvl,
+                    reason=f"Priority assessed from image: {img_lvl.value}.",
+                    matched_rule_id="image_vision"
+                )
+            except Exception:
+                pass
+
+        if not priority:
+            priority = self._resolve_priority(category.code, signal.llm_signals)
+
+        if not priority or not priority.level:
+            from app.models.enums import PriorityLevel
+            priority = PriorityAssessment(
+                level=PriorityLevel.MEDIUM,
+                reason="No priority determined; defaulted to MEDIUM.",
+                matched_rule_id="default_medium"
+            )
 
         logger.info(
             "Resolved complaint classification",

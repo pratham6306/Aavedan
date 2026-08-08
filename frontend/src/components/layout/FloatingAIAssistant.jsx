@@ -1,11 +1,13 @@
 // frontend/src/components/layout/FloatingAIAssistant.jsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Bot, Sparkles, SendHorizontal, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
 import aiService from '../../services/aiService';
 
 export default function FloatingAIAssistant() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -80,6 +82,7 @@ export default function FloatingAIAssistant() {
         sender: 'bot',
         text: response.message || response.reply,
         next_action: response.next_action,
+        recommendations: response.recommendations,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
@@ -125,6 +128,33 @@ Landmark: ${data.landmark || ''}`;
       window.removeEventListener('open_ai_assistant_with_data', handleOpenWithData);
     };
   }, [sessionId, handleSendMessage]);
+
+  const handleGoToManualForm = async () => {
+    setLoadingPreview(true);
+    try {
+      const data = await aiService.getEmailPreview(sessionId);
+      const handoffData = {
+        title: `AI Grievance: ${data.subject ? data.subject.replace("[Grievance Registration] ", "").split(" - ")[0] : ""}`,
+        description: data.body_text,
+        category: data.body_text && data.body_text.includes("• Category: ") ? data.body_text.split("• Category: ")[1].split("\n")[0].trim() : "",
+        department: data.body_text && data.body_text.includes("• Department: ") ? data.body_text.split("• Department: ")[1].split("\n")[0].trim() : "",
+        state: data.body_text && data.body_text.includes("• State: ") ? data.body_text.split("• State: ")[1].split("\n")[0].trim() : "",
+        district: data.body_text && data.body_text.includes("• District: ") ? data.body_text.split("• District: ")[1].split("\n")[0].trim() : "",
+        address: data.body_text && data.body_text.includes("• Specific Address: ") ? data.body_text.split("• Specific Address: ")[1].split("\n")[0].trim() : "",
+        landmark: data.body_text && data.body_text.includes("• Nearby Landmark: ") ? data.body_text.split("• Nearby Landmark: ")[1].split("\n")[0].trim() : ""
+      };
+      
+      setIsOpen(false);
+      navigate('/complaints/create', { state: handoffData });
+      toast.info("Pre-filled complaint details from AI! You can now upload images.");
+    } catch (err) {
+      console.error("Failed to load prefill details:", err);
+      setIsOpen(false);
+      navigate('/complaints/create');
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
 
   const handleOpenPreview = async () => {
     setLoadingPreview(true);
@@ -230,6 +260,57 @@ Landmark: ${data.landmark || ''}`;
                       }`}
                     >
                       <p>{msg.text}</p>
+                      
+                      {/* Render Scheme Recommendations as Cards */}
+                      {msg.sender === 'bot' && msg.recommendations && msg.recommendations.length > 0 && (
+                        <div className="mt-3 space-y-2.5 text-left">
+                          {msg.recommendations.map((rec, rIdx) => (
+                            <div key={rIdx} className="bg-slate-900 border border-slate-700/60 p-3 rounded-xl shadow-sm text-xs">
+                              <div className="flex justify-between items-center mb-1">
+                                <h4 className="font-bold text-[12px] text-gov-400">{rec.scheme_name}</h4>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                  rec.is_eligible ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                }`}>
+                                  {rec.is_eligible ? 'Eligible' : 'Not Eligible'}
+                                </span>
+                              </div>
+                              <p className="text-slate-300 leading-relaxed mt-1 mb-2 text-[11px]">{rec.matching_reason}</p>
+                              
+                              {rec.is_eligible ? (
+                                <>
+                                  {rec.required_documents && rec.required_documents.length > 0 && (
+                                    <div className="mb-2">
+                                      <span className="font-bold text-slate-400 block text-[10px] mb-0.5">📎 Required Documents:</span>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {rec.required_documents.map((doc, dIdx) => (
+                                          <span key={dIdx} className="bg-slate-850 text-[9px] text-slate-300 px-1.5 py-0.5 rounded border border-slate-750">
+                                            {doc}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 text-[10px] max-h-40 overflow-y-auto custom-scrollbar">
+                                    <span className="font-bold text-amber-500 block mb-1">📝 How to Fill / Apply:</span>
+                                    <p className="text-slate-400 whitespace-pre-line leading-normal">{rec.filling_instructions}</p>
+                                  </div>
+                                </>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsOpen(false);
+                                  navigate(`/schemes/${rec.scheme_id}`);
+                                }}
+                                className="mt-2.5 w-full bg-gov-600 hover:bg-gov-500 text-white font-bold py-1.5 px-3 rounded-lg text-center transition flex justify-center items-center gap-1 text-[11px]"
+                              >
+                                Go to Scheme Page
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <span className="block text-[8px] text-slate-400 text-right mt-1 font-mono">
                         {msg.time}
                       </span>
@@ -237,23 +318,33 @@ Landmark: ${data.landmark || ''}`;
 
                     {/* Render preview button trigger */}
                     {msg.sender === 'bot' && msg.next_action === 'CONFIRM_AND_FILE' && (
-                      <button
-                        onClick={handleOpenPreview}
-                        disabled={loadingPreview}
-                        className="mt-2 btn w-full flex items-center justify-center gap-2 bg-gradient-to-r from-gov-600 to-amber-600 hover:scale-[1.01] text-white text-xs py-2 rounded-xl font-bold shadow-md transition disabled:opacity-50"
-                      >
-                        {loadingPreview ? (
-                          <>
-                            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Generating Dispatch Preview...
-                          </>
-                        ) : (
-                          <>
-                            <Mail size={14} />
-                            Preview & Dispatch Grievance Email
-                          </>
-                        )}
-                      </button>
+                      <div className="flex flex-col gap-2 mt-2">
+                        <button
+                          onClick={handleOpenPreview}
+                          disabled={loadingPreview}
+                          className="btn w-full flex items-center justify-center gap-2 bg-gradient-to-r from-gov-600 to-amber-600 hover:scale-[1.01] text-white text-xs py-2 rounded-xl font-bold shadow-md transition disabled:opacity-50"
+                        >
+                          {loadingPreview ? (
+                            <>
+                              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Generating Dispatch Preview...
+                            </>
+                          ) : (
+                            <>
+                              <Mail size={14} />
+                              Option 1: Preview & Dispatch Email
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={handleGoToManualForm}
+                          disabled={loadingPreview}
+                          className="btn w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-750 text-white text-xs py-2 rounded-xl font-bold border border-slate-700 shadow-md transition disabled:opacity-50"
+                        >
+                          <Sparkles size={14} className="text-amber-400" />
+                          Option 2: Handoff to Form & Upload Images
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -416,15 +507,28 @@ Landmark: ${data.landmark || ''}`;
 
               {/* Modal Footer */}
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center gap-3">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(previewData.body_text);
-                    toast.success("Grievance email content copied to clipboard!");
-                  }}
-                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-4 rounded-xl font-semibold transition"
-                >
-                  📋 Copy Email Body
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(previewData.body_text);
+                      toast.success("Grievance email content copied to clipboard!");
+                    }}
+                    className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-4 rounded-xl font-semibold transition"
+                  >
+                    📋 Copy Email Body
+                  </button>
+                  
+                  {previewData.portal_url && (
+                    <a
+                      href={previewData.portal_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs py-2 px-4 rounded-xl font-semibold border border-sky-200 flex items-center gap-1 transition decoration-none"
+                    >
+                      🌐 Official Portal Link
+                    </a>
+                  )}
+                </div>
                 
                 <div className="flex items-center gap-2">
                   <button

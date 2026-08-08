@@ -38,8 +38,14 @@ Respond with ONLY a JSON object in exactly this shape:
     "issue_type": "string or null",
     "dates_mentioned": ["string", "..."]
   },
-  "llm_signals": ["string", "..."]
+  "llm_signals": ["string", "..."],
+  "image_priority": "string or null"
 }
+
+Visual analysis instructions (if an image is attached):
+- Inspect the attached image to evaluate the urgency/priority of the grievance.
+- Choose exactly one of these lowercase values: "low", "medium", "high", "critical", and place it in the "image_priority" field.
+- If no image is attached, or if the priority cannot be confidently determined from the image, set "image_priority" to null.
 
 Complaint text:
 """

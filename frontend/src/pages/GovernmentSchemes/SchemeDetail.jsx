@@ -161,7 +161,7 @@ const SchemeDetail = () => {
   /* Fetch related schemes (same department) — only when scheme is loaded */
   const { data: relatedData } = useSchemes(
     scheme?.department
-      ? { department: scheme.department.id, page_size: 4 }
+      ? { department: scheme.department.name || scheme.department, page_size: 4 }
       : undefined,
     { enabled: !!scheme?.department }
   );
@@ -193,8 +193,23 @@ const SchemeDetail = () => {
   if (error || !scheme) return <ErrorState message={error?.message} />;
 
   /* ── Helpers to normalise array-or-null fields ─── */
-  const benefits = scheme.benefits ?? [];
-  const eligibility = scheme.eligibility ?? [];
+  // Safe helper to parse strings/lists into clean arrays of lines
+  const parseToList = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      return value
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => line.replace(/^([•\-*\s]+|\d+[\.\)]\s*)/, '').trim())
+        .filter((line) => line.length > 0);
+    }
+    return [];
+  };
+
+  const benefits = parseToList(scheme.benefits);
+  const eligibility = parseToList(scheme.eligibility);
   const documents = scheme.required_documents ?? scheme.documents ?? [];
 
   /* Section counter for stagger animation */
@@ -242,7 +257,7 @@ const SchemeDetail = () => {
               )}
               {scheme.category && (
                 <span className="badge bg-gov-100 text-gov-700">
-                  {scheme.category}
+                  {scheme.category?.name || scheme.category}
                 </span>
               )}
               {scheme.state && (
@@ -261,9 +276,9 @@ const SchemeDetail = () => {
               Share
             </button>
 
-            {scheme.official_website && (
+            {(scheme.application_link || scheme.official_website) && (
               <a
-                href={scheme.official_website}
+                href={scheme.application_link || scheme.official_website}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary"
@@ -355,7 +370,7 @@ const SchemeDetail = () => {
             {scheme.category && (
               <div className="flex items-start gap-3">
                 <dt className="text-gray-400 w-32 shrink-0 font-medium">Category</dt>
-                <dd className="text-gray-700">{scheme.category}</dd>
+                <dd className="text-gray-700">{scheme.category?.name || scheme.category}</dd>
               </div>
             )}
             {scheme.official_website && (

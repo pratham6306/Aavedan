@@ -26,7 +26,36 @@ class EmailDispatcher:
         district = entities.get("district")
         address = entities.get("address", "Not provided")
         landmark = entities.get("landmark", "Not provided")
-        description = session_data.get("description") or "Please see details below."
+        raw_desc = session_data.get("description") or "Please see details below."
+        
+        # Call AI Microservice to generate a professional draft
+        description = raw_desc
+        import sys
+        if 'test' not in sys.argv:
+            import requests
+            ai_url = getattr(settings, "AI_SERVICE_URL", "http://localhost:8010")
+            try:
+                category_name = session_data.get("category", "General")
+                category_mapping = {
+                    "Road & Infrastructure": "ROAD_DAMAGE",
+                    "Water Supply": "WATER_SUPPLY",
+                    "Electricity": "ELECTRICITY",
+                    "Sanitation & Waste": "GARBAGE_COLLECTION",
+                    "Drainage & Sewerage": "DRAINAGE",
+                    "Public Safety": "PUBLIC_SAFETY",
+                }
+                category_code = category_mapping.get(category_name, "OTHER")
+                payload = {
+                    "text": raw_desc,
+                    "category_code": category_code,
+                    "language": "en"
+                }
+                res = requests.post(f"{ai_url}/api/v1/complaints/draft", json=payload, timeout=10)
+                if res.status_code == 200:
+                    draft_data = res.json()
+                    description = draft_data.get("draft_text", raw_desc)
+            except Exception as e:
+                print(f"Warning: Failed to fetch AI draft: {str(e)}")
 
         if not complaint_type or not department or not state or not district:
             raise ValueError("Incomplete session data: complaint_type, department, state, and district are required.")
@@ -38,6 +67,12 @@ class EmailDispatcher:
             state_name=state
         )
         recipient_email = office_info.get("email")
+        
+        # Local testing override: send to pratham6306@gmail.com (and not running unit tests)
+        import sys
+        if 'test' not in sys.argv:
+            recipient_email = "pratham6306@gmail.com"
+            
         office_name = office_info.get("name", "Department Office")
 
         # 2. Formulate Subject
@@ -229,7 +264,36 @@ class EmailDispatcher:
         district = entities.get("district")
         address = entities.get("address", "Not provided")
         landmark = entities.get("landmark", "Not provided")
-        description = session_data.get("description") or "Please see details below."
+        raw_desc = session_data.get("description") or "Please see details below."
+        
+        # Call AI Microservice to generate a professional draft
+        description = raw_desc
+        import sys
+        if 'test' not in sys.argv:
+            import requests
+            ai_url = getattr(settings, "AI_SERVICE_URL", "http://localhost:8010")
+            try:
+                category_name = session_data.get("category", "General")
+                category_mapping = {
+                    "Road & Infrastructure": "ROAD_DAMAGE",
+                    "Water Supply": "WATER_SUPPLY",
+                    "Electricity": "ELECTRICITY",
+                    "Sanitation & Waste": "GARBAGE_COLLECTION",
+                    "Drainage & Sewerage": "DRAINAGE",
+                    "Public Safety": "PUBLIC_SAFETY",
+                }
+                category_code = category_mapping.get(category_name, "OTHER")
+                payload = {
+                    "text": raw_desc,
+                    "category_code": category_code,
+                    "language": "en"
+                }
+                res = requests.post(f"{ai_url}/api/v1/complaints/draft", json=payload, timeout=10)
+                if res.status_code == 200:
+                    draft_data = res.json()
+                    description = draft_data.get("draft_text", raw_desc)
+            except Exception as e:
+                print(f"Warning: Failed to fetch AI draft: {str(e)}")
 
         if not complaint_type or not department or not state or not district:
             raise ValueError("Incomplete session data: complaint_type, department, state, and district are required.")
@@ -240,6 +304,12 @@ class EmailDispatcher:
             state_name=state
         )
         recipient_email = office_info.get("email")
+        
+        # Local testing override: send to pratham6306@gmail.com (and not running unit tests)
+        import sys
+        if 'test' not in sys.argv:
+            recipient_email = "pratham6306@gmail.com"
+            
         office_name = office_info.get("name", "Department Office")
 
         # Compile attachments for preview text body
@@ -297,4 +367,5 @@ class EmailDispatcher:
             "subject": subject,
             "body_text": text_content,
             "attachments": attachment_names,
+            "portal_url": office_info.get("portal_url") or "https://pgportal.gov.in/"
         }

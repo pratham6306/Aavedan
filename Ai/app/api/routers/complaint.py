@@ -34,7 +34,9 @@ async def classify_complaint(
     """Classify a citizen complaint: category, department, priority,
     and extracted entities."""
     complaint = await orchestrator.classify_complaint(
-        raw_text=request.text, declared_language=request.language
+        raw_text=request.text,
+        declared_language=request.language,
+        image_base64=request.image_base64,
     )
 
     assert complaint.category is not None

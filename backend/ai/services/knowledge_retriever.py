@@ -43,11 +43,20 @@ class KnowledgeRetriever:
             matched_kws = []
             
             for kw in ct.keywords.all():
-                # Word boundary check to avoid substring matches in larger unrelated words
-                pattern = r"\b" + re.escape(kw.keyword.lower().strip()) + r"\b"
+                kw_str = kw.keyword.lower().strip()
+                # 1. Try direct exact phrase match first
+                pattern = r"\b" + re.escape(kw_str) + r"\b"
                 if re.search(pattern, preprocessed_text):
                     score += kw.weight
                     matched_kws.append(kw.keyword)
+                else:
+                    # 2. Try matching if it's a multi-word keyword and all words are present
+                    kw_words = kw_str.split()
+                    if len(kw_words) > 1:
+                        # Check if all individual words of the keyword are present with word boundaries
+                        if all(re.search(r"\b" + re.escape(w) + r"\b", preprocessed_text) for w in kw_words):
+                            score += kw.weight * 0.8  # slightly lower weight for split matches
+                            matched_kws.append(kw.keyword)
             
             if score > best_score:
                 best_score = score

@@ -57,6 +57,7 @@ class ChatAPIView(APIView):
         result = orchestrator.process(
             message=serializer.validated_data["message"],
             session_id=session_id,
+            image_base64=serializer.validated_data.get("image_base64"),
         )
 
         response_serializer = ChatResponseSerializer(result)

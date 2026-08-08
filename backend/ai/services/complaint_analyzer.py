@@ -10,13 +10,110 @@ class ComplaintAnalyzer:
     def __init__(self):
         self.knowledge_retriever = KnowledgeRetriever()
 
-    def analyze(self, preprocessed_text: str, session_data: dict) -> dict:
+    def analyze(self, preprocessed_text: str, session_data: dict, image_base64: str | None = None) -> dict:
         """
-        Analyzes preprocessed user text and current session data.
-        Returns a dict of extracted details and missing required fields.
+        Analyzes preprocessed user text and current session data by calling the
+        FastAPI AI microservice, with a robust fallback to database keyword matching.
         """
-        # 1. Retrieve knowledge-base matching results from current text
-        retriever_result = self.knowledge_retriever.retrieve(preprocessed_text)
+        import requests
+        from django.conf import settings
+
+        retriever_result = {
+            "complaint_type": None,
+            "category": None,
+            "department": None,
+            "priority": "medium",
+            "estimated_resolution_days": 7,
+            "required_fields": [],
+            "matching_keywords": [],
+            "confidence_score": 0.0
+        }
+
+        # Try calling the external AI microservice (if not running unit tests)
+        import sys
+        if 'test' in sys.argv:
+            # Avoid calling the live API and eating up quota during test runs
+            retriever_result = self.knowledge_retriever.retrieve(preprocessed_text)
+            response = None
+        else:
+            ai_url = getattr(settings, "AI_SERVICE_URL", "http://localhost:8010")
+            try:
+                payload = {
+                    "text": preprocessed_text,
+                    "image_base64": image_base64
+                }
+                response = requests.post(f"{ai_url}/api/v1/complaints/classify", json=payload, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Fetch categories and required fields from database to match the resolved category
+                    from categories.models import ComplaintCategory
+                    from knowledge.models import ComplaintType
+                    
+                    category_code = data.get("category_code")
+                    category_mapping = {
+                        "ROAD_DAMAGE": "Road & Infrastructure",
+                        "WATER_SUPPLY": "Water Supply",
+                        "ELECTRICITY": "Electricity",
+                        "GARBAGE_COLLECTION": "Sanitation & Waste",
+                        "DRAINAGE": "Drainage & Sewerage",
+                        "PUBLIC_SAFETY": "Public Safety",
+                    }
+                    db_category_name = category_mapping.get(category_code, "Road & Infrastructure")
+                    
+                    # Fetch category from DB to ensure correct casing
+                    from categories.models import ComplaintCategory
+                    from knowledge.models import ComplaintType
+                    db_cat = ComplaintCategory.objects.filter(name__iexact=db_category_name).first()
+                    resolved_category_name = db_cat.name if db_cat else db_category_name
+                    
+                    ct = None
+                    entities = data.get("entities", {})
+                    issue_type = entities.get("issue_type") if isinstance(entities, dict) else None
+                    if issue_type:
+                        # Try matching the ComplaintType by name or slug under this category
+                        ct = ComplaintType.objects.filter(
+                            category__name__iexact=resolved_category_name,
+                            name__icontains=issue_type
+                        ).first()
+                        if not ct:
+                            ct = ComplaintType.objects.filter(
+                                category__name__iexact=resolved_category_name,
+                                slug__icontains=issue_type.replace(" ", "-")
+                            ).first()
+                    if not ct:
+                        # Fallback to the first complaint type under that category
+                        ct = ComplaintType.objects.filter(category__name__iexact=resolved_category_name).first()
+                    
+                    # If still not found (edge case), fallback to the first one in the DB
+                    if not ct:
+                        ct = ComplaintType.objects.first()
+
+                    req_fields = []
+                    if ct:
+                        for rf in ct.required_fields.all():
+                            req_fields.append({
+                                "field_name": rf.field_name,
+                                "display_name": rf.display_name,
+                                "is_required": rf.is_required
+                            })
+
+                    retriever_result = {
+                        "complaint_type": ct.name if ct else data.get("category_display_name"),
+                        "category": resolved_category_name,
+                        "department": ct.department.name if (ct and ct.department) else data.get("department_name"),
+                        "priority": data.get("priority") or (ct.priority if ct else "medium"),
+                        "estimated_resolution_days": ct.estimated_resolution_days if ct else 7,
+                        "required_fields": req_fields,
+                        "matching_keywords": [category_code] if category_code else [],
+                        "confidence_score": data.get("confidence", 0.90)
+                    }
+                else:
+                    print(f"Warning: AI microservice returned status {response.status_code}, falling back to rules-based analyzer.")
+                    retriever_result = self.knowledge_retriever.retrieve(preprocessed_text)
+            except Exception as e:
+                print(f"Warning: Failed to contact AI microservice: {str(e)}, falling back to rules-based analyzer.")
+                retriever_result = self.knowledge_retriever.retrieve(preprocessed_text)
 
         # 2. Determine active complaint type
         active_type_name = retriever_result["complaint_type"] or session_data.get("complaint_type")

@@ -201,3 +201,6 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 
 # Default system sender email
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Aavedan Saathi <no-reply@aavedan-saathi.gov.in>")
+
+# AI Microservice Configuration
+AI_SERVICE_URL = config("AI_SERVICE_URL", default="http://localhost:8010")

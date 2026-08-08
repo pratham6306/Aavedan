@@ -68,7 +68,7 @@ class AIOrchestrator:
     # -- classification ---------------------------------------------
 
     async def classify_complaint(
-        self, raw_text: str, declared_language: Language | None
+        self, raw_text: str, declared_language: Language | None, image_base64: str | None = None
     ) -> Complaint:
         """Run the full classification pipeline on a raw complaint.
 
@@ -92,13 +92,24 @@ class AIOrchestrator:
             complaint_text=cleaned_text,
         )
 
-        raw_response = await self._client.generate(prompt)
+        image_data = None
+        if image_base64:
+            mime_type = "image/jpeg"
+            base64_data = image_base64
+            if "," in image_base64:
+                header, base64_data = image_base64.split(",", 1)
+                if "data:" in header and ";base64" in header:
+                    mime_type = header.split(";", 1)[0].replace("data:", "")
+            image_data = {"mimeType": mime_type, "data": base64_data}
+
+        raw_response = await self._client.generate(prompt, image_data=image_data)
         signal = await parse_with_retries(
             initial_response=raw_response,
             schema=LLMClassificationSignal,
             client=self._client,
             prompt_builder=self._prompt_builder,
             max_retries=self._settings.gemini.max_json_retries,
+            image_data=image_data,
         )
 
         result = self._classification_service.resolve(signal)
@@ -203,3 +214,56 @@ class AIOrchestrator:
             signal, detected_source_language=detected_source
         )
         return translated_text, detected
+
+    # -- schemes recommendation ---------------------------------------
+
+    async def recommend_schemes(
+        self, user_description: str, schemes: list[SchemeInputSchema]
+    ) -> LLMRecommendSchemesSignal:
+        """Evaluate user eligibility for candidate schemes using Gemini."""
+        formatted_schemes = []
+        for s in schemes:
+            formatted_schemes.append(
+                f"Scheme ID: {s.id}\n"
+                f"Name: {s.scheme_name}\n"
+                f"Description: {s.description}\n"
+                f"Benefits: {s.benefits}\n"
+                f"Eligibility Criteria: {s.eligibility}\n"
+                f"Required Documents: {', '.join(s.required_documents)}\n"
+                f"----------------------------------------"
+            )
+        schemes_data = "\n".join(formatted_schemes)
+
+        prompt = self._prompt_builder.build(
+            "scheme_recommendation.txt",
+            user_description=user_description,
+            schemes_data=schemes_data,
+        )
+
+        raw_response = await self._client.generate(prompt)
+        signal = await parse_with_retries(
+            initial_response=raw_response,
+            schema=LLMRecommendSchemesSignal,
+            client=self._client,
+            prompt_builder=self._prompt_builder,
+            max_retries=self._settings.gemini.max_json_retries,
+        )
+        return signal
+
+
+from pydantic import BaseModel, Field
+from app.schemas.schemes import SchemeInputSchema
+
+
+class LLMSchemeRecommendation(BaseModel):
+    scheme_id: int
+    scheme_name: str
+    is_eligible: bool
+    matching_reason: str
+    required_documents: list[str] = Field(default_factory=list)
+    filling_instructions: str
+
+
+class LLMRecommendSchemesSignal(BaseModel):
+    recommendations: list[LLMSchemeRecommendation]
+
