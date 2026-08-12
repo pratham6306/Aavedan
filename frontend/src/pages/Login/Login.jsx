@@ -36,9 +36,10 @@ import { useAuth } from '../../context/AuthContext';
 import * as authService from '../../services/authService';
 import RegisterNavbar from '../Register/RegisterNavbar';
 import RegisterFooter from '../Register/RegisterFooter';
+import RegisterFloatingCards from '../Register/RegisterFloatingCards';
 
-// Import newly uploaded image assets
-import cleanBg from '../../assets/clean_bg.jpg';
+// Import background asset matching Register page
+import background from '../../assets/background.png';
 import aadhaarImg from '../../assets/aadhaar.jpg';
 import rationImg from '../../assets/ration.jpg';
 import ayushmanImg from '../../assets/ayushman.jpg';
@@ -259,7 +260,7 @@ export default function Login() {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-[#FFD166] font-sans overflow-y-auto">
+    <div className="min-h-screen w-full bg-[#f6c548] flex flex-col justify-between overflow-y-auto font-sans">
       
       {/* ── Dropdown outside click catcher backdrop ── */}
       {isLangDropdownOpen && (
@@ -269,21 +270,15 @@ export default function Login() {
         />
       )}
 
-      {/* ── SCROLLABLE HERO MAIN WRAPPER ── */}
-      <div
-        className="relative w-full flex-1 flex flex-col justify-between pb-10"
-        style={{
-          backgroundImage: `url(${cleanBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'top center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
-        {/* ── Animated Glow ── */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-white/30 blur-[170px] left-[-200px] top-[-150px]" />
-          <div className="absolute w-[450px] h-[450px] rounded-full bg-yellow-200/40 blur-[130px] right-[-100px] bottom-[-100px]" />
-        </div>
+      {/* ── Portal Section matching Register.jsx ── */}
+      <div className="w-full flex-1">
+        <div className="relative w-full lg:h-screen lg:max-h-[850px] min-h-[840px] overflow-hidden bg-[#f6c548]">
+          <img
+            src={background}
+            alt="Background"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />
 
         <RegisterNavbar />
 
@@ -504,61 +499,20 @@ export default function Login() {
 
           </div>
 
-          {/* COLUMN 2: Center Map Overlay Area (Middle 3 Columns) - Mathematically Uniform Centering */}
-          <div className="hidden lg:block lg:col-span-3 relative h-[380px] select-none pointer-events-none">
-            
-            {/* Glow behind map */}
-            <div className="absolute w-[450px] h-[450px] rounded-full bg-yellow-300/20 blur-[130px] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+          {/* COLUMN 2: Center Grid Spacer */}
+          <div className="hidden lg:block lg:col-span-3 relative pointer-events-none" />
 
-            {/* Aadhaar Card (Top Left) */}
-            <motion.div
-              animate={{
-                y: [0, -12, 0],
-                rotate: [0, 2, -2, 0],
-                scale: [1, 1.05, 1]
-              }}
-              transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-[-135px] left-[-80px] w-[160px] shadow-2xl pointer-events-none z-10"
-            >
-              <img src={aadhaarImg} className="w-full h-auto rounded-xl border border-white/50" alt="Aadhaar Card" />
-            </motion.div>
-
-            {/* Ration Card (Middle Right) */}
-            <motion.div
-              animate={{
-                y: [0, -12, 0],
-                rotate: [0, 2, -2, 0],
-                scale: [1, 1.05, 1]
-              }}
-              transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-[5px] right-[45px] w-[150px] shadow-2xl pointer-events-none z-10"
-            >
-              <img src={rationImg} className="w-full h-auto rounded-xl border border-white/50" alt="Ration Card" />
-            </motion.div>
-
-            {/* Ayushman Card (Bottom Left) */}
-            <motion.div
-              animate={{
-                y: [0, -12, 0],
-                rotate: [0, 2, -2, 0],
-                scale: [1, 1.05, 1]
-              }}
-              transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-[115px] left-[-105px] w-[160px] shadow-2xl pointer-events-none z-10"
-            >
-              <img src={ayushmanImg} className="w-full h-auto rounded-xl border border-white/50" alt="Ayushman Card" />
-            </motion.div>
-
-          </div>
+          {/* Floating Cards (Positioned exactly like Register page) */}
+          <RegisterFloatingCards />
 
           {/* COLUMN 3: The Zoomed-In Login Form Card */}
           <motion.div
             variants={cardVariants}
             initial="hidden"
             animate="visible"
-            className="w-full lg:col-span-4 flex justify-center lg:justify-end py-2 relative z-10 h-full items-start mt-16 lg:mr-0 lg:-translate-x-12"
+            className="w-full lg:col-span-4 flex justify-center lg:justify-end py-2 relative z-10 h-full items-start mt-16 lg:mr-0 lg:-translate-x-6"
           >
-            <div className="bg-white/70 backdrop-blur-3xl rounded-[34px] border border-white/70 shadow-[0_40px_80px_rgba(0,0,0,.12)] p-8 md:py-8 md:px-10 w-full max-w-[430px] flex flex-col gap-6">
+            <div className="bg-white/70 backdrop-blur-3xl rounded-[34px] border border-white/70 shadow-[0_40px_80px_rgba(0,0,0,.12)] p-8 md:py-8 md:px-10 w-full max-w-[430px] flex flex-col gap-6 overflow-hidden">
               
               {/* Form Headers */}
               <div className="flex flex-col select-none">
@@ -834,6 +788,7 @@ export default function Login() {
             </div>
           </motion.div>
         </main>
+        </div>
       </div>
 
       <RegisterFooter />
