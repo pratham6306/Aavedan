@@ -1,54 +1,61 @@
-import aadhaar from "../../assets/aadhaar-card.png";
-import ration from "../../assets/ration-card.png";
-import ayushman from "../../assets/ayushman-card.png";
+import { motion } from "framer-motion";
+import aadhaarImg from "../../assets/aadhaar.jpg";
+import rationImg from "../../assets/ration.jpg";
+import ayushmanImg from "../../assets/ayushman.jpg";
 
 export default function RegisterFloatingCards() {
   return (
     <div className="absolute inset-0 pointer-events-none z-20">
-      {/* Aadhaar Card */}
-      <img
-        src={aadhaar}
-        alt="Aadhaar"
-        className="
-          absolute
-          w-[150px]
-          rounded-xl
-          shadow-xl
-          top-[90px]
-          left-[430px]
-          animate-float1
-        "
-      />
+      {/* Aadhaar Card (Top Left) */}
+      <motion.div
+        animate={{
+          y: [0, -12, 0],
+          rotate: [0, 2, -2, 0],
+          scale: [1, 1.05, 1],
+        }}
+        transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-[90px] left-[430px] w-[150px] shadow-2xl pointer-events-none z-10"
+      >
+        <img
+          src={aadhaarImg}
+          className="w-full h-auto rounded-xl border border-white/50"
+          alt="Aadhaar Card"
+        />
+      </motion.div>
 
-      {/* Ration Card */}
-      <img
-        src={ration}
-        alt="Ration"
-        className="
-          absolute
-          w-[150px]
-          rounded-xl
-          shadow-xl
-          top-[170px]
-          left-[640px]
-          animate-float2
-        "
-      />
+      {/* Ration Card (Middle Right) */}
+      <motion.div
+        animate={{
+          y: [0, -12, 0],
+          rotate: [0, 2, -2, 0],
+          scale: [1, 1.05, 1],
+        }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-[170px] left-[675px] w-[150px] shadow-2xl pointer-events-none z-10"
+      >
+        <img
+          src={rationImg}
+          className="w-full h-auto rounded-xl border border-white/50"
+          alt="Ration Card"
+        />
+      </motion.div>
 
-      {/* Ayushman Card */}
-      <img
-        src={ayushman}
-        alt="Ayushman"
-        className="
-          absolute
-          w-[150px]
-          rounded-xl
-          shadow-xl
-          top-[340px]
-          left-[450px]
-          animate-float3
-        "
-      />
+      {/* Ayushman Card (Bottom Left) */}
+      <motion.div
+        animate={{
+          y: [0, -12, 0],
+          rotate: [0, 2, -2, 0],
+          scale: [1, 1.05, 1],
+        }}
+        transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-[340px] left-[450px] w-[150px] shadow-2xl pointer-events-none z-10"
+      >
+        <img
+          src={ayushmanImg}
+          className="w-full h-auto rounded-xl border border-white/50"
+          alt="Ayushman Card"
+        />
+      </motion.div>
     </div>
   );
 }
