@@ -59,6 +59,12 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
 class ComplaintListSerializer(serializers.ModelSerializer):
 
     status = serializers.StringRelatedField()
+    department = serializers.StringRelatedField()
+    district = serializers.StringRelatedField()
+    state = serializers.StringRelatedField()
+    complainant_name = serializers.SerializerMethodField()
+    supports_count = serializers.SerializerMethodField()
+    supported_by_user = serializers.SerializerMethodField()
 
     class Meta:
         model = Complaint
@@ -69,8 +75,31 @@ class ComplaintListSerializer(serializers.ModelSerializer):
             "title",
             "status",
             "priority",
+            "department",
+            "district",
+            "state",
+            "complainant_name",
+            "supports_count",
+            "supported_by_user",
+            "is_anonymous",
             "created_at",
         )
+
+    def get_complainant_name(self, obj):
+        if obj.is_anonymous:
+            return "Anonymous Citizen"
+        return obj.user.full_name or obj.user.email or "Citizen"
+
+    def get_supports_count(self, obj):
+        return obj.supports.count()
+
+    def get_supported_by_user(self, obj):
+        user = self.context.get('request') and self.context['request'].user
+        if user and user.is_authenticated:
+            return obj.supports.filter(user=user).exists()
+        return False
+
+
 class ComplaintStatusHistorySerializer(serializers.ModelSerializer):
     old_status = serializers.StringRelatedField()
     new_status = serializers.StringRelatedField()
@@ -86,6 +115,7 @@ class ComplaintStatusHistorySerializer(serializers.ModelSerializer):
             "created_at",
         )
 
+
 class ComplaintDetailSerializer(serializers.ModelSerializer):
     status = ComplaintStatusSerializer(read_only=True)
     images = ComplaintImageSerializer(many=True, read_only=True)
@@ -94,11 +124,15 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
     state = serializers.StringRelatedField()
     district = serializers.StringRelatedField()
     status_history = ComplaintStatusHistorySerializer(many=True, read_only=True)
+    complainant_name = serializers.SerializerMethodField()
+    supports_count = serializers.SerializerMethodField()
+    supported_by_user = serializers.SerializerMethodField()
 
     class Meta:
         model = Complaint
         fields = (
             "id",
+            "user",
             "reference_number",
             "title",
             "description",
@@ -117,11 +151,28 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             "ai_confidence",
             "is_ai_processed",
             "is_anonymous",
+            "complainant_name",
+            "supports_count",
+            "supported_by_user",
             "images",
             "status_history",
             "created_at",
             "updated_at",
         )
+
+    def get_complainant_name(self, obj):
+        if obj.is_anonymous:
+            return "Anonymous Citizen"
+        return obj.user.full_name or obj.user.email or "Citizen"
+
+    def get_supports_count(self, obj):
+        return obj.supports.count()
+
+    def get_supported_by_user(self, obj):
+        user = self.context.get('request') and self.context['request'].user
+        if user and user.is_authenticated:
+            return obj.supports.filter(user=user).exists()
+        return False
 class ComplaintUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:

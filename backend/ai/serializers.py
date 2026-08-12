@@ -55,6 +55,7 @@ class ChatResponseSerializer(serializers.Serializer):
 
 class SendEmailRequestSerializer(serializers.Serializer):
     session_id = serializers.UUIDField()
+    is_anonymous = serializers.BooleanField(required=False, default=False)
 
 
 class SendEmailResponseSerializer(serializers.Serializer):

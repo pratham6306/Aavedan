@@ -10,29 +10,15 @@ import {
   HiEye,
   HiPencilSquare,
   HiTrash,
+  HiMapPin,
+  HiInboxStack,
 } from 'react-icons/hi2';
 
 import { useMyComplaints, useDeleteComplaint } from '../../hooks/useComplaints';
+import * as locationService from '../../services/locationService';
+import * as complaintService from '../../services/complaintService';
+import { complaintStatuses, formatDate, formatRelativeTime } from '../../utils/helpers';
 
-/* ── Sample Fallback Data Matching Reference Screenshot ───── */
-const SAMPLE_MY_COMPLAINTS = [
-  {
-    id: 2,
-    complaint_number: 2,
-    title: 'AI Grievance: garmiiiiiiiiiiiii',
-    status: 'PENDING',
-    priority: 'MEDIUM',
-    created_at: '2026-08-02T17:17:00Z',
-  },
-  {
-    id: 1,
-    complaint_number: 1,
-    title: 'garmiiiiiiiiiiiii',
-    status: 'PENDING',
-    priority: 'MEDIUM',
-    created_at: '2026-08-02T17:17:00Z',
-  },
-];
 
 /* ── Animation Presets ── */
 const containerVariants = {
@@ -55,16 +41,78 @@ export default function MyComplaints() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const initialSearch   = searchParams.get('search')   || '';
-  const initialStatus   = searchParams.get('status')   || '';
-  const initialSort     = searchParams.get('ordering') || '-created_at';
+  const initialSearch   = searchParams.get('search')     || '';
+  const initialStatus   = searchParams.get('status')     || '';
+  const initialPriority = searchParams.get('priority')   || '';
+  const initialDept     = searchParams.get('department') || '';
+  const initialCategory = searchParams.get('category')   || '';
+  const initialState    = searchParams.get('state')      || '';
+  const initialDistrict = searchParams.get('district')   || '';
+  const initialSort     = searchParams.get('ordering')   || '-created_at';
 
   const [search, setSearch]             = useState(initialSearch);
   const [debouncedSearch, setDebounced] = useState(initialSearch);
   const [status, setStatus]             = useState(initialStatus);
+  const [priority, setPriority]         = useState(initialPriority);
+  const [department, setDepartment]     = useState(initialDept);
+  const [category, setCategory]         = useState(initialCategory);
+  const [stateName, setStateName]       = useState(initialState);
+  const [districtName, setDistrictName] = useState(initialDistrict);
   const [ordering, setOrdering]         = useState(initialSort);
-  const [showFilters, setShowFilters]   = useState(!!initialStatus);
+  
+  const [showFilters, setShowFilters]   = useState(
+    !!(initialStatus || initialPriority || initialDept || initialCategory || initialState || initialDistrict)
+  );
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  /* ── dynamic metadata states ── */
+  const [dbStates, setDbStates] = useState([]);
+  const [dbDistricts, setDbDistricts] = useState([]);
+  const [dbCategories, setDbCategories] = useState([]);
+  const [dbDepartments, setDbDepartments] = useState([]);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+
+  /* Load States, Categories, Departments */
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const [statesData, cats, depts] = await Promise.all([
+          locationService.getStates(),
+          complaintService.getCategories(),
+          complaintService.getDepartments(),
+        ]);
+        setDbStates(statesData);
+        setDbCategories(cats);
+        setDbDepartments(depts);
+      } catch (err) {
+        console.error('Failed to load list metadata:', err);
+      }
+    };
+    fetchMetadata();
+  }, []);
+
+  /* Load Districts based on State Selection */
+  useEffect(() => {
+    if (!stateName) {
+      setDbDistricts([]);
+      return;
+    }
+    const matchedState = dbStates.find(s => s.name.toLowerCase() === stateName.toLowerCase());
+    if (!matchedState) return;
+
+    const fetchDistricts = async () => {
+      setLoadingDistricts(true);
+      try {
+        const districtsData = await locationService.getDistricts(matchedState.id);
+        setDbDistricts(districtsData);
+      } catch (err) {
+        console.error('Failed to fetch districts for filter:', err);
+      } finally {
+        setLoadingDistricts(false);
+      }
+    };
+    fetchDistricts();
+  }, [stateName, dbStates]);
 
   /* Debounce Search */
   useEffect(() => {
@@ -77,23 +125,46 @@ export default function MyComplaints() {
     const p = {};
     if (debouncedSearch) p.search = debouncedSearch;
     if (status) p.status = status;
+    if (priority) p.priority = priority;
+    if (department) p.department = department;
+    if (category) p.category = category;
+    if (stateName) p.state = stateName;
+    if (districtName) p.district = districtName;
     if (ordering && ordering !== '-created_at') p.ordering = ordering;
     setSearchParams(p, { replace: true });
-  }, [debouncedSearch, status, ordering, setSearchParams]);
+  }, [debouncedSearch, status, priority, department, category, stateName, districtName, ordering, setSearchParams]);
 
   /* Query Complaints */
   const queryParams = useMemo(() => ({
     search: debouncedSearch || undefined,
     status: status || undefined,
+    priority: priority || undefined,
+    department: department || undefined,
+    category: category || undefined,
+    state: stateName || undefined,
+    district: districtName || undefined,
     ordering,
-  }), [debouncedSearch, status, ordering]);
+  }), [debouncedSearch, status, priority, department, category, stateName, districtName, ordering]);
 
   const { data, isLoading, error } = useMyComplaints(queryParams);
   const { mutateAsync: deleteComplaint, isPending: isDeleting } = useDeleteComplaint();
 
-  const realComplaints = data?.results ?? (Array.isArray(data) ? data : []);
-  const complaints = realComplaints.length > 0 ? realComplaints : SAMPLE_MY_COMPLAINTS;
+  const complaints = data?.results ?? (Array.isArray(data) ? data : []);
   const totalCount = data?.count ?? complaints.length;
+
+  const activeFilterCount = [status, priority, department, category, stateName, districtName].filter(Boolean).length;
+
+  const clearFilters = useCallback(() => {
+    setSearch('');
+    setDebounced('');
+    setStatus('');
+    setPriority('');
+    setDepartment('');
+    setCategory('');
+    setStateName('');
+    setDistrictName('');
+    setOrdering('-created_at');
+  }, []);
 
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -145,48 +216,173 @@ export default function MyComplaints() {
       <motion.div
         initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl bg-white/95 backdrop-blur-md p-3.5 border-2 border-amber-300/80 shadow-md mb-6 flex flex-col md:flex-row items-center gap-3"
+        className="rounded-2xl bg-white/95 backdrop-blur-md p-4 border-2 border-amber-300/80 shadow-md mb-6 flex flex-col gap-3"
       >
-        {/* Search Input with Amber Golden Border */}
-        <div className="relative flex-1 w-full">
-          <HiMagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-600 h-5 w-5" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search your complaints..."
-            className="w-full pl-10 pr-4 py-2.5 text-sm font-semibold text-slate-800 bg-white border-2 border-amber-300 rounded-xl focus:outline-none focus:border-[#0052cc] focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
-          />
-        </div>
+        {/* top row: search, filter toggle, sort */}
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+          {/* Search Input with Amber Golden Border */}
+          <div className="relative flex-1 w-full">
+            <HiMagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-600 h-5 w-5" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search your complaints..."
+              className="w-full pl-10 pr-4 py-2.5 text-sm font-semibold text-slate-800 bg-white border-2 border-amber-300 rounded-xl focus:outline-none focus:border-[#0052cc] focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
+            />
+          </div>
 
-        {/* Filter Toggle Button */}
-        <button
-          onClick={() => setShowFilters((v) => !v)}
-          className={`px-4 py-2.5 rounded-xl border-2 text-sm font-extrabold flex items-center gap-2 transition-all shadow-2xs ${
-            showFilters
-              ? 'bg-[#0052cc] text-white border-[#0052cc]'
-              : 'bg-blue-50 text-[#0052cc] border-blue-200 hover:bg-[#0052cc] hover:text-white'
-          }`}
-        >
-          <HiFunnel className="h-4 w-4" />
-          <span>Filters</span>
-        </button>
-
-        {/* Sort Dropdown Selector */}
-        <div className="relative w-full md:w-auto">
-          <select
-            value={ordering}
-            onChange={(e) => setOrdering(e.target.value)}
-            className="w-full md:w-auto px-4 py-2.5 pr-8 rounded-xl border-2 border-amber-300 bg-white text-slate-800 font-extrabold text-sm cursor-pointer focus:outline-none focus:border-[#0052cc] appearance-none shadow-2xs hover:bg-amber-50/50"
+          {/* Filter Toggle Button */}
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            className={`px-4 py-2.5 rounded-xl border-2 text-sm font-extrabold flex items-center gap-2 transition-all shadow-2xs whitespace-nowrap ${
+              showFilters
+                ? 'bg-[#0052cc] text-white border-[#0052cc]'
+                : 'bg-blue-50 text-[#0052cc] border-blue-200 hover:bg-[#0052cc] hover:text-white'
+            }`}
           >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <HiArrowsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-600 h-4 w-4 pointer-events-none" />
+            <HiFunnel className="h-4 w-4" />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-white font-extrabold text-xs">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* Sort Dropdown Selector */}
+          <div className="relative w-full md:w-auto">
+            <select
+              value={ordering}
+              onChange={(e) => setOrdering(e.target.value)}
+              className="w-full md:w-auto px-4 py-2.5 pr-8 rounded-xl border-2 border-amber-300 bg-white text-slate-800 font-extrabold text-sm cursor-pointer focus:outline-none focus:border-[#0052cc] appearance-none shadow-2xs hover:bg-amber-50/50"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <HiArrowsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-600 h-4 w-4 pointer-events-none" />
+          </div>
         </div>
+
+        {/* filter row (collapsible) */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden w-full"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-100">
+                {/* status filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All Statuses</option>
+                    {complaintStatuses.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* priority filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All Priorities</option>
+                    {['low', 'medium', 'high'].map((p) => (
+                      <option key={p} value={p} className="capitalize">{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* category filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All Categories</option>
+                    {dbCategories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* department filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Department</label>
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All Departments</option>
+                    {dbDepartments.map((d) => (
+                      <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* state filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">State</label>
+                  <select
+                    value={stateName}
+                    onChange={(e) => { setStateName(e.target.value); setDistrictName(''); }}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All States</option>
+                    {dbStates.map((s) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* district filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">District</label>
+                  <select
+                    value={districtName}
+                    onChange={(e) => setDistrictName(e.target.value)}
+                    disabled={!stateName || loadingDistricts}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">
+                      {!stateName ? 'Select state first' : loadingDistricts ? 'Loading districts…' : 'All Districts'}
+                    </option>
+                    {dbDistricts.map((d) => (
+                      <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* clear button */}
+              {activeFilterCount > 0 && (
+                <div className="mt-4 pt-3 border-t border-slate-50 text-right">
+                  <button onClick={clearFilters} className="text-[#ea580c] bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                    Clear all filters
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* ─────────────────────────────────────────────────────────
@@ -214,22 +410,40 @@ export default function MyComplaints() {
               </span>
             </div>
 
-            {/* Middle row: Title & Priority */}
+            {/* Middle row: Title, Priority, Department & Category */}
             <div>
               <h3 className="text-base font-extrabold text-slate-900 leading-snug line-clamp-2">
                 {c.title}
               </h3>
 
-              <div className="mt-2">
+              <div className="flex flex-wrap gap-1.5 mt-2">
                 <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200 inline-block">
                   {c.priority || 'MEDIUM'}
                 </span>
+                {c.category && (
+                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 inline-block">
+                    {c.category}
+                  </span>
+                )}
+                {c.department && (
+                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200 inline-block">
+                    {c.department}
+                  </span>
+                )}
               </div>
 
+              {/* location */}
+              {(c.district || c.state) && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mt-2.5">
+                  <HiMapPin className="h-4 w-4 shrink-0 text-[#ea580c]" />
+                  <span>{[c.district, c.state].filter(Boolean).join(', ')}</span>
+                </div>
+              )}
+
               {/* Date timestamp with Amber Clock */}
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mt-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mt-2">
                 <HiClock className="h-4 w-4 shrink-0 text-amber-600" />
-                <span>02 Aug 2026, 05:17 pm · 7 days ago</span>
+                <span>{c.created_at ? `${formatDate(c.created_at)} · ${formatRelativeTime(c.created_at)}` : 'Recently'}</span>
               </div>
             </div>
 
@@ -265,6 +479,30 @@ export default function MyComplaints() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* ── empty state ── */}
+      {complaints.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card p-12 text-center bg-white border-2 border-amber-200/50 rounded-2xl shadow-md mt-4"
+        >
+          <HiInboxStack className="mx-auto w-16 h-16 text-slate-350 mb-4" />
+          <h3 className="text-xl font-black text-slate-800 mb-2">
+            No complaints found
+          </h3>
+          <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto font-semibold leading-relaxed">
+            {debouncedSearch || activeFilterCount > 0
+              ? "Try adjusting your search or filters to find what you're looking for."
+              : 'You have not submitted any complaints yet. Your submitted grievances will appear here.'}
+          </p>
+          {(debouncedSearch || activeFilterCount > 0) && (
+            <button onClick={clearFilters} className="text-[#ea580c] bg-orange-50 hover:bg-orange-100 border border-orange-200 px-4 py-2 rounded-xl text-xs font-bold transition">
+              Clear Filters
+            </button>
+          )}
+        </motion.div>
+      )}
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>

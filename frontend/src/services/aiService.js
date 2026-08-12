@@ -21,11 +21,13 @@ export const sendChatMessage = async (message, sessionId, entities = null) => {
  * Dispatches the compiled grievance email directly to the division office.
  *
  * @param {string} sessionId - Conversation session UUID.
+ * @param {boolean} isAnonymous - Whether the grievance is sent anonymously.
  * @returns {Promise<Object>} API Response containing success status and success message.
  */
-export const sendGrievanceEmail = async (sessionId) => {
+export const sendGrievanceEmail = async (sessionId, isAnonymous = false) => {
   const response = await api.post('/ai/chat/send-email/', {
-    session_id: sessionId
+    session_id: sessionId,
+    is_anonymous: isAnonymous
   });
   return response.data;
 };
@@ -34,11 +36,13 @@ export const sendGrievanceEmail = async (sessionId) => {
  * Fetches the email preview containing sender/receiver emails, subject, and text body.
  *
  * @param {string} sessionId - Conversation session UUID.
+ * @param {boolean} isAnonymous - Whether the grievance is sent anonymously.
  * @returns {Promise<Object>} API Response containing sender_email, receiver_email, subject, body_text.
  */
-export const getEmailPreview = async (sessionId) => {
+export const getEmailPreview = async (sessionId, isAnonymous = false) => {
   const response = await api.post('/ai/chat/email-preview/', {
-    session_id: sessionId
+    session_id: sessionId,
+    is_anonymous: isAnonymous
   });
   return response.data;
 };
