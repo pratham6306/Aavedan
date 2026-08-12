@@ -1,16 +1,3 @@
-/**
- * MyComplaints.jsx — My Complaints Page
- * ======================================
- * Authenticated user's personal complaint dashboard.
- * Mirrors ComplaintList but:
- *   • Uses useMyComplaints instead of useComplaints
- *   • Adds "Create New" CTA in the header
- *   • Shows edit / delete actions on each card
- *
- * Design tokens: .page-container, .card, .card-hover, .badge-*,
- *   .btn-*, .form-input, .skeleton, .glass-card
- */
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,123 +6,164 @@ import {
   HiMagnifyingGlass,
   HiFunnel,
   HiArrowsUpDown,
-  HiChevronLeft,
-  HiChevronRight,
-  HiPlusCircle,
-  HiMapPin,
   HiClock,
   HiEye,
   HiPencilSquare,
   HiTrash,
-  HiExclamationTriangle,
+  HiMapPin,
   HiInboxStack,
 } from 'react-icons/hi2';
 
 import { useMyComplaints, useDeleteComplaint } from '../../hooks/useComplaints';
-import {
-  formatDate,
-  formatRelativeTime,
-  getStatusColor,
-  getPriorityColor,
-  truncateText,
-  departments,
-  complaintStatuses,
-} from '../../utils/helpers';
+import * as locationService from '../../services/locationService';
+import * as complaintService from '../../services/complaintService';
+import { complaintStatuses, formatDate, formatRelativeTime } from '../../utils/helpers';
 
-/* ─── animation presets ─── */
+
+/* ── Animation Presets ── */
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 };
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 };
 
-/* ─── constants ─── */
-const PRIORITIES   = ['low', 'medium', 'high'];
 const SORT_OPTIONS = [
   { label: 'Newest First', value: '-created_at' },
   { label: 'Oldest First', value: 'created_at' },
   { label: 'Priority',     value: '-priority' },
 ];
-const PAGE_SIZE = 9;
 
-/* ====================================================================
-   Component
-   ==================================================================== */
 export default function MyComplaints() {
   const navigate = useNavigate();
-
-  /* ── URL search-params ── */
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialSearch   = searchParams.get('search')     || '';
   const initialStatus   = searchParams.get('status')     || '';
   const initialPriority = searchParams.get('priority')   || '';
   const initialDept     = searchParams.get('department') || '';
+  const initialCategory = searchParams.get('category')   || '';
+  const initialState    = searchParams.get('state')      || '';
+  const initialDistrict = searchParams.get('district')   || '';
   const initialSort     = searchParams.get('ordering')   || '-created_at';
-  const initialPage     = parseInt(searchParams.get('page') || '1', 10);
 
-  /* ── local state ── */
-  const [search, setSearch]               = useState(initialSearch);
-  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
-  const [status, setStatus]               = useState(initialStatus);
-  const [priority, setPriority]           = useState(initialPriority);
-  const [department, setDepartment]       = useState(initialDept);
-  const [ordering, setOrdering]           = useState(initialSort);
-  const [page, setPage]                   = useState(initialPage);
-  const [showFilters, setShowFilters]     = useState(
-    !!(initialStatus || initialPriority || initialDept)
+  const [search, setSearch]             = useState(initialSearch);
+  const [debouncedSearch, setDebounced] = useState(initialSearch);
+  const [status, setStatus]             = useState(initialStatus);
+  const [priority, setPriority]         = useState(initialPriority);
+  const [department, setDepartment]     = useState(initialDept);
+  const [category, setCategory]         = useState(initialCategory);
+  const [stateName, setStateName]       = useState(initialState);
+  const [districtName, setDistrictName] = useState(initialDistrict);
+  const [ordering, setOrdering]         = useState(initialSort);
+  
+  const [showFilters, setShowFilters]   = useState(
+    !!(initialStatus || initialPriority || initialDept || initialCategory || initialState || initialDistrict)
   );
-
-  /* ── delete confirmation dialog state ── */
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  /* ── debounce search (400ms) ── */
+  /* ── dynamic metadata states ── */
+  const [dbStates, setDbStates] = useState([]);
+  const [dbDistricts, setDbDistricts] = useState([]);
+  const [dbCategories, setDbCategories] = useState([]);
+  const [dbDepartments, setDbDepartments] = useState([]);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+
+  /* Load States, Categories, Departments */
   useEffect(() => {
-    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
+    const fetchMetadata = async () => {
+      try {
+        const [statesData, cats, depts] = await Promise.all([
+          locationService.getStates(),
+          complaintService.getCategories(),
+          complaintService.getDepartments(),
+        ]);
+        setDbStates(statesData);
+        setDbCategories(cats);
+        setDbDepartments(depts);
+      } catch (err) {
+        console.error('Failed to load list metadata:', err);
+      }
+    };
+    fetchMetadata();
+  }, []);
+
+  /* Load Districts based on State Selection */
+  useEffect(() => {
+    if (!stateName) {
+      setDbDistricts([]);
+      return;
+    }
+    const matchedState = dbStates.find(s => s.name.toLowerCase() === stateName.toLowerCase());
+    if (!matchedState) return;
+
+    const fetchDistricts = async () => {
+      setLoadingDistricts(true);
+      try {
+        const districtsData = await locationService.getDistricts(matchedState.id);
+        setDbDistricts(districtsData);
+      } catch (err) {
+        console.error('Failed to fetch districts for filter:', err);
+      } finally {
+        setLoadingDistricts(false);
+      }
+    };
+    fetchDistricts();
+  }, [stateName, dbStates]);
+
+  /* Debounce Search */
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  /* ── sync state → URL ── */
+  /* Sync to URL */
   useEffect(() => {
     const p = {};
-    if (debouncedSearch) p.search     = debouncedSearch;
-    if (status)          p.status     = status;
-    if (priority)        p.priority   = priority;
-    if (department)      p.department = department;
+    if (debouncedSearch) p.search = debouncedSearch;
+    if (status) p.status = status;
+    if (priority) p.priority = priority;
+    if (department) p.department = department;
+    if (category) p.category = category;
+    if (stateName) p.state = stateName;
+    if (districtName) p.district = districtName;
     if (ordering && ordering !== '-created_at') p.ordering = ordering;
-    if (page > 1)        p.page       = String(page);
     setSearchParams(p, { replace: true });
-  }, [debouncedSearch, status, priority, department, ordering, page, setSearchParams]);
+  }, [debouncedSearch, status, priority, department, category, stateName, districtName, ordering, setSearchParams]);
 
-  /* ── API query ── */
+  /* Query Complaints */
   const queryParams = useMemo(() => ({
-    search:     debouncedSearch || undefined,
-    status:     status          || undefined,
-    priority:   priority        || undefined,
-    department: department      || undefined,
+    search: debouncedSearch || undefined,
+    status: status || undefined,
+    priority: priority || undefined,
+    department: department || undefined,
+    category: category || undefined,
+    state: stateName || undefined,
+    district: districtName || undefined,
     ordering,
-    page,
-    page_size:  PAGE_SIZE,
-  }), [debouncedSearch, status, priority, department, ordering, page]);
+  }), [debouncedSearch, status, priority, department, category, stateName, districtName, ordering]);
 
   const { data, isLoading, error } = useMyComplaints(queryParams);
   const { mutateAsync: deleteComplaint, isPending: isDeleting } = useDeleteComplaint();
 
-  const complaints = data?.results ?? [];
-  const totalCount = data?.count   ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const complaints = data?.results ?? (Array.isArray(data) ? data : []);
+  const totalCount = data?.count ?? complaints.length;
 
-  const activeFilterCount = [status, priority, department].filter(Boolean).length;
+  const activeFilterCount = [status, priority, department, category, stateName, districtName].filter(Boolean).length;
 
-  /* ── helpers ── */
   const clearFilters = useCallback(() => {
-    setSearch(''); setDebouncedSearch('');
-    setStatus(''); setPriority(''); setDepartment('');
-    setOrdering('-created_at'); setPage(1);
+    setSearch('');
+    setDebounced('');
+    setStatus('');
+    setPriority('');
+    setDepartment('');
+    setCategory('');
+    setStateName('');
+    setDistrictName('');
+    setOrdering('-created_at');
   }, []);
 
   const handleDelete = useCallback(async () => {
@@ -145,90 +173,101 @@ export default function MyComplaints() {
       toast.success('Complaint deleted successfully');
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete complaint. Please try again.');
+      toast.error('Failed to delete complaint.');
     }
   }, [deleteTarget, deleteComplaint]);
 
-  /* ================================================================
-     Render
-     ================================================================ */
   return (
-    <div className="page-container">
-      {/* ── page header ── */}
+    <div className="pb-16 max-w-7xl mx-auto">
+      {/* ─────────────────────────────────────────────────────────
+          1. TOP HEADER BANNER CARD WITH MONUMENTS ARTWORK
+          ───────────────────────────────────────────────────────── */}
       <motion.div
-        initial={{ opacity: 0, y: -12 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="mb-6"
+        className="relative overflow-hidden rounded-2xl bg-[#fff8eb]/90 backdrop-blur-md p-6 md:p-8 shadow-sm border border-amber-200/70 min-h-[140px] flex items-center justify-between mb-6"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="page-title">My Complaints</h1>
-            <p className="page-subtitle">
-              {isLoading
-                ? 'Loading your complaints…'
-                : `${totalCount} complaint${totalCount !== 1 ? 's' : ''} submitted`}
-            </p>
-          </div>
-
-          {/* create new CTA */}
-          <Link to="/complaints/create" className="btn btn-primary">
-            <HiPlusCircle className="w-5 h-5" />
-            Create New
-          </Link>
+        {/* Left Content */}
+        <div className="relative z-10">
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1">
+            My Complaints
+          </h1>
+          <p className="text-sm font-semibold text-slate-600">
+            {totalCount} complaint{totalCount !== 1 ? 's' : ''} submitted
+          </p>
+          <div className="w-10 h-1 bg-[#ea580c] rounded-full mt-2.5" />
         </div>
+
+        {/* Right CTA Button (Purple / Indigo gradient) */}
+        <Link
+          to="/complaints/create"
+          className="relative z-10 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#6366f1] via-[#4f46e5] to-[#4338ca] text-white font-extrabold text-sm shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-white font-extrabold text-xs">
+            +
+          </span>
+          <span>Create New Complaint</span>
+        </Link>
       </motion.div>
 
-      {/* ── search + toolbar ── */}
+      {/* ─────────────────────────────────────────────────────────
+          2. SEARCH & FILTER TOOLBAR CARD WITH RICH COLORED BORDERS & BUTTONS
+          ───────────────────────────────────────────────────────── */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.1 }}
-        className="glass-card p-4 mb-6"
+        className="rounded-2xl bg-white/95 backdrop-blur-md p-4 border-2 border-amber-300/80 shadow-md mb-6 flex flex-col gap-3"
       >
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* search */}
-          <div className="relative flex-1">
-            <HiMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+        {/* top row: search, filter toggle, sort */}
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+          {/* Search Input with Amber Golden Border */}
+          <div className="relative flex-1 w-full">
+            <HiMagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-600 h-5 w-5" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search your complaints…"
-              className="form-input pl-10"
+              placeholder="Search your complaints..."
+              className="w-full pl-10 pr-4 py-2.5 text-sm font-semibold text-slate-800 bg-white border-2 border-amber-300 rounded-xl focus:outline-none focus:border-[#0052cc] focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
             />
           </div>
 
-          {/* filter toggle */}
+          {/* Filter Toggle Button */}
           <button
             onClick={() => setShowFilters((v) => !v)}
-            className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'} whitespace-nowrap`}
+            className={`px-4 py-2.5 rounded-xl border-2 text-sm font-extrabold flex items-center gap-2 transition-all shadow-2xs whitespace-nowrap ${
+              showFilters
+                ? 'bg-[#0052cc] text-white border-[#0052cc]'
+                : 'bg-blue-50 text-[#0052cc] border-blue-200 hover:bg-[#0052cc] hover:text-white'
+            }`}
           >
-            <HiFunnel className="w-4 h-4" />
-            Filters
+            <HiFunnel className="h-4 w-4" />
+            <span>Filters</span>
             {activeFilterCount > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/25 text-xs font-bold">
+              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-white font-extrabold text-xs">
                 {activeFilterCount}
               </span>
             )}
           </button>
 
-          {/* sort */}
-          <div className="relative">
-            <HiArrowsUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+          {/* Sort Dropdown Selector */}
+          <div className="relative w-full md:w-auto">
             <select
               value={ordering}
-              onChange={(e) => { setOrdering(e.target.value); setPage(1); }}
-              className="form-input pl-9 pr-8 appearance-none cursor-pointer"
+              onChange={(e) => setOrdering(e.target.value)}
+              className="w-full md:w-auto px-4 py-2.5 pr-8 rounded-xl border-2 border-amber-300 bg-white text-slate-800 font-extrabold text-sm cursor-pointer focus:outline-none focus:border-[#0052cc] appearance-none shadow-2xs hover:bg-amber-50/50"
             >
               {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
+            <HiArrowsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-600 h-4 w-4 pointer-events-none" />
           </div>
         </div>
 
-        {/* collapsible filters */}
+        {/* filter row (collapsible) */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -236,34 +275,107 @@ export default function MyComplaints() {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.25 }}
-              className="overflow-hidden"
+              className="overflow-hidden w-full"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-200">
-                <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="form-input">
-                  <option value="">All Statuses</option>
-                  {complaintStatuses.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-100">
+                {/* status filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All Statuses</option>
+                    {complaintStatuses.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
 
-                <select value={priority} onChange={(e) => { setPriority(e.target.value); setPage(1); }} className="form-input">
-                  <option value="">All Priorities</option>
-                  {PRIORITIES.map((p) => (
-                    <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                  ))}
-                </select>
+                {/* priority filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All Priorities</option>
+                    {['low', 'medium', 'high'].map((p) => (
+                      <option key={p} value={p} className="capitalize">{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
 
-                <select value={department} onChange={(e) => { setDepartment(e.target.value); setPage(1); }} className="form-input">
-                  <option value="">All Departments</option>
-                  {departments.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                {/* category filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All Categories</option>
+                    {dbCategories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* department filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Department</label>
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All Departments</option>
+                    {dbDepartments.map((d) => (
+                      <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* state filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">State</label>
+                  <select
+                    value={stateName}
+                    onChange={(e) => { setStateName(e.target.value); setDistrictName(''); }}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">All States</option>
+                    {dbStates.map((s) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* district filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">District</label>
+                  <select
+                    value={districtName}
+                    onChange={(e) => setDistrictName(e.target.value)}
+                    disabled={!stateName || loadingDistricts}
+                    className="w-full px-3 py-2 text-sm font-semibold border-2 border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none focus:border-[#0052cc]"
+                  >
+                    <option value="">
+                      {!stateName ? 'Select state first' : loadingDistricts ? 'Loading districts…' : 'All Districts'}
+                    </option>
+                    {dbDistricts.map((d) => (
+                      <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
+              {/* clear button */}
               {activeFilterCount > 0 && (
-                <div className="mt-3 text-right">
-                  <button onClick={clearFilters} className="btn btn-ghost text-sm">
+                <div className="mt-4 pt-3 border-t border-slate-50 text-right">
+                  <button onClick={clearFilters} className="text-[#ea580c] bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-lg text-xs font-bold transition">
                     Clear all filters
                   </button>
                 </div>
@@ -273,84 +385,126 @@ export default function MyComplaints() {
         </AnimatePresence>
       </motion.div>
 
-      {/* ── error state ── */}
-      {error && (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card p-8 text-center mb-6">
-          <HiExclamationTriangle className="mx-auto w-12 h-12 text-danger mb-3" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-1">Something went wrong</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            {error?.message || 'Unable to load your complaints. Please try again.'}
-          </p>
-          <button onClick={() => window.location.reload()} className="btn btn-primary">Retry</button>
-        </motion.div>
-      )}
+      {/* ─────────────────────────────────────────────────────────
+          3. COMPLAINTS CARDS GRID WITH RICH BADGES & ACTION BUTTONS
+          ───────────────────────────────────────────────────────── */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+      >
+        {complaints.map((c) => (
+          <motion.div
+            key={c.id}
+            variants={cardVariants}
+            className="rounded-2xl bg-white/95 backdrop-blur-md p-6 border-2 border-amber-200/80 shadow-md hover:shadow-lg hover:border-amber-400 transition-all flex flex-col justify-between space-y-4"
+          >
+            {/* Top row: ID Badge & Status Pill */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-[#0052cc] border border-blue-200 shadow-2xs">
+                #GOV-{String(c.complaint_number ?? c.id).padStart(3, '0')}
+              </span>
+              <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
+                {c.status || 'PENDING'}
+              </span>
+            </div>
 
-      {/* ── loading ── */}
-      {isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-            <div key={i} className="card p-5 space-y-4">
-              <div className="flex justify-between">
-                <div className="skeleton h-4 w-24 rounded" />
-                <div className="skeleton h-5 w-16 rounded-full" />
+            {/* Middle row: Title, Priority, Department & Category */}
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 leading-snug line-clamp-2">
+                {c.title}
+              </h3>
+
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200 inline-block">
+                  {c.priority || 'MEDIUM'}
+                </span>
+                {c.category && (
+                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 inline-block">
+                    {c.category}
+                  </span>
+                )}
+                {c.department && (
+                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200 inline-block">
+                    {c.department}
+                  </span>
+                )}
               </div>
-              <div className="skeleton h-5 w-3/4 rounded" />
-              <div className="skeleton h-4 w-full rounded" />
-              <div className="skeleton h-4 w-2/3 rounded" />
-              <div className="flex justify-between pt-2">
-                <div className="skeleton h-4 w-28 rounded" />
-                <div className="skeleton h-8 w-24 rounded-lg" />
+
+              {/* location */}
+              {(c.district || c.state) && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mt-2.5">
+                  <HiMapPin className="h-4 w-4 shrink-0 text-[#ea580c]" />
+                  <span>{[c.district, c.state].filter(Boolean).join(', ')}</span>
+                </div>
+              )}
+
+              {/* Date timestamp with Amber Clock */}
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mt-2">
+                <HiClock className="h-4 w-4 shrink-0 text-amber-600" />
+                <span>{c.created_at ? `${formatDate(c.created_at)} · ${formatRelativeTime(c.created_at)}` : 'Recently'}</span>
               </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* ── empty ── */}
-      {!isLoading && !error && complaints.length === 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-12 text-center">
-          <HiInboxStack className="mx-auto w-16 h-16 text-gov-300 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">
-            {debouncedSearch || activeFilterCount > 0
-              ? 'No matching complaints'
-              : 'You haven\'t submitted any complaints yet'}
+            {/* Bottom Actions Row: Colored Action Buttons */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              {/* View Button (Royal Blue Pill) */}
+              <Link
+                to={`/complaints/${c.id}`}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl border border-blue-300 bg-blue-50 text-[#0052cc] font-extrabold text-xs hover:bg-[#0052cc] hover:text-white transition-all shadow-xs"
+              >
+                <HiEye className="h-4 w-4" />
+                <span>View</span>
+              </Link>
+
+              {/* Edit (Soft Blue Icon) & Delete (Soft Rose Icon) */}
+              <div className="flex items-center gap-1.5">
+                <Link
+                  to={`/complaints/${c.id}/edit`}
+                  className="p-2 rounded-xl bg-blue-50 text-[#0052cc] border border-blue-200 hover:bg-blue-600 hover:text-white transition-all shadow-2xs"
+                  title="Edit Complaint"
+                >
+                  <HiPencilSquare className="h-4 w-4" />
+                </Link>
+                <button
+                  onClick={() => setDeleteTarget(c.id)}
+                  className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white transition-all shadow-2xs"
+                  title="Delete Complaint"
+                >
+                  <HiTrash className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* ── empty state ── */}
+      {complaints.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card p-12 text-center bg-white border-2 border-amber-200/50 rounded-2xl shadow-md mt-4"
+        >
+          <HiInboxStack className="mx-auto w-16 h-16 text-slate-350 mb-4" />
+          <h3 className="text-xl font-black text-slate-800 mb-2">
+            No complaints found
           </h3>
-          <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+          <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto font-semibold leading-relaxed">
             {debouncedSearch || activeFilterCount > 0
-              ? 'Try adjusting your search or filters.'
-              : 'File your first complaint and track its progress here.'}
+              ? "Try adjusting your search or filters to find what you're looking for."
+              : 'You have not submitted any complaints yet. Your submitted grievances will appear here.'}
           </p>
-          {debouncedSearch || activeFilterCount > 0 ? (
-            <button onClick={clearFilters} className="btn btn-secondary">Clear Filters</button>
-          ) : (
-            <Link to="/complaints/create" className="btn btn-primary">
-              <HiPlusCircle className="w-5 h-5" />
-              Create Complaint
-            </Link>
+          {(debouncedSearch || activeFilterCount > 0) && (
+            <button onClick={clearFilters} className="text-[#ea580c] bg-orange-50 hover:bg-orange-100 border border-orange-200 px-4 py-2 rounded-xl text-xs font-bold transition">
+              Clear Filters
+            </button>
           )}
         </motion.div>
       )}
 
-      {/* ── cards grid ── */}
-      {!isLoading && !error && complaints.length > 0 && (
-        <>
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {complaints.map((c) => (
-              <MyComplaintCard
-                key={c.id}
-                complaint={c}
-                onDelete={() => setDeleteTarget(c.id)}
-              />
-            ))}
-          </motion.div>
-
-          {totalPages > 1 && (
-            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-          )}
-        </>
-      )}
-
-      {/* ── delete confirmation modal ── */}
+      {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {deleteTarget && (
           <motion.div
@@ -361,34 +515,32 @@ export default function MyComplaints() {
             onClick={() => setDeleteTarget(null)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="card p-6 w-full max-w-sm"
+              className="rounded-2xl bg-white p-6 max-w-sm w-full shadow-xl border border-amber-200/60"
             >
               <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-danger-light flex items-center justify-center mx-auto mb-4">
-                  <HiTrash className="w-6 h-6 text-danger" />
+                <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-4 text-rose-600">
+                  <HiTrash className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Delete Complaint?</h3>
-                <p className="text-sm text-gray-500 mb-6">
-                  This action cannot be undone. The complaint and all associated data will be permanently removed.
+                <h3 className="text-lg font-extrabold text-slate-800 mb-2">Delete Complaint?</h3>
+                <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">
+                  This action cannot be undone. The complaint will be permanently removed.
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setDeleteTarget(null)}
-                    className="btn btn-secondary flex-1"
-                    disabled={isDeleting}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleDelete}
-                    className="btn btn-danger flex-1"
-                    disabled={isDeleting}
+                    className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-colors shadow-sm"
                   >
-                    {isDeleting ? 'Deleting…' : 'Delete'}
+                    Delete
                   </button>
                 </div>
               </div>
@@ -397,130 +549,5 @@ export default function MyComplaints() {
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-/* ====================================================================
-   My Complaint Card  (with edit / delete actions)
-   ==================================================================== */
-function MyComplaintCard({ complaint, onDelete }) {
-  const {
-    id, complaint_number, title, status, priority,
-    department, created_at, location,
-  } = complaint;
-
-  const statusBadge   = getStatusColor(status);
-  const priorityBadge = getPriorityColor(priority);
-
-  return (
-    <motion.div variants={cardVariants} className="card card-hover p-5 flex flex-col">
-      {/* top row */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-mono font-semibold text-gov-500">
-          #GOV-{String(complaint_number ?? id).padStart(3, '0')}
-        </span>
-        <span className={`badge ${statusBadge}`}>{status}</span>
-      </div>
-
-      {/* title */}
-      <h3 className="text-base font-semibold text-gray-800 mb-2 leading-snug">
-        {truncateText(title, 60)}
-      </h3>
-
-      {/* meta */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        <span className={`badge ${priorityBadge}`}>{priority}</span>
-        {department && (
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{department}</span>
-        )}
-      </div>
-
-      {/* location */}
-      {(location?.district || location?.state) && (
-        <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
-          <HiMapPin className="w-3.5 h-3.5 text-gov-400 shrink-0" />
-          <span>{[location.district, location.state].filter(Boolean).join(', ')}</span>
-        </div>
-      )}
-
-      {/* date */}
-      <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-4">
-        <HiClock className="w-3.5 h-3.5 shrink-0" />
-        <span>{formatDate(created_at)}</span>
-        <span className="text-gray-300">·</span>
-        <span>{formatRelativeTime(created_at)}</span>
-      </div>
-
-      {/* actions (pushed to bottom) */}
-      <div className="mt-auto flex gap-2">
-        <Link to={`/complaints/${id}`} className="btn btn-secondary flex-1 text-sm">
-          <HiEye className="w-4 h-4" />
-          View
-        </Link>
-        <Link to={`/complaints/${id}/edit`} className="btn btn-ghost p-2" aria-label="Edit complaint">
-          <HiPencilSquare className="w-4 h-4 text-gov-600" />
-        </Link>
-        <button onClick={onDelete} className="btn btn-ghost p-2" aria-label="Delete complaint">
-          <HiTrash className="w-4 h-4 text-danger" />
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ====================================================================
-   Pagination (shared)
-   ==================================================================== */
-function Pagination({ page, totalPages, onPageChange }) {
-  const pages = useMemo(() => {
-    const delta = 2;
-    const range = [];
-    const result = [];
-    let l;
-    for (let i = 1; i <= totalPages; i++) {
-      if (i === 1 || i === totalPages || (i >= page - delta && i <= page + delta)) range.push(i);
-    }
-    for (const i of range) {
-      if (l) {
-        if (i - l === 2) result.push(l + 1);
-        else if (i - l !== 1) result.push('…');
-      }
-      result.push(i);
-      l = i;
-    }
-    return result;
-  }, [page, totalPages]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-      className="flex items-center justify-center gap-2 mt-8"
-    >
-      <button disabled={page <= 1} onClick={() => onPageChange(page - 1)} className="btn btn-ghost p-2" aria-label="Previous page">
-        <HiChevronLeft className="w-5 h-5" />
-      </button>
-
-      {pages.map((p, idx) =>
-        p === '…' ? (
-          <span key={`dot-${idx}`} className="px-1 text-gray-400 select-none">…</span>
-        ) : (
-          <button
-            key={p}
-            onClick={() => onPageChange(p)}
-            className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
-              p === page ? 'bg-gov-600 text-white shadow-md' : 'text-gray-600 hover:bg-gov-50'
-            }`}
-          >
-            {p}
-          </button>
-        )
-      )}
-
-      <button disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} className="btn btn-ghost p-2" aria-label="Next page">
-        <HiChevronRight className="w-5 h-5" />
-      </button>
-    </motion.div>
   );
 }

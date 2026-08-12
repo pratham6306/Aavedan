@@ -50,7 +50,9 @@ class IntentDetector:
         r"\bproblem\b", r"\bfault\b", r"\bbroken\b", r"\bleakage\b",
         r"\bpothole\b", r"\bgarbage\b", r"\bdrain\b", r"\bpower\b",
         r"\belectricity\b", r"\bparking\b", r"\bpollution\b", r"\btree\b",
-        r"\btoilet\b", r"\bconstruction\b"
+        r"\btoilet\b", r"\bconstruction\b", r"\bwater\b", r"\blogged\b",
+        r"\bwaterlogging\b", r"\bflooding\b", r"\bflood\b", r"\bblockage\b",
+        r"\bblocked\b", r"\bsewer\b", r"\bsewerage\b", r"\bstreet\s*light\b"
     ]
 
     def detect(self, message: str) -> Intent:

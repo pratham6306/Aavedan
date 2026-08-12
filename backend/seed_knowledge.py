@@ -40,12 +40,12 @@ with transaction.atomic():
             )
 
         except ComplaintCategory.DoesNotExist:
-            print(f"❌ Category not found: {data['category']}")
+            print(f"[ERROR] Category not found: {data['category']}")
             skipped_count += 1
             continue
 
         except Department.DoesNotExist:
-            print(f"❌ Department not found: {data['department']}")
+            print(f"[ERROR] Department not found: {data['department']}")
             skipped_count += 1
             continue
 
@@ -64,10 +64,10 @@ with transaction.atomic():
 
         if created:
             created_count += 1
-            print(f"✅ Created: {complaint_type.name}")
+            print(f"[CREATED] {complaint_type.name}")
         else:
             updated_count += 1
-            print(f"🔄 Updated: {complaint_type.name}")
+            print(f"[UPDATED] {complaint_type.name}")
 
         # ---------------------------------------
         # Synchronize Keywords
@@ -108,8 +108,8 @@ print("\n" + "=" * 60)
 print("Knowledge Base Seeding Completed")
 print("=" * 60)
 
-print(f"✅ Created : {created_count}")
-print(f"🔄 Updated : {updated_count}")
-print(f"⚠️ Skipped : {skipped_count}")
+print(f"[CREATED] : {created_count}")
+print(f"[UPDATED] : {updated_count}")
+print(f"[SKIPPED] : {skipped_count}")
 
 print("=" * 60)

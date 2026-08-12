@@ -70,7 +70,7 @@ export default function Register() {
     <div className="min-h-screen w-full bg-[#f6c548] flex flex-col justify-between overflow-y-auto">
       {/* Portal Section */}
       <div className="w-full flex-1">
-        <div className="relative w-full lg:h-screen min-h-[840px] overflow-hidden bg-[#f6c548]">
+        <div className="relative w-full lg:h-screen lg:max-h-[850px] min-h-[840px] overflow-hidden bg-[#f6c548]">
           <img
             src={background}
             alt="Background"
@@ -130,18 +130,30 @@ export default function Register() {
             </button>
           </div>
        
-          <RegisterFloatingCards />
-          <RegisterQuickActions onAIChatToggle={() => setIsAIChatOpen(true)} />
-          <RegisterLatestNews />
+          {/* ── MAIN CONTENT GRID MATCHING LOGIN.JSX ── */}
+          <main className="relative z-10 flex-1 max-w-[1440px] mx-auto w-full px-4 sm:px-8 pt-20 lg:pt-24 pb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
+              
+              {/* COLUMN 1: Hero, Quick Actions, News Slider (Left 5 Columns) */}
+              <div className="flex flex-col gap-6 items-start lg:col-span-5 w-full order-last lg:order-first">
+                <RegisterHero />
+                <RegisterQuickActions onAIChatToggle={() => setIsAIChatOpen(true)} />
+                <RegisterLatestNews />
+              </div>
 
-          <div className="relative z-20 h-full grid grid-cols-12 pointer-events-none">
-            <div className="col-span-7 flex items-center pl-40 pointer-events-auto">
-              <RegisterHero />
+              {/* COLUMN 2: Center Grid Spacer for Floating Cards */}
+              <div className="hidden lg:block lg:col-span-3 relative pointer-events-none" />
+
+              {/* Floating ID Cards */}
+              <RegisterFloatingCards />
+
+              {/* COLUMN 3: Register Form Card (Right 4 Columns) */}
+              <div className="w-full lg:col-span-4 flex justify-center lg:justify-end py-2 relative z-10 h-full items-start order-first lg:order-last lg:translate-x-4 lg:mt-6">
+                <RegisterCard />
+              </div>
+
             </div>
-            <div className="col-span-5 flex justify-end items-center pr-8 pointer-events-auto">
-              <RegisterCard />
-            </div>
-          </div>
+          </main>
         </div>
       </div>
 

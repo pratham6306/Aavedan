@@ -65,8 +65,8 @@ export default function RegisterCard() {
   };
 
   return (
-    <div className="w-[380px] h-[90vh]">
-      <div className="h-full overflow-y-auto rounded-[34px] bg-white/70 backdrop-blur-3xl border border-white/70 shadow-[0_40px_80px_rgba(0,0,0,.12)] px-8 py-8 flex flex-col gap-5">
+    <div className="w-[380px] h-full max-h-[650px] rounded-[34px] bg-white/70 backdrop-blur-3xl border border-white/70 shadow-[0_40px_80px_rgba(0,0,0,.12)] overflow-hidden">
+      <div className="h-full overflow-y-auto custom-scrollbar px-8 py-8 flex flex-col gap-5">
         {/* Heading */}
         <div className="flex flex-col select-none">
           <h2 className="text-3xl font-black text-slate-800 flex items-center gap-2">

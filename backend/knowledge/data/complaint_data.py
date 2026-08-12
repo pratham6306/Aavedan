@@ -328,7 +328,12 @@ COMPLAINT_DATA = [
             "drain blockage",
             "clogged drain",
             "drain overflow",
-            "drain choke"
+            "drain choke",
+            "water logging",
+            "waterlogged",
+            "waterlogging",
+            "water logged",
+            "flooding"
         ],
         "required_fields": [
             {"field_name": "address", "display_name": "Address", "is_required": True},

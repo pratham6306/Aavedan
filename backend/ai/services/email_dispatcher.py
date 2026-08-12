@@ -12,7 +12,7 @@ class EmailDispatcher:
     def __init__(self):
         self.office_finder = OfficeFinder()
 
-    def send_grievance_email(self, session_data: dict, user_email: str) -> bool:
+    def send_grievance_email(self, session_data: dict, user_email: str, is_anonymous: bool = False) -> bool:
         """
         Sends the compiled grievance report to the designated officer.
         """
@@ -22,10 +22,10 @@ class EmailDispatcher:
         priority = session_data.get("priority", "MEDIUM")
         entities = session_data.get("entities", {})
         
-        state = entities.get("state")
-        district = entities.get("district")
-        address = entities.get("address", "Not provided")
-        landmark = entities.get("landmark", "Not provided")
+        state = session_data.get("state") or entities.get("state")
+        district = session_data.get("district") or entities.get("district")
+        address = session_data.get("address") or entities.get("address", "Not provided")
+        landmark = session_data.get("landmark") or entities.get("landmark", "Not provided")
         raw_desc = session_data.get("description") or "Please see details below."
         
         # Call AI Microservice to generate a professional draft
@@ -109,6 +109,18 @@ class EmailDispatcher:
             except Exception:
                 pass
 
+        citizen_contact_text = (
+            "CITIZEN CONTACT INFORMATION:\n• Email: Anonymous Citizen (Contact details hidden for privacy)\n\n"
+            if is_anonymous else
+            f"CITIZEN CONTACT INFORMATION:\n• Email: {user_email}\n\n"
+        )
+
+        citizen_contact_html = (
+            "<p style='margin-top: 10px;'>This report has been registered under: <strong>Anonymous Citizen (Protected for privacy)</strong>.</p>"
+            if is_anonymous else
+            f"<p style='margin-top: 10px;'>This report has been registered under: <strong>{user_email}</strong>. For any follow-up, you can reply directly to this email or contact the sender.</p>"
+        )
+
         # 3. Formulate Plain Text Body
         text_content = (
             f"Dear Sir/Madam,\n\n"
@@ -128,8 +140,7 @@ class EmailDispatcher:
             f"• District: {district}\n"
             f"• State: {state}\n\n"
             f"{text_attachments}"
-            f"CITIZEN CONTACT INFORMATION:\n"
-            f"• Email: {user_email}\n\n"
+            f"{citizen_contact_text}"
             f"Please review the details and initiate corrective action at the earliest.\n\n"
             f"Sincerely,\n"
             f"Aavedan Saathi Grievance Assistant\n"
@@ -200,7 +211,7 @@ class EmailDispatcher:
                     {evidence_list}
                     
                     <h3 style="color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 25px;">Citizen Contact Info</h3>
-                    <p style="margin-top: 10px;">This report has been registered under: <strong>{user_email}</strong>. For any follow-up, you can reply directly to this email or contact the sender.</p>
+                    {citizen_contact_html}
                 </div>
                 <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #777777; border-top: 1px solid #e0e0e0;">
                     This is an automated dispatch from the Aavedan Saathi Assistant on behalf of the citizen.
@@ -218,8 +229,9 @@ class EmailDispatcher:
             body=text_content,
             from_email=from_email,
             to=[recipient_email],
-            cc=[user_email],
-            reply_to=[user_email]
+            cc=[] if is_anonymous else [user_email],
+            bcc=[user_email] if is_anonymous else [],
+            reply_to=[from_email] if is_anonymous else [user_email]
         )
         email.attach_alternative(html_content, "text/html")
 
@@ -250,7 +262,7 @@ class EmailDispatcher:
         email.send()
         return True
 
-    def get_email_preview(self, session_data: dict, user_email: str) -> dict:
+    def get_email_preview(self, session_data: dict, user_email: str, is_anonymous: bool = False) -> dict:
         """
         Constructs and returns the email headers and body preview without sending it.
         """
@@ -260,10 +272,10 @@ class EmailDispatcher:
         priority = session_data.get("priority", "MEDIUM")
         entities = session_data.get("entities", {})
         
-        state = entities.get("state")
-        district = entities.get("district")
-        address = entities.get("address", "Not provided")
-        landmark = entities.get("landmark", "Not provided")
+        state = session_data.get("state") or entities.get("state")
+        district = session_data.get("district") or entities.get("district")
+        address = session_data.get("address") or entities.get("address", "Not provided")
+        landmark = session_data.get("landmark") or entities.get("landmark", "Not provided")
         raw_desc = session_data.get("description") or "Please see details below."
         
         # Call AI Microservice to generate a professional draft
@@ -295,22 +307,25 @@ class EmailDispatcher:
             except Exception as e:
                 print(f"Warning: Failed to fetch AI draft: {str(e)}")
 
-        if not complaint_type or not department or not state or not district:
-            raise ValueError("Incomplete session data: complaint_type, department, state, and district are required.")
+        is_valid_for_dispatch = bool(complaint_type and department and state and district)
+        office_name = "Designated Department Office"
+        recipient_email = "officer@domain.gov.in"
+        portal_url = "https://pgportal.gov.in/"
 
-        office_info = self.office_finder.find_office(
-            department_name=department,
-            district_name=district,
-            state_name=state
-        )
-        recipient_email = office_info.get("email")
+        if state and district and department:
+            office_info = self.office_finder.find_office(
+                department_name=department,
+                district_name=district,
+                state_name=state
+            )
+            recipient_email = office_info.get("email") or recipient_email
+            office_name = office_info.get("name") or office_name
+            portal_url = office_info.get("portal_url") or portal_url
         
         # Local testing override: send to pratham6306@gmail.com (and not running unit tests)
         import sys
         if 'test' not in sys.argv:
             recipient_email = "pratham6306@gmail.com"
-            
-        office_name = office_info.get("name", "Department Office")
 
         # Compile attachments for preview text body
         text_attachments = ""
@@ -335,6 +350,12 @@ class EmailDispatcher:
 
         subject = f"[Grievance Registration] {complaint_type} - {district}, {state}"
 
+        citizen_contact_text = (
+            "CITIZEN CONTACT INFORMATION:\n• Email: Anonymous Citizen (Contact details hidden for privacy)\n\n"
+            if is_anonymous else
+            f"CITIZEN CONTACT INFORMATION:\n• Email: {user_email}\n\n"
+        )
+
         text_content = (
             f"Dear Sir/Madam,\n\n"
             f"Subject: Grievance regarding {complaint_type} in {district}\n\n"
@@ -353,19 +374,20 @@ class EmailDispatcher:
             f"• District: {district}\n"
             f"• State: {state}\n\n"
             f"{text_attachments}"
-            f"CITIZEN CONTACT INFORMATION:\n"
-            f"• Email: {user_email}\n\n"
+            f"{citizen_contact_text}"
             f"Please review the details and initiate corrective action at the earliest.\n\n"
             f"Sincerely,\n"
             f"Aavedan Saathi Grievance Assistant\n"
         )
 
         return {
-            "sender_email": user_email,
+            "sender_email": "Anonymous (Protected)" if is_anonymous else user_email,
             "receiver_email": recipient_email,
             "office_name": office_name,
             "subject": subject,
             "body_text": text_content,
             "attachments": attachment_names,
-            "portal_url": office_info.get("portal_url") or "https://pgportal.gov.in/"
+            "portal_url": portal_url,
+            "draft_description": description,
+            "is_valid_for_dispatch": is_valid_for_dispatch
         }

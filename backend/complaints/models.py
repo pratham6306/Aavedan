@@ -262,6 +262,34 @@ class ComplaintStatusHistory(BaseModel):
             f"{self.new_status.name}"
         )
 
+
+class ComplaintSupport(BaseModel):
+    complaint = models.ForeignKey(
+        Complaint,
+        on_delete=models.CASCADE,
+        related_name="supports",
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="supported_complaints",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["complaint", "user"],
+                name="unique_complaint_support"
+            )
+        ]
+        verbose_name = "Complaint Support"
+        verbose_name_plural = "Complaint Supports"
+
+    def __str__(self):
+        return f"{self.user.email} supported {self.complaint.reference_number}"
+
+
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 

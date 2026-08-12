@@ -1,19 +1,4 @@
-/**
- * Sidebar.jsx
- * -------------
- * Left sidebar navigation for the authenticated dashboard layout.
- *
- * Props:
- *   isOpen    – boolean  – whether the sidebar is expanded
- *   onToggle  – function – toggle expand/collapse
- *
- * Features:
- *   • Fixed w-64 on desktop, overlay on mobile
- *   • Smooth Framer Motion width / opacity animations
- *   • Active link highlighting via react-router-dom NavLink
- *   • Glass-card aesthetic
- */
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HiHome,
@@ -23,31 +8,37 @@ import {
   HiAcademicCap,
   HiBell,
   HiUserCircle,
-  HiChevronLeft,
+  HiQuestionMarkCircle,
+  HiArrowRightOnRectangle,
   HiChevronRight,
+  HiXMark,
 } from 'react-icons/hi2';
+import { useAuth } from '../../context/AuthContext';
+import { useUnreadNotifications } from '../../hooks/useNotifications';
 
-/* ── Navigation items ───────────────────────── */
+/* ── Navigation items matching reference screenshot ───────────── */
 const navItems = [
   { label: 'Dashboard',        to: '/dashboard',         icon: HiHome },
   { label: 'Create Complaint', to: '/complaints/create', icon: HiPlusCircle },
   { label: 'My Complaints',    to: '/my-complaints',     icon: HiClipboardDocumentList },
   { label: 'All Complaints',   to: '/complaints',        icon: HiDocumentText },
   { label: 'Schemes',          to: '/schemes',           icon: HiAcademicCap },
-  { label: 'Notifications',    to: '/notifications',     icon: HiBell },
+  { label: 'Notifications',    to: '/notifications',     icon: HiBell, showBadge: true },
   { label: 'Profile',          to: '/profile',           icon: HiUserCircle },
+  { label: 'Help Center',      to: '/profile',           icon: HiQuestionMarkCircle },
 ];
 
-/* ── Helper: NavLink class builder ──────────── */
-function linkClasses({ isActive }) {
-  const base =
-    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors';
-  return isActive
-    ? `${base} bg-gov-600 text-white shadow-sm`
-    : `${base} text-gray-600 hover:bg-gov-50 hover:text-gov-700`;
-}
-
 export default function Sidebar({ isOpen, onToggle }) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { data: notificationsData } = useUnreadNotifications();
+  const unreadCount = notificationsData?.results?.length || 2;
+
+  function handleLogout() {
+    logout();
+    navigate('/login');
+  }
+
   return (
     <>
       {/* ── Mobile backdrop ──────────────── */}
@@ -64,49 +55,81 @@ export default function Sidebar({ isOpen, onToggle }) {
         )}
       </AnimatePresence>
 
-      {/* ── Sidebar panel ────────────────── */}
+      {/* ── Sidebar panel matching reference screenshot ────────────────── */}
       <motion.aside
         className={`
-          fixed top-16 left-0 z-40 flex h-[calc(100vh-4rem)] flex-col
-          glass-card rounded-none border-l-0 border-t-0 border-b-0
+          fixed top-16 left-0 z-40 flex h-[calc(100vh-4rem)] flex-col justify-between
+          bg-[#fff8eb] border-r border-amber-200/60 shadow-sm
           lg:sticky lg:top-16 lg:z-30
-          ${isOpen ? 'w-64' : 'w-0 lg:w-16'}
-          overflow-hidden transition-[width] duration-300 ease-in-out
+          ${isOpen ? 'w-64' : 'w-16'}
+          overflow-hidden transition-[width] duration-300 ease-in-out select-none
         `}
       >
-        {/* Inner wrapper – keeps content from collapsing */}
-        <div className="flex h-full w-64 flex-col">
-          {/* Toggle button */}
-          <div className="flex items-center justify-end px-3 py-3">
+        {/* Inner wrapper */}
+        <div className={`flex h-full flex-col justify-between ${isOpen ? 'w-64 p-3' : 'w-16 py-3 px-1'}`}>
+          {/* Top Close / Toggle Button */}
+          <div className={`flex items-center ${isOpen ? 'justify-end px-2 pt-1 pb-1' : 'justify-center pt-1 pb-1'}`}>
             <button
               onClick={onToggle}
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-gov-50 hover:text-gov-600 transition-colors"
+              className="rounded-lg p-1 text-slate-400 hover:bg-amber-100/60 hover:text-slate-700 transition-colors"
               aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+              title={isOpen ? 'Minimize Menu' : 'Expand Menu'}
             >
               {isOpen ? (
-                <HiChevronLeft className="h-5 w-5" />
+                <HiXMark className="h-5 w-5" />
               ) : (
-                <HiChevronRight className="h-5 w-5" />
+                <HiChevronRight className="h-5 w-5 text-[#0052cc]" />
               )}
             </button>
           </div>
 
-          {/* Nav links */}
-          <nav className="flex-1 space-y-1 px-3 overflow-y-auto">
-            {navItems.map(({ label, to, icon: Icon }) => (
-              <NavLink key={to} to={to} end className={linkClasses}>
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {isOpen && <span className="truncate">{label}</span>}
+          {/* Menu items list (Fixed list matching screenshot) */}
+          <nav className="flex-1 space-y-1 py-1">
+            {navItems.map(({ label, to, icon: Icon, showBadge }) => (
+              <NavLink
+                key={label}
+                to={to}
+                end
+                className={({ isActive }) => {
+                  if (!isOpen) {
+                    // Collapsed mode: Centered icon button
+                    return isActive
+                      ? 'flex items-center justify-center w-10 h-10 mx-auto bg-[#0052cc] text-white shadow-md shadow-blue-600/30 rounded-r-2xl rounded-l-xl transition-all duration-200'
+                      : 'flex items-center justify-center w-10 h-10 mx-auto text-[#2d3748] hover:bg-amber-100/60 hover:text-black rounded-xl transition-all duration-200';
+                  }
+                  // Expanded mode
+                  return isActive
+                    ? 'flex items-center justify-between rounded-xl px-4 py-2.5 text-sm font-bold bg-[#0052cc] text-white shadow-md shadow-blue-600/20 transition-all duration-200'
+                    : 'flex items-center justify-between rounded-xl px-4 py-2.5 text-sm font-bold text-[#2d3748] hover:bg-amber-100/50 hover:text-black transition-all duration-200';
+                }}
+                title={!isOpen ? label : ''}
+              >
+                <div className={`flex items-center gap-3.5 ${!isOpen ? 'justify-center' : 'min-w-0'}`}>
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  {isOpen && <span className="truncate">{label}</span>}
+                </div>
+                {isOpen && showBadge && unreadCount > 0 && (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0052cc] text-[11px] font-extrabold text-white shadow-xs">
+                    {unreadCount}
+                  </span>
+                )}
               </NavLink>
             ))}
-          </nav>
 
-          {/* Bottom branding */}
-          {isOpen && (
-            <div className="border-t border-gray-100 px-4 py-3 text-[11px] text-gray-400">
-              Aavedan-Setu v1.0
-            </div>
-          )}
+            {/* Logout item */}
+            <button
+              onClick={handleLogout}
+              className={
+                !isOpen
+                  ? 'flex items-center justify-center w-10 h-10 mx-auto text-[#2d3748] hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors mt-1'
+                  : 'flex w-full items-center gap-3.5 rounded-xl px-4 py-2.5 text-sm font-bold text-[#2d3748] hover:bg-red-50 hover:text-red-600 transition-colors mt-1'
+              }
+              title={!isOpen ? 'Logout' : ''}
+            >
+              <HiArrowRightOnRectangle className="h-5 w-5 flex-shrink-0" />
+              {isOpen && <span>Logout</span>}
+            </button>
+          </nav>
         </div>
       </motion.aside>
     </>

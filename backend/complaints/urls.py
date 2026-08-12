@@ -10,6 +10,8 @@ from .views import (
     MyComplaintListView,
     CategoryListAPIView,
     DepartmentListAPIView,
+    ComplaintSupportView,
+    ComplaintDuplicateCheckView,
 )
 
 urlpatterns = [
@@ -65,5 +67,17 @@ urlpatterns = [
         "<int:pk>/upload-images/",
         ComplaintImageUploadView.as_view(),
         name="complaint-upload-images",
+    ),
+
+    path(
+        "check-duplicate/",
+        ComplaintDuplicateCheckView.as_view(),
+        name="complaint-check-duplicate",
+    ),
+
+    path(
+        "<int:pk>/support/",
+        ComplaintSupportView.as_view(),
+        name="complaint-support",
     ),
 ]

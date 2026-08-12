@@ -33,9 +33,10 @@ import {
   getStatusColor,
   getPriorityColor,
   truncateText,
-  departments,
   complaintStatuses,
 } from '../../utils/helpers';
+import * as locationService from '../../services/locationService';
+import * as complaintService from '../../services/complaintService';
 
 /* ─── animation presets ─── */
 const containerVariants = {
@@ -72,12 +73,15 @@ export default function ComplaintList() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   /* read initial values from URL */
-  const initialSearch   = searchParams.get('search')     || '';
-  const initialStatus   = searchParams.get('status')     || '';
-  const initialPriority = searchParams.get('priority')   || '';
-  const initialDept     = searchParams.get('department') || '';
-  const initialSort     = searchParams.get('ordering')   || '-created_at';
-  const initialPage     = parseInt(searchParams.get('page') || '1', 10);
+  const initialSearch     = searchParams.get('search')     || '';
+  const initialStatus     = searchParams.get('status')     || '';
+  const initialPriority   = searchParams.get('priority')   || '';
+  const initialDept       = searchParams.get('department') || '';
+  const initialCategory   = searchParams.get('category')   || '';
+  const initialState      = searchParams.get('state')      || '';
+  const initialDistrict   = searchParams.get('district')   || '';
+  const initialSort       = searchParams.get('ordering')   || '-created_at';
+  const initialPage       = parseInt(searchParams.get('page') || '1', 10);
 
   /* ── local state ── */
   const [search, setSearch]       = useState(initialSearch);
@@ -85,11 +89,64 @@ export default function ComplaintList() {
   const [status, setStatus]       = useState(initialStatus);
   const [priority, setPriority]   = useState(initialPriority);
   const [department, setDepartment] = useState(initialDept);
+  const [category, setCategory]   = useState(initialCategory);
+  const [stateName, setStateName] = useState(initialState);
+  const [districtName, setDistrictName] = useState(initialDistrict);
   const [ordering, setOrdering]   = useState(initialSort);
   const [page, setPage]           = useState(initialPage);
+  
   const [showFilters, setShowFilters] = useState(
-    !!(initialStatus || initialPriority || initialDept)
+    !!(initialStatus || initialPriority || initialDept || initialCategory || initialState || initialDistrict)
   );
+
+  /* ── dynamic metadata states ── */
+  const [dbStates, setDbStates] = useState([]);
+  const [dbDistricts, setDbDistricts] = useState([]);
+  const [dbCategories, setDbCategories] = useState([]);
+  const [dbDepartments, setDbDepartments] = useState([]);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+
+  /* Load States, Categories, Departments */
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const [statesData, cats, depts] = await Promise.all([
+          locationService.getStates(),
+          complaintService.getCategories(),
+          complaintService.getDepartments(),
+        ]);
+        setDbStates(statesData);
+        setDbCategories(cats);
+        setDbDepartments(depts);
+      } catch (err) {
+        console.error('Failed to load list metadata:', err);
+      }
+    };
+    fetchMetadata();
+  }, []);
+
+  /* Load Districts based on State Selection */
+  useEffect(() => {
+    if (!stateName) {
+      setDbDistricts([]);
+      return;
+    }
+    const matchedState = dbStates.find(s => s.name.toLowerCase() === stateName.toLowerCase());
+    if (!matchedState) return;
+
+    const fetchDistricts = async () => {
+      setLoadingDistricts(true);
+      try {
+        const districtsData = await locationService.getDistricts(matchedState.id);
+        setDbDistricts(districtsData);
+      } catch (err) {
+        console.error('Failed to fetch districts for filter:', err);
+      } finally {
+        setLoadingDistricts(false);
+      }
+    };
+    fetchDistricts();
+  }, [stateName, dbStates]);
 
   /* ── debounce search input (400ms) ── */
   useEffect(() => {
@@ -107,10 +164,13 @@ export default function ComplaintList() {
     if (status)          params.status     = status;
     if (priority)        params.priority   = priority;
     if (department)      params.department = department;
+    if (category)        params.category   = category;
+    if (stateName)       params.state      = stateName;
+    if (districtName)    params.district   = districtName;
     if (ordering && ordering !== '-created_at') params.ordering = ordering;
     if (page > 1)        params.page       = String(page);
     setSearchParams(params, { replace: true });
-  }, [debouncedSearch, status, priority, department, ordering, page, setSearchParams]);
+  }, [debouncedSearch, status, priority, department, category, stateName, districtName, ordering, page, setSearchParams]);
 
   /* ── build query params for API ── */
   const queryParams = useMemo(
@@ -119,11 +179,14 @@ export default function ComplaintList() {
       status:     status          || undefined,
       priority:   priority        || undefined,
       department: department      || undefined,
+      category:   category        || undefined,
+      state:      stateName       || undefined,
+      district:   districtName    || undefined,
       ordering:   ordering,
       page,
       page_size:  PAGE_SIZE,
     }),
-    [debouncedSearch, status, priority, department, ordering, page]
+    [debouncedSearch, status, priority, department, category, stateName, districtName, ordering, page]
   );
 
   /* ── fetch complaints ── */
@@ -134,7 +197,7 @@ export default function ComplaintList() {
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   /* ── active filter count (for badge) ── */
-  const activeFilterCount = [status, priority, department].filter(Boolean).length;
+  const activeFilterCount = [status, priority, department, category, stateName, districtName].filter(Boolean).length;
 
   /* ── clear all filters ── */
   const clearFilters = useCallback(() => {
@@ -143,6 +206,9 @@ export default function ComplaintList() {
     setStatus('');
     setPriority('');
     setDepartment('');
+    setCategory('');
+    setStateName('');
+    setDistrictName('');
     setOrdering('-created_at');
     setPage(1);
   }, []);
@@ -231,42 +297,99 @@ export default function ComplaintList() {
               transition={{ duration: 0.25 }}
               className="overflow-hidden"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-150">
                 {/* status filter */}
-                <select
-                  value={status}
-                  onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-                  className="form-input"
-                >
-                  <option value="">All Statuses</option>
-                  {complaintStatuses.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+                    className="form-input"
+                  >
+                    <option value="">All Statuses</option>
+                    {complaintStatuses.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
 
                 {/* priority filter */}
-                <select
-                  value={priority}
-                  onChange={(e) => { setPriority(e.target.value); setPage(1); }}
-                  className="form-input"
-                >
-                  <option value="">All Priorities</option>
-                  {PRIORITIES.map((p) => (
-                    <option key={p} value={p} className="capitalize">{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                  ))}
-                </select>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label>
+                  <select
+                    value={priority}
+                    onChange={(e) => { setPriority(e.target.value); setPage(1); }}
+                    className="form-input"
+                  >
+                    <option value="">All Priorities</option>
+                    {PRIORITIES.map((p) => (
+                      <option key={p} value={p} className="capitalize">{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* category filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => { setCategory(e.target.value); setPage(1); }}
+                    className="form-input"
+                  >
+                    <option value="">All Categories</option>
+                    {dbCategories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
 
                 {/* department filter */}
-                <select
-                  value={department}
-                  onChange={(e) => { setDepartment(e.target.value); setPage(1); }}
-                  className="form-input"
-                >
-                  <option value="">All Departments</option>
-                  {departments.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Department</label>
+                  <select
+                    value={department}
+                    onChange={(e) => { setDepartment(e.target.value); setPage(1); }}
+                    className="form-input"
+                  >
+                    <option value="">All Departments</option>
+                    {dbDepartments.map((d) => (
+                      <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* state filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">State</label>
+                  <select
+                    value={stateName}
+                    onChange={(e) => { setStateName(e.target.value); setDistrictName(''); setPage(1); }}
+                    className="form-input"
+                  >
+                    <option value="">All States</option>
+                    {dbStates.map((s) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* district filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">District</label>
+                  <select
+                    value={districtName}
+                    onChange={(e) => { setDistrictName(e.target.value); setPage(1); }}
+                    disabled={!stateName || loadingDistricts}
+                    className="form-input"
+                  >
+                    <option value="">
+                      {!stateName ? 'Select state first' : loadingDistricts ? 'Loading districts…' : 'All Districts'}
+                    </option>
+                    {dbDistricts.map((d) => (
+                      <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* clear button */}
@@ -381,13 +504,17 @@ export default function ComplaintList() {
 function ComplaintCard({ complaint }) {
   const {
     id,
-    complaint_number,
+    reference_number,
     title,
     status,
     priority,
     department,
+    district,
+    state,
+    complainant_name,
+    supports_count,
+    is_anonymous,
     created_at,
-    location,
   } = complaint;
 
   /* derive badge class from helpers */
@@ -399,7 +526,7 @@ function ComplaintCard({ complaint }) {
       {/* top row: complaint number + status */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-mono font-semibold text-gov-500">
-          #GOV-{String(complaint_number ?? id).padStart(3, '0')}
+          {reference_number || `#GOV-${String(id).padStart(3, '0')}`}
         </span>
         <span className={`badge ${statusBadge}`}>
           {status}
@@ -422,25 +549,36 @@ function ComplaintCard({ complaint }) {
       </div>
 
       {/* location */}
-      {(location?.district || location?.state) && (
+      {(district || state) && (
         <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
           <HiMapPin className="w-3.5 h-3.5 text-gov-400 shrink-0" />
           <span>
-            {[location.district, location.state].filter(Boolean).join(', ')}
+            {[district, state].filter(Boolean).join(', ')}
           </span>
         </div>
       )}
 
       {/* date */}
-      <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-4">
+      <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
         <HiClock className="w-3.5 h-3.5 shrink-0" />
         <span>{formatDate(created_at)}</span>
         <span className="text-gray-300">·</span>
         <span>{formatRelativeTime(created_at)}</span>
       </div>
 
-      {/* spacer pushes button to bottom */}
-      <div className="mt-auto">
+      {/* Complainant & Support Count Row */}
+      <div className="flex items-center justify-between text-xs text-gray-500 mb-4 border-t border-gray-100 pt-3 mt-auto">
+        <span className="flex items-center gap-1">
+          <span className={`w-2 h-2 rounded-full ${is_anonymous ? 'bg-amber-400 animate-pulse' : 'bg-gov-400'}`} />
+          {complainant_name}
+        </span>
+        <span className="flex items-center gap-1 text-gov-600 font-semibold bg-gov-50 px-2.5 py-0.5 rounded-lg border border-gov-100">
+          👍 {supports_count} {supports_count === 1 ? 'Support' : 'Supports'}
+        </span>
+      </div>
+
+      {/* view details button */}
+      <div>
         <Link to={`/complaints/${id}`} className="btn btn-secondary w-full text-sm">
           <HiEye className="w-4 h-4" />
           View Details
