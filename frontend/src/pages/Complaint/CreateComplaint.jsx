@@ -336,25 +336,30 @@ export default function CreateComplaint() {
      ================================================================ */
   return (
     <div className="page-container max-w-3xl">
-      {/* ── back + header ── */}
+      {/* ── Header Banner Container Box ── */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="mb-6"
+        className="relative overflow-hidden rounded-2xl bg-[#fff8eb]/95 backdrop-blur-md p-6 md:p-8 shadow-md border-2 border-amber-300/80 mb-6"
       >
-        <button
-          onClick={() => navigate(-1)}
-          className="btn btn-ghost mb-4 -ml-2 text-sm"
-        >
-          <HiChevronLeft className="w-5 h-5" />
-          Back
-        </button>
+        <div className="relative z-10">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 text-slate-700 border border-amber-200 text-xs font-bold hover:bg-white mb-4 shadow-2xs cursor-pointer"
+          >
+            <HiChevronLeft className="w-4 h-4 text-[#0052cc]" />
+            <span>Back</span>
+          </button>
 
-        <h1 className="page-title">Create New Complaint</h1>
-        <p className="page-subtitle">
-          Fill in the details below to submit your complaint to the appropriate department.
-        </p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1">
+            Create New Complaint
+          </h1>
+          <p className="text-sm font-semibold text-slate-600">
+            Fill in the details below to submit your complaint to the appropriate department.
+          </p>
+          <div className="w-10 h-1 bg-[#ea580c] rounded-full mt-2.5" />
+        </div>
       </motion.div>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
