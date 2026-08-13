@@ -141,6 +141,16 @@ export const getDepartments = async () => {
   return response.data;
 };
 
+export const supportComplaint = async (id) => {
+  const response = await api.post(`/complaints/${id}/support/`);
+  return response.data;
+};
+
+export const checkDuplicateComplaint = async (data) => {
+  const response = await api.post('/complaints/check-duplicate/', data);
+  return response.data;
+};
+
 const complaintService = {
   getComplaints,
   getMyComplaints,
@@ -151,6 +161,8 @@ const complaintService = {
   uploadImages,
   getCategories,
   getDepartments,
+  supportComplaint,
+  checkDuplicateComplaint,
 };
 
 export default complaintService;

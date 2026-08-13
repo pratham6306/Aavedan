@@ -37,7 +37,7 @@ import {
   HiDocumentText,
 } from 'react-icons/hi2';
 
-import { useComplaint, useDeleteComplaint } from '../../hooks/useComplaints';
+import { useComplaint, useDeleteComplaint, useSupportComplaint } from '../../hooks/useComplaints';
 import { useAuth } from '../../context/AuthContext';
 import {
   formatDate,
@@ -80,6 +80,18 @@ export default function ComplaintDetail() {
   /* ── delete mutation ── */
   const { mutateAsync: deleteComplaint, isPending: isDeleting } = useDeleteComplaint();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  /* ── support/upvote mutation ── */
+  const { mutateAsync: supportComplaint, isPending: isSupporting } = useSupportComplaint();
+  
+  const handleSupport = useCallback(async () => {
+    try {
+      const res = await supportComplaint(id);
+      toast.success(res.message || 'Updated grievance support!');
+    } catch {
+      toast.error('Failed to update support.');
+    }
+  }, [id, supportComplaint]);
 
   /* ── image lightbox ── */
   const [lightboxIdx, setLightboxIdx] = useState(null);
@@ -205,11 +217,11 @@ export default function ComplaintDetail() {
   }
 
   if (!complaint) return null;
-
   /* ── extracted fields ── */
   const {
-    complaint_number, title, status, priority, department,
+    reference_number, title, status, priority, department,
     category, description, created_at, updated_at,
+    complainant_name, supports_count, supported_by_user, is_anonymous,
   } = complaint;
 
   const statusBadge   = getStatusColor(status?.name || status);
@@ -233,7 +245,7 @@ export default function ComplaintDetail() {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex-1">
             <p className="text-xs font-mono font-bold text-gov-500 mb-1">
-              #GOV-{String(complaint_number ?? id).padStart(3, '0')}
+              {reference_number || `#GOV-${String(id).padStart(3, '0')}`}
             </p>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-snug mb-3">
               {title}
@@ -246,15 +258,31 @@ export default function ComplaintDetail() {
 
           {/* AI email dispatch integration & owner actions */}
           <div className="flex flex-wrap gap-2 shrink-0 items-center">
+            {/* Support Grievance Toggle Button (Visible to everyone) */}
             <button
-              onClick={handleTriggerAIEmail}
-              className="btn btn-primary text-sm flex items-center gap-1.5"
+              onClick={handleSupport}
+              disabled={isSupporting}
+              className={`btn text-sm flex items-center gap-1.5 shadow-sm rounded-xl py-2 px-4 font-semibold transition ${
+                supported_by_user
+                  ? 'bg-gov-100 hover:bg-gov-200 text-gov-700 border border-gov-300'
+                  : 'bg-white border border-slate-350 hover:bg-slate-50 text-slate-700'
+              }`}
             >
-              <span className="text-base">📧</span>
-              Dispatch Grievance Email via AI
+              <span>{supported_by_user ? '👍 Supported' : '👍 Support Grievance'}</span>
+              <span className="bg-gov-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold ml-1">
+                {supports_count}
+              </span>
             </button>
+            
             {isOwner && (
               <>
+                <button
+                  onClick={handleTriggerAIEmail}
+                  className="btn btn-primary text-sm flex items-center gap-1.5"
+                >
+                  <span className="text-base">📧</span>
+                  Dispatch Grievance Email via AI
+                </button>
                 <Link
                   to={`/complaints/${id}/edit`}
                   className="btn btn-secondary text-sm"
@@ -272,6 +300,20 @@ export default function ComplaintDetail() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Complainant metadata footer */}
+        <div className="flex items-center gap-2 mt-5 pt-4 border-t border-slate-100 text-xs sm:text-sm text-slate-500">
+          <span className="font-semibold text-slate-700">Filed By:</span>
+          <span className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${is_anonymous ? 'bg-amber-400 animate-pulse' : 'bg-gov-400'}`} />
+            {complainant_name}
+          </span>
+          {is_anonymous && (
+            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md font-medium border border-amber-200">
+              Identity Protected
+            </span>
+          )}
         </div>
       </motion.div>
 

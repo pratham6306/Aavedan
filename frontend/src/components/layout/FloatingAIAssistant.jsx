@@ -29,6 +29,7 @@ export default function FloatingAIAssistant() {
   const [previewData, setPreviewData] = useState(null);
   const [smtpError, setSmtpError] = useState(null);
   const [preloadedEntities, setPreloadedEntities] = useState(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const chatEndRef = useRef(null);
 
@@ -199,7 +200,7 @@ Landmark: ${data.landmark || ''}`;
       const data = await aiService.getEmailPreview(sessionId);
       const handoffData = {
         title: `AI Grievance: ${data.subject ? data.subject.replace("[Grievance Registration] ", "").split(" - ")[0] : ""}`,
-        description: data.body_text,
+        description: data.draft_description || data.original_description || data.body_text,
         category: data.body_text && data.body_text.includes("• Category: ") ? data.body_text.split("• Category: ")[1].split("\n")[0].trim() : "",
         department: data.body_text && data.body_text.includes("• Department: ") ? data.body_text.split("• Department: ")[1].split("\n")[0].trim() : "",
         state: data.body_text && data.body_text.includes("• State: ") ? data.body_text.split("• State: ")[1].split("\n")[0].trim() : "",
@@ -220,11 +221,12 @@ Landmark: ${data.landmark || ''}`;
     }
   };
 
-  const handleOpenPreview = async () => {
+  const handleOpenPreview = async (isAnon) => {
+    const anonVal = typeof isAnon === 'boolean' ? isAnon : isAnonymous;
     setLoadingPreview(true);
     setSmtpError(null);
     try {
-      const response = await aiService.getEmailPreview(sessionId);
+      const response = await aiService.getEmailPreview(sessionId, anonVal);
       setPreviewData(response);
       setIsPreviewOpen(true);
     } catch (err) {
@@ -240,7 +242,7 @@ Landmark: ${data.landmark || ''}`;
     setIsSendingEmail(true);
     setSmtpError(null);
     try {
-      const response = await aiService.sendGrievanceEmail(sessionId);
+      const response = await aiService.sendGrievanceEmail(sessionId, isAnonymous);
       
       toast.success(response.message || "Grievance email sent successfully!");
       setIsPreviewOpen(false);
@@ -522,6 +524,47 @@ Landmark: ${data.landmark || ''}`;
 
               {/* Modal Body */}
               <div className="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
+                {previewData.is_valid_for_dispatch === false && (
+                  <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl text-rose-950 mb-4">
+                    <p className="font-bold flex items-center gap-1.5 text-xs sm:text-sm mb-1.5">
+                      ⚠️ Incomplete Location Details
+                    </p>
+                    <p className="text-xs leading-relaxed">
+                      This grievance cannot be dispatched directly because the **State** or **District** is not resolved. 
+                      You can close this modal and tell Aavedan Saathi your location details, or click the **"Cancel"** button and pick Option 2 to fill them manually on the form.
+                    </p>
+                  </div>
+                )}
+
+                {previewData.duplicate_found && previewData.duplicates && previewData.duplicates.length > 0 && (
+                  <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl text-amber-950 mb-4">
+                    <p className="font-bold flex items-center gap-1.5 text-xs sm:text-sm mb-1.5">
+                      ⚠️ Alert: Similar Grievances Found Nearby
+                    </p>
+                    <p className="text-xs leading-relaxed mb-3">
+                      Other citizens have already filed similar reports in this area. You can view and support/upvote their complaints instead of sending a duplicate email:
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {previewData.duplicates.map((dup) => (
+                        <div key={dup.id} className="bg-white border border-amber-200 rounded-lg p-2.5 flex items-center justify-between shadow-3xs">
+                          <div className="text-xs">
+                            <span className="font-bold text-amber-800 text-[10px]">{dup.reference_number || `#GOV-${dup.id}`}</span>
+                            <div className="font-semibold text-slate-800 truncate max-w-[280px]">{dup.title}</div>
+                          </div>
+                          <a
+                            href={`/complaints/${dup.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-amber-600 hover:bg-amber-700 text-white text-[10px] py-1 px-2.5 rounded font-bold shadow-xs transition decoration-none"
+                          >
+                            View & Support
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {smtpError && (
                   <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl text-amber-900">
                     <p className="font-semibold mb-1 flex items-center gap-1.5">
@@ -571,6 +614,24 @@ Landmark: ${data.landmark || ''}`;
                     </div>
                   )}
 
+                  {/* Anonymous Toggle Checkbox */}
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-150 p-3 sm:p-4 rounded-xl mt-2">
+                    <input
+                      type="checkbox"
+                      id="anon-dispatch-toggle"
+                      checked={isAnonymous}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsAnonymous(checked);
+                        handleOpenPreview(checked);
+                      }}
+                      className="w-4 h-4 text-gov-600 border-slate-350 rounded focus:ring-gov-500 cursor-pointer"
+                    />
+                    <label htmlFor="anon-dispatch-toggle" className="text-xs sm:text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                      🔒 File Anonymously (Hide my name and email from authorities)
+                    </label>
+                  </div>
+
                   {/* Content Preview */}
                   <div className="flex flex-col gap-1.5">
                     <span className="font-semibold text-slate-500">Email Plain-text Body:</span>
@@ -617,7 +678,7 @@ Landmark: ${data.landmark || ''}`;
                   </button>
                   <button
                     onClick={handleDispatchEmail}
-                    disabled={isSendingEmail}
+                    disabled={isSendingEmail || previewData.is_valid_for_dispatch === false}
                     className="bg-gradient-to-r from-gov-600 to-amber-600 text-white text-xs py-2 px-5 rounded-xl font-bold flex items-center gap-1.5 hover:scale-[1.01] transition disabled:opacity-50"
                   >
                     {isSendingEmail ? (

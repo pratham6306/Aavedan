@@ -209,3 +209,26 @@ export const useUploadImages = () => {
     },
   });
 };
+
+/**
+ * Mutation hook for supporting/upvoting a complaint.
+ *
+ * @returns {import('@tanstack/react-query').UseMutationResult}
+ */
+export const useSupportComplaint = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id) => complaintService.supportComplaint(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['complaints'] });
+      queryClient.invalidateQueries({ queryKey: ['complaints', id] });
+    },
+    onError: (error) => {
+      const message =
+        error.response?.data?.message ||
+        'Failed to support complaint.';
+      toast.error(message);
+    },
+  });
+};

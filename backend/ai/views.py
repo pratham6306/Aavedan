@@ -84,8 +84,8 @@ class SendGrievanceEmailAPIView(APIView):
         category = session_data.get("category")
         priority = session_data.get("priority", "medium")
         entities = session_data.get("entities", {})
-        state = entities.get("state")
-        district = entities.get("district")
+        state = session_data.get("state") or entities.get("state")
+        district = session_data.get("district") or entities.get("district")
 
         # Fallback chain for missing department
         if not department:
@@ -136,9 +136,10 @@ class SendGrievanceEmailAPIView(APIView):
 
         # Send Email
         user_email = request.user.email
+        is_anonymous = serializer.validated_data.get("is_anonymous", False)
         dispatcher = EmailDispatcher()
         try:
-            dispatcher.send_grievance_email(session_data, user_email)
+            dispatcher.send_grievance_email(session_data, user_email, is_anonymous=is_anonymous)
             
             # Automatically register the grievance in the central database
             try:
@@ -185,21 +186,56 @@ class SendGrievanceEmailAPIView(APIView):
                         is_active=True
                     ).first()
 
-                # 6. Create the Complaint record (reference_number is auto-generated on save)
-                Complaint.objects.create(
-                    user=request.user,
-                    title=f"AI Grievance: {complaint_type}",
-                    description=session_data.get("description") or f"Grievance filed regarding {complaint_type}.",
-                    address=entities.get("address", "Not provided"),
-                    landmark=entities.get("landmark", ""),
-                    state=state_obj,
-                    district=district_obj,
-                    department=dept_obj,
-                    category=cat_obj,
-                    department_office=office_obj,
-                    status=status_obj,
-                    priority=priority,
-                )
+                # 6. Create or Update the Complaint record to prevent duplicate creations
+                complaint_id = session_data.get("complaint_id")
+                if complaint_id:
+                    try:
+                        complaint_obj = Complaint.objects.get(id=complaint_id)
+                        complaint_obj.title = f"AI Grievance: {complaint_type}"
+                        complaint_obj.description = session_data.get("description") or complaint_obj.description
+                        complaint_obj.address = entities.get("address") or "Not provided"
+                        complaint_obj.landmark = entities.get("landmark") or ""
+                        complaint_obj.state = state_obj
+                        complaint_obj.district = district_obj
+                        complaint_obj.department = dept_obj
+                        complaint_obj.category = cat_obj
+                        complaint_obj.department_office = office_obj
+                        complaint_obj.status = status_obj
+                        complaint_obj.priority = priority
+                        complaint_obj.is_anonymous = is_anonymous
+                        complaint_obj.save()
+                    except Complaint.DoesNotExist:
+                        Complaint.objects.create(
+                            user=request.user,
+                            title=f"AI Grievance: {complaint_type}",
+                            description=session_data.get("description") or f"Grievance filed regarding {complaint_type}.",
+                            address=entities.get("address") or "Not provided",
+                            landmark=entities.get("landmark") or "",
+                            state=state_obj,
+                            district=district_obj,
+                            department=dept_obj,
+                            category=cat_obj,
+                            department_office=office_obj,
+                            status=status_obj,
+                            priority=priority,
+                            is_anonymous=is_anonymous,
+                        )
+                else:
+                    Complaint.objects.create(
+                        user=request.user,
+                        title=f"AI Grievance: {complaint_type}",
+                        description=session_data.get("description") or f"Grievance filed regarding {complaint_type}.",
+                        address=entities.get("address") or "Not provided",
+                        landmark=entities.get("landmark") or "",
+                        state=state_obj,
+                        district=district_obj,
+                        department=dept_obj,
+                        category=cat_obj,
+                        department_office=office_obj,
+                        status=status_obj,
+                        priority=priority,
+                        is_anonymous=is_anonymous,
+                    )
             except Exception as db_err:
                 # Print warning and traceback but don't fail the response if DB save fails
                 import traceback
@@ -248,8 +284,8 @@ class GrievanceEmailPreviewAPIView(APIView):
         complaint_type = session_data.get("complaint_type")
         department = session_data.get("department")
         entities = session_data.get("entities", {})
-        state = entities.get("state")
-        district = entities.get("district")
+        state = session_data.get("state") or entities.get("state")
+        district = session_data.get("district") or entities.get("district")
 
         # Fallback chain for missing department
         if not department:
@@ -281,20 +317,57 @@ class GrievanceEmailPreviewAPIView(APIView):
             # Save the resolved department back to session state so it propagates to emails and summaries
             memory.update_session(session_id, department=department)
 
-        if not complaint_type or not department or not state or not district:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Incomplete complaint details. State, District, and Complaint Type must be resolved before previewing."
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Allow email preview even if location is not fully resolved, enabling AI handoff forms to prefill.
 
         user_email = request.user.email
+        is_anonymous = serializer.validated_data.get("is_anonymous", False)
         dispatcher = EmailDispatcher()
         try:
-            preview_data = dispatcher.get_email_preview(session_data, user_email)
+            preview_data = dispatcher.get_email_preview(session_data, user_email, is_anonymous=is_anonymous)
             preview_data["success"] = True
+
+            # Perform backend duplicate checking
+            state_obj = State.objects.filter(name__iexact=state).first()
+            district_obj = None
+            if state_obj:
+                district_obj = District.objects.filter(name__iexact=district, state=state_obj).first()
+            dept_obj = Department.objects.filter(name__iexact=department).first()
+            category_name = session_data.get("category")
+            cat_obj = None
+            if category_name:
+                cat_obj = ComplaintCategory.objects.filter(name__iexact=category_name).first()
+
+            duplicates = []
+            if state_obj and district_obj and dept_obj:
+                duplicates_qs = Complaint.objects.filter(
+                    is_deleted=False,
+                    state=state_obj,
+                    district=district_obj,
+                    category=cat_obj,
+                    department=dept_obj
+                )
+                latitude = entities.get("latitude")
+                longitude = entities.get("longitude")
+                if latitude and longitude:
+                    try:
+                        lat = float(latitude)
+                        lon = float(longitude)
+                        for c in duplicates_qs:
+                            if c.latitude and c.longitude:
+                                c_lat = float(c.latitude)
+                                c_lon = float(c.longitude)
+                                if abs(c_lat - lat) < 0.005 and abs(c_lon - lon) < 0.005:
+                                    duplicates.append(c)
+                    except ValueError:
+                        pass
+                else:
+                    duplicates = list(duplicates_qs[:3])
+
+            preview_data["duplicate_found"] = len(duplicates) > 0
+            from complaints.serializers import ComplaintListSerializer
+            preview_data["duplicates"] = ComplaintListSerializer(duplicates, many=True).data
+            preview_data["original_description"] = session_data.get("description") or ""
+
             return Response(preview_data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
