@@ -505,9 +505,11 @@ function ComplaintCard({ complaint }) {
   const {
     id,
     reference_number,
+    complaint_number,
     title,
     status,
     priority,
+    category,
     department,
     district,
     state,
@@ -517,19 +519,28 @@ function ComplaintCard({ complaint }) {
     created_at,
   } = complaint;
 
+  const refNumber = reference_number || (complaint_number ? `#GOV-${String(complaint_number).padStart(3, '0')}` : `#GC-${String(id).padStart(4, '0')}`);
+  const statusStr = (typeof status === 'object' ? status?.name : status) || 'PENDING';
+  const priorityStr = (typeof priority === 'object' ? priority?.name : priority) || 'MEDIUM';
+  const categoryStr = (typeof category === 'object' ? category?.name : category) || '';
+  const departmentStr = (typeof department === 'object' ? department?.name : department) || '';
+  const districtStr = (typeof district === 'object' ? district?.name : district) || '';
+  const stateStr = (typeof state === 'object' ? state?.name : state) || '';
+  const locationStr = [districtStr, stateStr].filter(Boolean).join(', ');
+
   /* derive badge class from helpers */
-  const statusBadge   = getStatusColor(status);
-  const priorityBadge = getPriorityColor(priority);
+  const statusBadge   = getStatusColor(statusStr);
+  const priorityBadge = getPriorityColor(priorityStr);
 
   return (
     <motion.div variants={cardVariants} className="card card-hover p-5 flex flex-col">
       {/* top row: complaint number + status */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-mono font-semibold text-gov-500">
-          {reference_number || `#GOV-${String(id).padStart(3, '0')}`}
+          {refNumber}
         </span>
         <span className={`badge ${statusBadge}`}>
-          {status}
+          {statusStr}
         </span>
       </div>
 
@@ -540,21 +551,24 @@ function ComplaintCard({ complaint }) {
 
       {/* meta row */}
       <div className="flex flex-wrap gap-2 mb-3">
-        <span className={`badge ${priorityBadge}`}>{priority}</span>
-        {department && (
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-            {department}
+        <span className={`badge ${priorityBadge}`}>{priorityStr}</span>
+        {categoryStr && (
+          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-semibold">
+            {categoryStr}
+          </span>
+        )}
+        {departmentStr && (
+          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-semibold">
+            {departmentStr}
           </span>
         )}
       </div>
 
       {/* location */}
-      {(district || state) && (
+      {locationStr && (
         <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
           <HiMapPin className="w-3.5 h-3.5 text-gov-400 shrink-0" />
-          <span>
-            {[district, state].filter(Boolean).join(', ')}
-          </span>
+          <span>{locationStr}</span>
         </div>
       )}
 

@@ -394,90 +394,101 @@ export default function MyComplaints() {
         animate="visible"
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
       >
-        {complaints.map((c) => (
-          <motion.div
-            key={c.id}
-            variants={cardVariants}
-            className="rounded-2xl bg-white/95 backdrop-blur-md p-6 border-2 border-amber-200/80 shadow-md hover:shadow-lg hover:border-amber-400 transition-all flex flex-col justify-between space-y-4"
-          >
-            {/* Top row: ID Badge & Status Pill */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-[#0052cc] border border-blue-200 shadow-2xs">
-                #GOV-{String(c.complaint_number ?? c.id).padStart(3, '0')}
-              </span>
-              <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
-                {c.status || 'PENDING'}
-              </span>
-            </div>
+        {complaints.map((c) => {
+          const refNumber = c.reference_number || (c.complaint_number ? `#GOV-${String(c.complaint_number).padStart(3, '0')}` : `#GC-${String(c.id).padStart(4, '0')}`);
+          const statusStr = (typeof c.status === 'object' ? c.status?.name : c.status) || 'PENDING';
+          const priorityStr = (typeof c.priority === 'object' ? c.priority?.name : c.priority) || 'MEDIUM';
+          const categoryStr = (typeof c.category === 'object' ? c.category?.name : c.category) || '';
+          const departmentStr = (typeof c.department === 'object' ? c.department?.name : c.department) || '';
+          const districtStr = (typeof c.district === 'object' ? c.district?.name : c.district) || '';
+          const stateStr = (typeof c.state === 'object' ? c.state?.name : c.state) || '';
+          const locationStr = [districtStr, stateStr].filter(Boolean).join(', ');
 
-            {/* Middle row: Title, Priority, Department & Category */}
-            <div>
-              <h3 className="text-base font-extrabold text-slate-900 leading-snug line-clamp-2">
-                {c.title}
-              </h3>
-
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200 inline-block">
-                  {c.priority || 'MEDIUM'}
+          return (
+            <motion.div
+              key={c.id}
+              variants={cardVariants}
+              className="rounded-2xl bg-white/95 backdrop-blur-md p-6 border-2 border-amber-200/80 shadow-md hover:shadow-lg hover:border-amber-400 transition-all flex flex-col justify-between space-y-4"
+            >
+              {/* Top row: ID Badge & Status Pill */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-[#0052cc] border border-blue-200 shadow-2xs">
+                  {refNumber}
                 </span>
-                {c.category && (
-                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 inline-block">
-                    {c.category}
-                  </span>
-                )}
-                {c.department && (
-                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200 inline-block">
-                    {c.department}
-                  </span>
-                )}
+                <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
+                  {statusStr}
+                </span>
               </div>
 
-              {/* location */}
-              {(c.district || c.state) && (
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mt-2.5">
-                  <HiMapPin className="h-4 w-4 shrink-0 text-[#ea580c]" />
-                  <span>{[c.district, c.state].filter(Boolean).join(', ')}</span>
+              {/* Middle row: Title, Priority, Department & Category */}
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 leading-snug line-clamp-2">
+                  {c.title}
+                </h3>
+
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200 inline-block">
+                    {priorityStr}
+                  </span>
+                  {categoryStr && (
+                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 inline-block">
+                      {categoryStr}
+                    </span>
+                  )}
+                  {departmentStr && (
+                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200 inline-block">
+                      {departmentStr}
+                    </span>
+                  )}
                 </div>
-              )}
 
-              {/* Date timestamp with Amber Clock */}
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mt-2">
-                <HiClock className="h-4 w-4 shrink-0 text-amber-600" />
-                <span>{c.created_at ? `${formatDate(c.created_at)} · ${formatRelativeTime(c.created_at)}` : 'Recently'}</span>
+                {/* location */}
+                {locationStr && (
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mt-2.5">
+                    <HiMapPin className="h-4 w-4 shrink-0 text-[#ea580c]" />
+                    <span>{locationStr}</span>
+                  </div>
+                )}
+
+                {/* Date timestamp with Amber Clock */}
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mt-2">
+                  <HiClock className="h-4 w-4 shrink-0 text-amber-600" />
+                  <span>{c.created_at ? `${formatDate(c.created_at)} · ${formatRelativeTime(c.created_at)}` : 'Recently'}</span>
+                </div>
               </div>
-            </div>
 
-            {/* Bottom Actions Row: Colored Action Buttons */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              {/* View Button (Royal Blue Pill) */}
-              <Link
-                to={`/complaints/${c.id}`}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl border border-blue-300 bg-blue-50 text-[#0052cc] font-extrabold text-xs hover:bg-[#0052cc] hover:text-white transition-all shadow-xs"
-              >
-                <HiEye className="h-4 w-4" />
-                <span>View</span>
-              </Link>
-
-              {/* Edit (Soft Blue Icon) & Delete (Soft Rose Icon) */}
-              <div className="flex items-center gap-1.5">
+              {/* Bottom Actions Row: Colored Action Buttons */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                {/* View Button (Royal Blue Pill) */}
                 <Link
-                  to={`/complaints/${c.id}/edit`}
-                  className="p-2 rounded-xl bg-blue-50 text-[#0052cc] border border-blue-200 hover:bg-blue-600 hover:text-white transition-all shadow-2xs"
-                  title="Edit Complaint"
+                  to={`/complaints/${c.id}`}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl border border-blue-300 bg-blue-50 text-[#0052cc] font-extrabold text-xs hover:bg-[#0052cc] hover:text-white transition-all shadow-xs"
                 >
-                  <HiPencilSquare className="h-4 w-4" />
+                  <HiEye className="h-4 w-4" />
+                  <span>View</span>
                 </Link>
-                <button
-                  onClick={() => setDeleteTarget(c.id)}
-                  className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white transition-all shadow-2xs"
-                  title="Delete Complaint"
-                >
-                  <HiTrash className="h-4 w-4" />
-                </button>
+
+                {/* Edit (Soft Blue Icon) & Delete (Soft Rose Icon) */}
+                <div className="flex items-center gap-1.5">
+                  <Link
+                    to={`/complaints/${c.id}/edit`}
+                    className="p-2 rounded-xl bg-blue-50 text-[#0052cc] border border-blue-200 hover:bg-blue-600 hover:text-white transition-all shadow-2xs"
+                    title="Edit Complaint"
+                  >
+                    <HiPencilSquare className="h-4 w-4" />
+                  </Link>
+                  <button
+                    onClick={() => setDeleteTarget(c.id)}
+                    className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white transition-all shadow-2xs"
+                    title="Delete Complaint"
+                  >
+                    <HiTrash className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </motion.div>
 
       {/* ── empty state ── */}
