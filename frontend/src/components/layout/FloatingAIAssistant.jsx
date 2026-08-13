@@ -198,15 +198,21 @@ Landmark: ${data.landmark || ''}`;
     setLoadingPreview(true);
     try {
       const data = await aiService.getEmailPreview(sessionId);
+
+      const getVal = (marker) => {
+        if (!data.body_text || !data.body_text.includes(marker)) return "";
+        return data.body_text.split(marker)[1].split("\n")[0].trim();
+      };
+
       const handoffData = {
         title: `AI Grievance: ${data.subject ? data.subject.replace("[Grievance Registration] ", "").split(" - ")[0] : ""}`,
         description: data.draft_description || data.original_description || data.body_text,
-        category: data.body_text && data.body_text.includes("• Category: ") ? data.body_text.split("• Category: ")[1].split("\n")[0].trim() : "",
-        department: data.body_text && data.body_text.includes("• Department: ") ? data.body_text.split("• Department: ")[1].split("\n")[0].trim() : "",
-        state: data.body_text && data.body_text.includes("• State: ") ? data.body_text.split("• State: ")[1].split("\n")[0].trim() : "",
-        district: data.body_text && data.body_text.includes("• District: ") ? data.body_text.split("• District: ")[1].split("\n")[0].trim() : "",
-        address: data.body_text && data.body_text.includes("• Specific Address: ") ? data.body_text.split("• Specific Address: ")[1].split("\n")[0].trim() : "",
-        landmark: data.body_text && data.body_text.includes("• Nearby Landmark: ") ? data.body_text.split("• Nearby Landmark: ")[1].split("\n")[0].trim() : ""
+        category: getVal("• Category: "),
+        department: getVal("• Department: "),
+        state: getVal("• State: ") || data.state || preloadedEntities?.state || "",
+        district: getVal("• District: ") || data.district || preloadedEntities?.district || "",
+        address: getVal("• Specific Address: ") || preloadedEntities?.address || "",
+        landmark: getVal("• Nearby Landmark: ") || preloadedEntities?.landmark || ""
       };
       
       setIsOpen(false);

@@ -206,13 +206,32 @@ export default function CreateComplaint() {
     }
   }, [dbStates, setValue]);
 
+  const findFuzzyMatch = (items, targetStr) => {
+    if (!targetStr || !items || items.length === 0) return null;
+    const targetLower = targetStr.toLowerCase().trim();
+    const cleanTarget = targetLower.replace(/state|district|dept/gi, '').trim();
+
+    // 1. Exact or ID match
+    let matched = items.find(
+      (item) => item.id.toString() === targetStr.toString() || item.name.toLowerCase() === targetLower || item.name.toLowerCase() === cleanTarget
+    );
+    if (matched) return matched;
+
+    // 2. Substring match
+    matched = items.find((item) => {
+      const itemName = item.name.toLowerCase();
+      return itemName.includes(cleanTarget) || cleanTarget.includes(itemName) || itemName.includes(targetLower) || targetLower.includes(itemName);
+    });
+    return matched || null;
+  };
+
   useEffect(() => {
     if (isAutoFilling.current) {
       return;
     }
-    setValue('district', ''); // Clear stale district selection when state changes
     if (!selectedState) {
       setDbDistricts([]);
+      setValue('district', '');
       return;
     }
     const fetchDistricts = async () => {
@@ -278,28 +297,26 @@ export default function CreateComplaint() {
       
       // Match Category by Name or Code from DB
       if (category && dbCategories.length > 0) {
-        const matched = dbCategories.find(c => c.name.toLowerCase() === category.toLowerCase() || c.id.toString() === category.toString());
+        const matched = findFuzzyMatch(dbCategories, category);
         if (matched) setValue('category', matched.id.toString());
       }
       
       // Match Department
       if (department && dbDepartments.length > 0) {
-        const matched = dbDepartments.find(d => d.name.toLowerCase() === department.toLowerCase() || d.id.toString() === department.toString());
+        const matched = findFuzzyMatch(dbDepartments, department);
         if (matched) setValue('department', matched.id.toString());
       }
 
       // Match State and load its districts
       if (state && dbStates.length > 0) {
-        const matchedState = dbStates.find(s => s.name.toLowerCase() === state.toLowerCase() || s.id.toString() === state.toString());
+        const matchedState = findFuzzyMatch(dbStates, state);
         if (matchedState) {
           setValue('state', matchedState.id.toString());
           locationService.getDistricts(matchedState.id)
             .then((districtsData) => {
               setDbDistricts(districtsData);
               if (district) {
-                const matchedDistrict = districtsData.find(
-                  d => d.name.toLowerCase() === district.toLowerCase() || d.id.toString() === district.toString()
-                );
+                const matchedDistrict = findFuzzyMatch(districtsData, district);
                 if (matchedDistrict) {
                   setValue('district', matchedDistrict.id.toString());
                 }
@@ -307,7 +324,9 @@ export default function CreateComplaint() {
             })
             .catch((err) => console.error("Error setting districts:", err))
             .finally(() => {
-              isAutoFilling.current = false;
+              setTimeout(() => {
+                isAutoFilling.current = false;
+              }, 500);
             });
         } else {
           isAutoFilling.current = false;
