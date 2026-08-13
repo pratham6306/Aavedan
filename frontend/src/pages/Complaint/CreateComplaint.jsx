@@ -28,9 +28,11 @@ import {
   HiDocumentText,
   HiCog6Tooth,
   HiPhoto,
+  HiMicrophone,
 } from 'react-icons/hi2';
 
 import { useCreateComplaint, useUploadImages } from '../../hooks/useComplaints';
+import { useSpeechToText } from '../../hooks/useSpeechToText';
 import { requiredRule } from '../../utils/validators';
 import { departments } from '../../utils/helpers';
 import locationService from '../../services/locationService';
@@ -94,6 +96,44 @@ export default function CreateComplaint() {
   /* watched values */
   const selectedState = watch('state');
   const isAnonymous   = watch('is_anonymous');
+
+  /* ── Speech to Text Dictation ── */
+  const getSpeechLanguage = () => {
+    const match = document.cookie.match(/googtrans=\/en\/([a-z]{2})/i);
+    const code = match ? match[1] : (localStorage.getItem('preferred_lang') || 'en');
+    if (code === 'hi') return 'hi-IN';
+    if (code === 'or') return 'or-IN';
+    if (code === 'bn') return 'bn-IN';
+    if (code === 'te') return 'te-IN';
+    if (code === 'ta') return 'ta-IN';
+    if (code === 'mr') return 'mr-IN';
+    if (code === 'gu') return 'gu-IN';
+    if (code === 'pa') return 'pa-IN';
+    if (code === 'kn') return 'kn-IN';
+    if (code === 'ml') return 'ml-IN';
+    if (code === 'ur') return 'ur-IN';
+    return 'en-IN';
+  };
+
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
+    lang: getSpeechLanguage(),
+    onResult: (text) => {
+      setValue('description', text);
+    },
+  });
+
+  const toggleSpeechToText = () => {
+    if (!isSupported) {
+      toast.warning('Web Speech API is not supported in your browser.');
+      return;
+    }
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+      toast.info('Listening... Speak your complaint clearly.');
+    }
+  };
 
   /* ── dynamic locations state ── */
   const [dbStates, setDbStates] = useState([]);
@@ -400,13 +440,28 @@ export default function CreateComplaint() {
               <label htmlFor="description" className="form-label mb-0">
                 Description <span className="text-danger">*</span>
               </label>
-              <button
-                type="button"
-                onClick={handleAIAssist}
-                className="inline-flex items-center gap-1.5 text-xs bg-gov-100 hover:bg-gov-200 text-gov-800 px-2.5 py-1 rounded-xl border border-gov-200 font-bold shadow-sm transition"
-              >
-                ✨ AI Assist
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleSpeechToText}
+                  className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-xl font-bold border transition cursor-pointer ${
+                    isListening
+                      ? 'bg-red-500 text-white border-red-600 animate-pulse shadow-md'
+                      : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 shadow-2xs'
+                  }`}
+                  title={isListening ? 'Stop Voice Dictation' : 'Speak Complaint via Voice Dictation'}
+                >
+                  <HiMicrophone className={`w-3.5 h-3.5 ${isListening ? 'animate-bounce' : 'text-amber-700'}`} />
+                  <span>{isListening ? 'Listening...' : '🎤 Speak Complaint'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAIAssist}
+                  className="inline-flex items-center gap-1.5 text-xs bg-gov-100 hover:bg-gov-200 text-gov-800 px-2.5 py-1 rounded-xl border border-gov-200 font-bold shadow-sm transition"
+                >
+                  ✨ AI Assist
+                </button>
+              </div>
             </div>
             <textarea
               id="description"

@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- SEO Meta Tags -->
-    <meta name="description" content="GovConnect - AI-Powered Government Complaint & Scheme Recommendation Platform. Submit complaints, track resolutions, and discover government schemes." />
+    <meta name="description" content="Aavedan Setu - AI-Powered Government Complaint & Scheme Recommendation Platform. Submit complaints, track resolutions, and discover government schemes." />
     <meta name="keywords" content="government complaints, scheme recommendation, AI, citizen services, India, Smart India Hackathon" />
-    <meta name="author" content="GovConnect Team" />
+    <meta name="author" content="Aavedan Setu Team" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="GovConnect - Government Complaint & Scheme Platform" />
+    <meta property="og:title" content="Aavedan Setu - Government Complaint & Scheme Platform" />
     <meta property="og:description" content="AI-Powered platform for government complaint management and scheme recommendations." />
     <meta property="og:type" content="website" />
 
@@ -20,10 +20,26 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
-    <title>GovConnect - AI-Powered Government Complaint & Scheme Platform</title>
+    <title>Aavedan Setu - AI-Powered Government Complaint & Scheme Platform</title>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Hidden Google Translate Element -->
+    <div id="google_translate_element" style="display:none;"></div>
+    <script type="text/javascript">
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement(
+          {
+            pageLanguage: 'en',
+            includedLanguages: 'en,hi,or,bn,te,ta,mr,gu,pa,kn,ml,ur',
+            autoDisplay: false
+          },
+          'google_translate_element'
+        );
+      }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

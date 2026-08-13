@@ -516,9 +516,19 @@ export default function Login() {
               
               {/* Form Headers */}
               <div className="flex flex-col select-none">
-                <h2 className="text-3xl font-black text-slate-800 flex items-center gap-2">
-                  Welcome Back! 👋
-                </h2>
+                <div className="flex items-center justify-between mb-1">
+                  <h2 className="text-3xl font-black text-slate-800 flex items-center gap-2">
+                    Welcome Back! 👋
+                  </h2>
+                  <Link
+                    to="/"
+                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 px-3.5 py-1.5 rounded-xl shadow-md hover:scale-[1.03] transition-all cursor-pointer"
+                    title="Return to Home Page"
+                  >
+                    <HiHome className="w-3.5 h-3.5 text-white" />
+                    <span>Home</span>
+                  </Link>
+                </div>
                 <p className="text-xs text-slate-400 font-bold mt-1.5">
                   Securely access all government services using your account.
                 </p>

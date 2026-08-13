@@ -50,7 +50,7 @@ function PublicLayout({ children }) {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">{children}</main>
-      <Footer />
+      <Footer variant="brown" />
     </div>
   );
 }
@@ -71,7 +71,7 @@ function DashboardLayout() {
           <div className="flex-1">
             <ProtectedRoute />
           </div>
-          <Footer />
+          <Footer variant="dashboard" />
         </main>
       </div>
       <FloatingAIAssistant />

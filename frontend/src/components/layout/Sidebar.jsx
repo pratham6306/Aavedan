@@ -8,7 +8,6 @@ import {
   HiAcademicCap,
   HiBell,
   HiUserCircle,
-  HiQuestionMarkCircle,
   HiArrowRightOnRectangle,
   HiChevronRight,
   HiXMark,
@@ -16,23 +15,21 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useUnreadNotifications } from '../../hooks/useNotifications';
 
-/* ── Navigation items matching reference screenshot ───────────── */
-const navItems = [
-  { label: 'Dashboard',        to: '/dashboard',         icon: HiHome },
-  { label: 'Create Complaint', to: '/complaints/create', icon: HiPlusCircle },
-  { label: 'My Complaints',    to: '/my-complaints',     icon: HiClipboardDocumentList },
-  { label: 'All Complaints',   to: '/complaints',        icon: HiDocumentText },
-  { label: 'Schemes',          to: '/schemes',           icon: HiAcademicCap },
-  { label: 'Notifications',    to: '/notifications',     icon: HiBell, showBadge: true },
-  { label: 'Profile',          to: '/profile',           icon: HiUserCircle },
-  { label: 'Help Center',      to: '/profile',           icon: HiQuestionMarkCircle },
-];
-
 export default function Sidebar({ isOpen, onToggle }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { data: notificationsData } = useUnreadNotifications();
-  const unreadCount = notificationsData?.results?.length || 2;
+  const unreadCount = notificationsData?.count ?? notificationsData?.results?.length ?? 0;
+
+  const navItemsList = [
+    { label: 'Dashboard',        to: '/dashboard',         icon: HiHome },
+    { label: 'Create Complaint', to: '/complaints/create', icon: HiPlusCircle },
+    { label: 'My Complaints',    to: '/my-complaints',     icon: HiClipboardDocumentList },
+    { label: 'All Complaints',   to: '/complaints',        icon: HiDocumentText },
+    { label: 'Schemes',          to: '/schemes',           icon: HiAcademicCap },
+    { label: 'Notifications',    to: '/notifications',     icon: HiBell, showBadge: true },
+    { label: 'Profile',          to: '/profile',           icon: HiUserCircle },
+  ];
 
   function handleLogout() {
     logout();
@@ -85,7 +82,7 @@ export default function Sidebar({ isOpen, onToggle }) {
 
           {/* Menu items list (Fixed list matching screenshot) */}
           <nav className="flex-1 space-y-1 py-1">
-            {navItems.map(({ label, to, icon: Icon, showBadge }) => (
+            {navItemsList.map(({ label, to, icon: Icon, showBadge }) => (
               <NavLink
                 key={label}
                 to={to}

@@ -62,12 +62,13 @@ const staggerContainer = {
 /* ────────────────────────────────────────────
    Animated Counter Hook
    ──────────────────────────────────────────── */
-function useCounter(target, duration = 2000, startWhenInView = false, inView = true) {
+function useCounter(target, duration = 2000, startWhenInView = false, inView = true, resetKey = 0) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (!inView && startWhenInView) return;
 
+    setCount(0);
     let start = 0;
     const increment = target / (duration / 16);
     const timer = setInterval(() => {
@@ -81,7 +82,7 @@ function useCounter(target, duration = 2000, startWhenInView = false, inView = t
     }, 16);
 
     return () => clearInterval(timer);
-  }, [target, duration, inView, startWhenInView]);
+  }, [target, duration, inView, startWhenInView, resetKey]);
 
   return count;
 }
@@ -92,7 +93,26 @@ function useCounter(target, duration = 2000, startWhenInView = false, inView = t
 function StatCard({ icon: Icon, value, suffix = '+', label, index }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
-  const animatedValue = useCounter(value, 2200, true, isInView);
+  const [langResetKey, setLangResetKey] = useState(0);
+
+  useEffect(() => {
+    const triggerReset = () => setLangResetKey((prev) => prev + 1);
+
+    window.addEventListener('google-lang-change', triggerReset);
+    const comboElem = document.querySelector('.goog-te-combo');
+    if (comboElem) {
+      comboElem.addEventListener('change', triggerReset);
+    }
+
+    return () => {
+      window.removeEventListener('google-lang-change', triggerReset);
+      if (comboElem) {
+        comboElem.removeEventListener('change', triggerReset);
+      }
+    };
+  }, []);
+
+  const animatedValue = useCounter(value, 2000, true, isInView, langResetKey);
 
   return (
     <motion.div
@@ -107,7 +127,7 @@ function StatCard({ icon: Icon, value, suffix = '+', label, index }) {
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 border border-white/10 mb-4">
         <Icon className="w-7 h-7 text-amber-300" />
       </div>
-      <div className="text-4xl md:text-5xl font-extrabold text-white mb-1 tabular-nums">
+      <div className="text-4xl md:text-5xl font-extrabold text-white mb-1 tabular-nums notranslate">
         {animatedValue.toLocaleString()}{suffix}
       </div>
       <div className="text-amber-200/90 text-sm font-semibold uppercase tracking-wider">{label}</div>

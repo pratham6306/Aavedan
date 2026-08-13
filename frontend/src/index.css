@@ -536,3 +536,92 @@ body {
 .animate-float3{
   animation:float3 4.5s ease-in-out infinite;
 }
+
+/* ============================================
+   Micro-Interactions & Ambient Motion System
+   ============================================ */
+
+/* Shimmer Skeleton Loading Effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(254, 243, 199, 0.4) 0%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(254, 243, 199, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite ease-in-out;
+}
+
+/* Dynamic Ambient Gradient Mesh Background */
+@keyframes ambientMesh {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.ambient-mesh-bg {
+  background: linear-gradient(
+    -45deg,
+    #fff8eb,
+    #fef3c7,
+    #fffaf0,
+    #fde68a
+  );
+  background-size: 400% 400%;
+  animation: ambientMesh 15s ease infinite;
+}
+
+/* Pulsing Status Dot Glow */
+@keyframes pulseDot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================
+   Hide Google Translate Top Banner Frame & Overlay
+   ============================================ */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+iframe.skiptranslate,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-te-spinner-pos,
+.goog-te-menu-frame {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  pointer-events: none !important;
+}
+
+body {
+  top: 0px !important;
+  position: static !important;
+}

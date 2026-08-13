@@ -26,6 +26,7 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from './NotificationBell';
+import LanguageTranslator from './LanguageTranslator';
 import logo from '../../assets/logo.png';
 
 /* ── Desktop nav links (shown only when authenticated) ───── */
@@ -109,7 +110,7 @@ export default function Navbar({ onMenuToggle }) {
             <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-3">
               <img src={logo} alt="Logo" className="h-10 w-10 object-contain bg-white p-1 rounded-xl shadow border border-amber-300/30" />
               <div className="flex flex-col">
-                <span className="text-lg font-extrabold text-white leading-tight tracking-tight">
+                <span className="text-lg font-extrabold text-white leading-tight tracking-tight notranslate">
                   Aavedan Setu
                 </span>
                 <span className="text-[11px] font-semibold text-[#f59e0b] leading-none tracking-wide">
@@ -132,6 +133,9 @@ export default function Navbar({ onMenuToggle }) {
 
           {/* ── Right section ──────────────────────────────── */}
           <div className="flex items-center gap-2">
+            {/* Google Translate Language Selector */}
+            <LanguageTranslator />
+
             {isAuthenticated ? (
               <>
                 {/* Notification bell */}

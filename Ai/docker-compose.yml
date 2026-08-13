@@ -44,7 +44,7 @@ services:
       POSTGRES_PASSWORD: aavedan
       POSTGRES_DB: aavedan_setu
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - aavedan_pg_data:/var/lib/postgresql/data
     healthcheck:
