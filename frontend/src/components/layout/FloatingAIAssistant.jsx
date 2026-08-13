@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Bot, Sparkles, SendHorizontal, Mail, Mic, MicOff } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, Sparkles, SendHorizontal, Mail, Mic, MicOff, RotateCcw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import aiService from '../../services/aiService';
 import { useSpeechToText } from '../../hooks/useSpeechToText';
@@ -92,6 +92,24 @@ export default function FloatingAIAssistant() {
       toast.info('Listening... Speak now!');
     }
   };
+
+  const resetChatSession = useCallback((showToast = true) => {
+    const newId = crypto.randomUUID();
+    sessionStorage.setItem('ai_assistant_session_id', newId);
+    setSessionId(newId);
+    setPreloadedEntities(null);
+    setMessages([
+      {
+        id: 'init',
+        sender: 'bot',
+        text: "👋 Namaste! I am Aavedan Saathi, your e-Governance Assistant. How can I help you today? You can describe a public complaint (e.g., 'There is a pothole near the post office') or ask about schemes.",
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+    if (showToast) {
+      toast.info("Started a fresh AI conversation session.");
+    }
+  }, []);
 
   // Initialize unique session ID
   useEffect(() => {
@@ -206,18 +224,19 @@ Landmark: ${data.landmark || ''}`;
 
       const handoffData = {
         title: `AI Grievance: ${data.subject ? data.subject.replace("[Grievance Registration] ", "").split(" - ")[0] : ""}`,
-        description: data.draft_description || data.original_description || data.body_text,
-        category: getVal("• Category: "),
-        department: getVal("• Department: "),
-        state: getVal("• State: ") || data.state || preloadedEntities?.state || "",
-        district: getVal("• District: ") || data.district || preloadedEntities?.district || "",
-        address: getVal("• Specific Address: ") || preloadedEntities?.address || "",
-        landmark: getVal("• Nearby Landmark: ") || preloadedEntities?.landmark || ""
+        description: data.draft_description || data.original_description || getVal("• Description: "),
+        category: data.category || getVal("• Category: "),
+        department: data.department || getVal("• Department: "),
+        state: data.state || preloadedEntities?.state || getVal("• State: ") || "",
+        district: data.district || preloadedEntities?.district || getVal("• District: ") || "",
+        address: data.address || preloadedEntities?.address || getVal("• Specific Address: ") || "",
+        landmark: data.landmark || preloadedEntities?.landmark || getVal("• Nearby Landmark: ") || ""
       };
       
       setIsOpen(false);
       navigate('/complaints/create', { state: handoffData });
       toast.info("Pre-filled complaint details from AI! You can now upload images.");
+      resetChatSession(false);
     } catch (err) {
       console.error("Failed to load prefill details:", err);
       setIsOpen(false);
@@ -252,6 +271,7 @@ Landmark: ${data.landmark || ''}`;
       
       toast.success(response.message || "Grievance email sent successfully!");
       setIsPreviewOpen(false);
+      resetChatSession(false);
 
       const botSuccessMsg = {
         id: Date.now().toString(),
@@ -308,12 +328,23 @@ Landmark: ${data.landmark || ''}`;
                   <p className="text-[11px] font-semibold text-[#9F1239]">Official e-Governance Assistant</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[#FCE7F3] text-[#4C0519] transition"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => resetChatSession(true)}
+                  className="px-2.5 py-1 rounded-xl bg-[#FCE7F3] hover:bg-[#FBCFE8] text-[#9F1239] text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+                  title="Start a fresh AI conversation session"
+                >
+                  <RotateCcw size={13} />
+                  <span>New Chat</span>
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[#FCE7F3] text-[#4C0519] transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Message Thread */}

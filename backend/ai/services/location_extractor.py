@@ -63,6 +63,19 @@ class LocationExtractor:
         # ----------------------------
         self._extract_db_locations(preprocessed_text, entities)
 
+        # 2b. Explicit Address: field extraction
+        if "Address:" in text:
+            try:
+                addr_val = text.split("Address:")[1]
+                for label in ["State:", "District:", "Landmark:", "Category:", "Description:"]:
+                    if label in addr_val:
+                        addr_val = addr_val.split(label)[0]
+                addr_val = addr_val.strip()
+                if addr_val:
+                    entities["address"] = addr_val
+            except Exception:
+                pass
+
         # 3. Extract Landmark using Prepositions
         # e.g., "near KIIT Square", "behind block 4"
         landmark_pattern = r"\b(near|behind|opposite|beside|at|close\s+to)\s+([a-zA-Z0-9\s]+)"

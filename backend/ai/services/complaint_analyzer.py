@@ -31,7 +31,7 @@ class ComplaintAnalyzer:
 
         # Try calling the external AI microservice (if not running unit tests)
         import sys
-        if 'test' in sys.argv:
+        if len(sys.argv) > 1 and sys.argv[1] == 'test':
             # Avoid calling the live API and eating up quota during test runs
             retriever_result = self.knowledge_retriever.retrieve(preprocessed_text)
             response = None
@@ -171,6 +171,9 @@ class ComplaintAnalyzer:
                 for field in retriever_result["required_fields"]:
                     if field["is_required"]:
                         name = field["field_name"]
+                        if name in ["photo", "image", "images"]:
+                            # Photos are optional visual evidence; do not block conversational filing
+                            continue
                         val = session_data.get(name) or session_data.get("entities", {}).get(name)
                         if not val:
                             missing_fields.append(name)

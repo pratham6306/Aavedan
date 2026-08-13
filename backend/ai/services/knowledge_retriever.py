@@ -28,6 +28,38 @@ class KnowledgeRetriever:
         if not preprocessed_text:
             return default_result
 
+        # Handle common typos and variations for robust offline matching
+        norm_text = preprocessed_text.lower()
+        
+        # 1. Map Devanagari Hindi & Indic keywords to English concepts for fallback matching
+        hindi_map = {
+            r"ट्रांसफार्मर": "transformer electricity power",
+            r"बिजली": "electricity power light",
+            r"कचरा": "garbage waste sanitation",
+            r"पानी": "water supply pipe leakage",
+            r"सड़क": "road pothole street",
+            r"नाली": "drainage sewer blockage",
+            r"लाइट": "street light electricity",
+            r"गंदगी": "garbage cleanliness sanitation",
+            r"गड्ढा": "pothole road damage",
+            r"कटौती": "power outage electricity",
+            r"जल": "water supply",
+            r"सीवर": "sewage drain",
+        }
+        for pattern, replacement in hindi_map.items():
+            norm_text = re.sub(pattern, replacement, norm_text)
+
+        typo_map = {
+            r"\brod\b": "road",
+            r"\bblock\b": "blocked",
+            r"\bhavy\b": "heavy",
+            r"\bcreting\b": "creating",
+            r"\bsttudy\b": "study",
+            r"\bschlorshipp\b": "scholarship",
+        }
+        for pattern, replacement in typo_map.items():
+            norm_text = re.sub(pattern, replacement, norm_text)
+
         # Fetch all active ComplaintTypes and prefetch related keywords and required fields
         complaint_types = ComplaintType.objects.filter(is_active=True).prefetch_related(
             'keywords',
@@ -54,7 +86,7 @@ class KnowledgeRetriever:
                     kw_words = kw_str.split()
                     if len(kw_words) > 1:
                         # Check if all individual words of the keyword are present with word boundaries
-                        if all(re.search(r"\b" + re.escape(w) + r"\b", preprocessed_text) for w in kw_words):
+                        if all(re.search(r"\b" + re.escape(w) + r"\b", norm_text) for w in kw_words):
                             score += kw.weight * 0.8  # slightly lower weight for split matches
                             matched_kws.append(kw.keyword)
             

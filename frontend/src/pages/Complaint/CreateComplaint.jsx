@@ -178,6 +178,8 @@ export default function CreateComplaint() {
     fetchMetadata();
   }, []);
 
+
+
   const handleMapLocationSelect = useCallback((loc) => {
     setValue('address', loc.address || '');
     setValue('latitude', loc.latitude || '');
@@ -208,12 +210,13 @@ export default function CreateComplaint() {
 
   const findFuzzyMatch = (items, targetStr) => {
     if (!targetStr || !items || items.length === 0) return null;
-    const targetLower = targetStr.toLowerCase().trim();
+    const rawTarget = targetStr.toString().trim();
+    const targetLower = rawTarget.toLowerCase();
     const cleanTarget = targetLower.replace(/state|district|dept/gi, '').trim();
 
     // 1. Exact or ID match
     let matched = items.find(
-      (item) => item.id.toString() === targetStr.toString() || item.name.toLowerCase() === targetLower || item.name.toLowerCase() === cleanTarget
+      (item) => item.id.toString() === rawTarget || item.name.toLowerCase() === targetLower || item.name.toLowerCase() === cleanTarget
     );
     if (matched) return matched;
 
@@ -222,7 +225,26 @@ export default function CreateComplaint() {
       const itemName = item.name.toLowerCase();
       return itemName.includes(cleanTarget) || cleanTarget.includes(itemName) || itemName.includes(targetLower) || targetLower.includes(itemName);
     });
-    return matched || null;
+    if (matched) return matched;
+
+    // 3. Devanagari Hindi / Indic transliteration fallback map
+    const HINDI_MAP = {
+      'बिहार': 'bihar', 'ओडिशा': 'odisha', 'उड़ीसा': 'odisha', 'उत्तर प्रदेश': 'uttar pradesh',
+      'पश्चिम बंगाल': 'west bengal', 'महाराष्ट्र': 'maharashtra', 'मध्य प्रदेश': 'madhya pradesh',
+      'राजस्थान': 'rajasthan', 'दिल्ली': 'delhi', 'पंजाब': 'punjab', 'हरियाणा': 'haryana',
+      'मधेपुरा': 'madhepura', 'खगड़िया': 'khagaria', 'पटना': 'patna', 'गया': 'gaya',
+      'मुजफ्फरपुर': 'muzaffarpur', 'भागलपुर': 'bhagalpur', 'पूर्णिया': 'purnia',
+      'कटिहार': 'katihar', 'समस्तीपुर': 'samastipur', 'दरभंगा': 'darbhanga',
+      'सहरसा': 'saharsa', 'सुपौल': 'supaul', 'अररिया': 'araria', 'किशनगंज': 'kishanganj'
+    };
+
+    const mappedEng = HINDI_MAP[rawTarget];
+    if (mappedEng) {
+      matched = items.find((item) => item.name.toLowerCase().includes(mappedEng) || mappedEng.includes(item.name.toLowerCase()));
+      if (matched) return matched;
+    }
+
+    return null;
   };
 
   useEffect(() => {
@@ -287,54 +309,61 @@ export default function CreateComplaint() {
 
   /* ── auto-fill from router state (AI hand-off) ── */
   useEffect(() => {
-    if (location.state) {
+    if (!location.state) return;
+
+    const autoFillForm = async () => {
       isAutoFilling.current = true;
-      const { title, description, category, department, address, landmark, state, district } = location.state;
-      if (title) setValue('title', title);
-      if (description) setValue('description', description);
-      if (address) setValue('address', address);
-      if (landmark) setValue('landmark', landmark);
-      
-      // Match Category by Name or Code from DB
+      let { title, description, category, department, address, landmark, state, district } = location.state;
+
+      if (title) setValue('title', title, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      if (description) setValue('description', description, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      if (address) setValue('address', address, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      if (landmark) setValue('landmark', landmark, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+
+      // Match Category
       if (category && dbCategories.length > 0) {
         const matched = findFuzzyMatch(dbCategories, category);
-        if (matched) setValue('category', matched.id.toString());
+        if (matched) setValue('category', matched.id.toString(), { shouldValidate: true, shouldDirty: true });
       }
-      
+
       // Match Department
       if (department && dbDepartments.length > 0) {
         const matched = findFuzzyMatch(dbDepartments, department);
-        if (matched) setValue('department', matched.id.toString());
+        if (matched) setValue('department', matched.id.toString(), { shouldValidate: true, shouldDirty: true });
       }
 
-      // Match State and load its districts
+      // Match State & District
       if (state && dbStates.length > 0) {
         const matchedState = findFuzzyMatch(dbStates, state);
         if (matchedState) {
-          setValue('state', matchedState.id.toString());
-          locationService.getDistricts(matchedState.id)
-            .then((districtsData) => {
-              setDbDistricts(districtsData);
-              if (district) {
-                const matchedDistrict = findFuzzyMatch(districtsData, district);
-                if (matchedDistrict) {
-                  setValue('district', matchedDistrict.id.toString());
-                }
+          const stateIdStr = matchedState.id.toString();
+          setValue('state', stateIdStr, { shouldValidate: true, shouldDirty: true });
+
+          try {
+            setLoadingLocations(true);
+            const districtsData = await locationService.getDistricts(stateIdStr);
+            setDbDistricts(districtsData);
+
+            if (district && districtsData.length > 0) {
+              const matchedDistrict = findFuzzyMatch(districtsData, district);
+              if (matchedDistrict) {
+                setValue('district', matchedDistrict.id.toString(), { shouldValidate: true, shouldDirty: true });
               }
-            })
-            .catch((err) => console.error("Error setting districts:", err))
-            .finally(() => {
-              setTimeout(() => {
-                isAutoFilling.current = false;
-              }, 500);
-            });
-        } else {
-          isAutoFilling.current = false;
+            }
+          } catch (err) {
+            console.error("Failed to load auto-fill districts:", err);
+          } finally {
+            setLoadingLocations(false);
+          }
         }
-      } else {
-        isAutoFilling.current = false;
       }
-    }
+
+      setTimeout(() => {
+        isAutoFilling.current = false;
+      }, 1200);
+    };
+
+    autoFillForm();
   }, [location.state, dbCategories, dbDepartments, dbStates, setValue]);
 
   const handleAIAssist = () => {

@@ -21,6 +21,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
     <title>Aavedan Setu - AI-Powered Government Complaint & Scheme Platform</title>
+
+    <!-- Fix Google Translate + React DOM Reconciliation Crash -->
+    <script>
+      if (typeof Node !== 'undefined' && Node.prototype) {
+        const originalRemoveChild = Node.prototype.removeChild;
+        Node.prototype.removeChild = function (child) {
+          if (child.parentNode !== this) {
+            if (console) console.warn('GoogleTranslate patch: child.parentNode is not target node', child);
+            return child;
+          }
+          return originalRemoveChild.apply(this, arguments);
+        };
+        const originalInsertBefore = Node.prototype.insertBefore;
+        Node.prototype.insertBefore = function (newNode, referenceNode) {
+          if (referenceNode && referenceNode.parentNode !== this) {
+            if (console) console.warn('GoogleTranslate patch: referenceNode.parentNode is not target node', referenceNode);
+            return newNode;
+          }
+          return originalInsertBefore.apply(this, arguments);
+        };
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -93,10 +93,11 @@
 | **Conversational Filing** | Citizens describe issues in natural language (e.g., *"There's a huge pothole near the bus stop in Khurda"*) and the AI guides them through the process |
 | **Intent Classification** | Multi-layered pipeline detects intent: `FILE_COMPLAINT`, `CHECK_STATUS`, `ASK_SCHEME`, `GREETING`, or `GENERAL_QUERY` |
 | **Smart Entity Extraction** | AI extracts complaint type, category, department, state, district, and urgency from unstructured text |
-| **Professional Draft Generation** | Raw citizen text → formal, professional grievance letter via Gemini LLM |
+| **Professional Draft Generation** | Raw citizen text → formal, professional grievance letter via Gemini LLM (always in official English) |
 | **Dual Submission Options** | **Option 1:** AI auto-dispatches official email · **Option 2:** Handoff to manual form for image uploads |
 | **Session Memory** | Stateful conversations across multiple messages with entity accumulation |
-| **Resilient Fallback** | When Gemini API is rate-limited (429), the local rules-based engine takes over seamlessly |
+| **Resilient Fallback** | When Gemini API is rate-limited (429/503), the local rules-based engine takes over seamlessly |
+| **Optional Photo Evidence** | AI chat never blocks complaint filing to ask for photos — images are always optional and can be uploaded later via the manual form |
 
 ### 📧 Official Email Dispatch System
 | Feature | Description |
@@ -154,6 +155,32 @@
 | **Residency Enforcement** | Region-locked schemes (e.g., Odisha-only yojanas) are flagged when user is from another state |
 | **Fuzzy Fallback Search** | Typo-tolerant keyword matching when LLM is unavailable (handles `"schlorshipp"` → Education) |
 | **Smart Filtering** | Hides ineligible schemes by default; explains specific failure reasons on demand |
+
+### 🌐 Multi-Language Support (22 Languages)
+| Feature | Description |
+|---------|-------------|
+| **Google Translate Integration** | Full-page translation widget supporting **12 Indian regional languages** (Hindi, Odia, Bengali, Telugu, Tamil, Marathi, Gujarati, Punjabi, Kannada, Malayalam, Urdu, Assamese) + **7 international languages** (Spanish, French, German, Arabic, Chinese, Russian, Japanese) |
+| **Searchable Language Selector** | Custom dropdown with real-time language search, `localStorage` persistence (`preferred_lang`), and auto-reload for full DOM translation |
+| **React DOM Crash Protection** | Inline `Node.prototype.removeChild` / `insertBefore` monkey-patch prevents React white-screen crashes caused by Google Translate DOM mutations |
+| **Backend Operates in English** | All database records, email drafts, and API responses remain in standardized English — Google Translate handles UI-level translation for citizens |
+
+### 🗣️ Voice Input & Speech Recognition
+| Feature | Description |
+|---------|-------------|
+| **Voice Complaint Dictation** | Hands-free speech-to-text on the manual complaint form — citizens speak their grievance directly into the description field |
+| **Multi-Locale Voice Input** | Auto-detects site language and switches speech recognition locale (`hi-IN`, `or-IN`, `bn-IN`, `te-IN`, `ta-IN`, `mr-IN`, `gu-IN`, `pa-IN`, `kn-IN`, `ml-IN`, `ur-IN`, `en-US`) |
+| **Voice Navigation Commands** | Saying *"show schemes"* or *"yojana"* navigates to the schemes page; *"file complaint"* or *"shikayat"* navigates to the complaint form |
+| **AI Chat Voice Input** | Microphone button in the floating AI assistant for voice-based conversational complaint filing |
+
+### 🇮🇳 Hindi, Hinglish & Indic Script Detection
+| Feature | Description |
+|---------|-------------|
+| **Devanagari Intent Detection** | Recognizes Hindi keywords like `शिकायत`, `बिजली`, `पानी`, `सड़क`, `कचरा`, `गड्ढा`, `ट्रांसफार्मर` and routes them to the correct complaint category without LLM |
+| **Hinglish Support** | Transliterated keywords (`bijli`, `kachra`, `paani`, `sadak`, `naali`, `shikayat`, `gadda`, `samasya`) are recognized natively |
+| **Unicode Script Fallback** | Any message containing Devanagari (\u0900-\u097F), Odia (\u0B00-\u0B7F), Bengali (\u0980-\u09FF), Telugu (\u0C00-\u0C7F), or Tamil (\u0B80-\u0BFF) characters is auto-routed as a complaint |
+| **Offline Hindi Vocabulary** | When Gemini is unavailable, `knowledge_retriever.py` maps Devanagari words (`ट्रांसफार्मर` → `transformer electricity power`) to English database keywords for 100% offline classification |
+| **Devanagari Location Matching** | `findFuzzyMatch` transliterates Hindi state/district names (`बिहार` → Bihar, `मधेपुरा` → Madhepura, `पटना` → Patna) for seamless form auto-fill |
+| **Hindi Scheme Queries** | Keywords like `योजना`, `छात्रवृत्ति`, `स्कीम` and student terms (`10th`, `12th`, `student`, `suggest`) are recognized for scheme recommendations |
 
 ### 🎨 Premium UI/UX
 | Feature | Description |
@@ -511,6 +538,8 @@ curl http://127.0.0.1:8010/health
 ✅ Fuzzy duplicate detection to prevent redundant filings  
 ✅ Multi-dimensional filtering (status, priority, category, department, location)  
 ✅ Automated email dispatch to correct government offices  
+✅ Multi-language support (22 languages) with Google Translate integration  
+✅ Hindi, Hinglish & Devanagari intent detection (zero-LLM offline capable)  
 
 ### SOAIDEATHON-S1: Human-in-the-Loop Agentic AI
 > *"Create an agentic AI system where humans remain in control of critical decisions."*
@@ -520,6 +549,8 @@ curl http://127.0.0.1:8010/health
 ✅ Citizens can override AI-inferred categories and departments  
 ✅ Anonymous filing option gives citizens control over privacy  
 ✅ Resilient hybrid architecture: LLM + local rules-based fallback  
+✅ Voice input & speech recognition for hands-free complaint filing in 12+ Indian languages  
+✅ Optional photo evidence — AI never blocks filing to demand images  
 
 ---
 

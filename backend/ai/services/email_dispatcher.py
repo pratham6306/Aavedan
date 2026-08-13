@@ -31,7 +31,7 @@ class EmailDispatcher:
         # Call AI Microservice to generate a professional draft
         description = raw_desc
         import sys
-        if 'test' not in sys.argv:
+        if not (len(sys.argv) > 1 and sys.argv[1] == 'test'):
             import requests
             ai_url = getattr(settings, "AI_SERVICE_URL", "http://localhost:8010")
             try:
@@ -70,7 +70,7 @@ class EmailDispatcher:
         
         # Local testing override: send to pratham6306@gmail.com (and not running unit tests)
         import sys
-        if 'test' not in sys.argv:
+        if not (len(sys.argv) > 1 and sys.argv[1] == 'test'):
             recipient_email = "pratham6306@gmail.com"
             
         office_name = office_info.get("name", "Department Office")
@@ -281,7 +281,7 @@ class EmailDispatcher:
         # Call AI Microservice to generate a professional draft
         description = raw_desc
         import sys
-        if 'test' not in sys.argv:
+        if not (len(sys.argv) > 1 and sys.argv[1] == 'test'):
             import requests
             ai_url = getattr(settings, "AI_SERVICE_URL", "http://localhost:8010")
             try:
@@ -324,7 +324,7 @@ class EmailDispatcher:
         
         # Local testing override: send to pratham6306@gmail.com (and not running unit tests)
         import sys
-        if 'test' not in sys.argv:
+        if not (len(sys.argv) > 1 and sys.argv[1] == 'test'):
             recipient_email = "pratham6306@gmail.com"
 
         # Compile attachments for preview text body
@@ -389,5 +389,12 @@ class EmailDispatcher:
             "attachments": attachment_names,
             "portal_url": portal_url,
             "draft_description": description,
+            "original_description": raw_desc,
+            "category": category,
+            "department": department,
+            "state": state,
+            "district": district,
+            "address": address,
+            "landmark": landmark,
             "is_valid_for_dispatch": is_valid_for_dispatch
         }

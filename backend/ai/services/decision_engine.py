@@ -51,8 +51,8 @@ class DecisionEngine:
                     return NextAction.ASK_ADDRESS
                 elif next_missing == "landmark":
                     return NextAction.ASK_LANDMARK
-                elif next_missing == "image":
-                    return NextAction.ASK_PHOTO
+                elif next_missing in ["image", "photo"]:
+                    pass
                 else:
                     return NextAction.ASK_REQUIRED_FIELDS
 

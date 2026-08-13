@@ -144,18 +144,33 @@ class SendGrievanceEmailAPIView(APIView):
             # Automatically register the grievance in the central database
             try:
                 # 1. Resolve State & District with robust fallbacks
-                state_obj = State.objects.filter(name__iexact=state).first()
-                if not state_obj:
-                    # Fallback to the first state available in the seeded DB
-                    state_obj = State.objects.first()
-                
+                state_obj = None
+                if state:
+                    state_obj = State.objects.filter(name__iexact=state.strip()).first()
+                    if not state_obj:
+                        state_obj = State.objects.filter(name__icontains=state.strip()).first()
+
                 district_obj = None
-                if state_obj:
-                    district_obj = District.objects.filter(name__iexact=district, state=state_obj).first()
+                if district:
+                    dist_clean = district.strip()
+                    if state_obj:
+                        district_obj = District.objects.filter(name__iexact=dist_clean, state=state_obj).first()
+                        if not district_obj:
+                            district_obj = District.objects.filter(name__icontains=dist_clean, state=state_obj).first()
                     if not district_obj:
-                        district_obj = District.objects.filter(state=state_obj).first()
+                        district_obj = District.objects.filter(name__iexact=dist_clean).first()
+                        if not district_obj:
+                            district_obj = District.objects.filter(name__icontains=dist_clean).first()
+                    if district_obj and not state_obj:
+                        state_obj = district_obj.state
+
+                if not state_obj:
+                    state_obj = State.objects.first()
                 if not district_obj:
-                    district_obj = District.objects.first()
+                    if state_obj:
+                        district_obj = District.objects.filter(state=state_obj).first()
+                    else:
+                        district_obj = District.objects.first()
                 
                 # 2. Resolve Department with robust fallback
                 dept_obj = Department.objects.filter(name__iexact=department).first()

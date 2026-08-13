@@ -40,10 +40,53 @@ class AIOrchestrator:
         # 3. Detect intent
         intent = self.intent_detector.detect(clean_msg)
 
-        # Save initial description if a complaint flow is triggered and description is empty
-        if (intent == Intent.FILE_COMPLAINT or session.get("complaint_type")) and not session.get("description"):
-            if not message.strip().startswith("Please help me"):
-                self.memory.update_session(session_id, description=message.strip())
+        prev_action = session.get("next_action")
+        active_complaint = session.get("complaint_type")
+        is_previous_flow_completed = bool(session.get("confirmed") or prev_action == NextAction.CONFIRM_AND_FILE.value)
+        has_explicit_new_desc = bool("description:" in message.lower())
+
+        # Clear stale complaint session memory when switching to SCHEME or OFFICE intent, or when starting a fresh complaint
+        if (intent in [Intent.SEARCH_SCHEME, Intent.OFFICE_LOOKUP]) or (intent == Intent.FILE_COMPLAINT and (is_previous_flow_completed or has_explicit_new_desc)) or (has_explicit_new_desc and active_complaint):
+            self.memory.clear_session(session_id)
+            session = self.memory.get_session(session_id)
+            prev_action = None
+            active_complaint = None
+
+        # Parse structured text fields (Description:, Address:, Landmark:, State:, District:) if provided
+        structured_entities = {}
+        for key, label in [("address", "Address:"), ("landmark", "Landmark:"), ("state", "State:"), ("district", "District:")]:
+            if label in message:
+                try:
+                    val = message.split(label)[1]
+                    for other in ["Address:", "State:", "District:", "Landmark:", "Category:", "Description:"]:
+                        if other != label and other in val:
+                            val = val.split(other)[0]
+                    val = val.strip()
+                    if val and not val.lower().startswith("please help me"):
+                        structured_entities[key] = val
+                except Exception:
+                    pass
+        if structured_entities:
+            self.memory.update_session(session_id, entities=structured_entities)
+
+        # Extract description text
+        desc_text = message.strip()
+        if "Description:" in message:
+            try:
+                after_desc = message.split("Description:")[1]
+                for label in ["Address:", "State:", "District:", "Landmark:", "Category:"]:
+                    if label in after_desc:
+                        after_desc = after_desc.split(label)[0]
+                extracted_desc = after_desc.strip()
+                if extracted_desc:
+                    desc_text = extracted_desc
+            except Exception:
+                pass
+
+        # Save initial/updated description if a complaint flow is active or triggered
+        if intent == Intent.FILE_COMPLAINT or session.get("complaint_type") or "description:" in message.lower():
+            if desc_text and not (desc_text.lower().startswith("please help me") and "description:" not in message.lower()):
+                self.memory.update_session(session_id, description=desc_text)
 
         # 4. Handle context-aware answers in active flows
         prev_action = session.get("next_action")
@@ -81,15 +124,25 @@ class AIOrchestrator:
         if intent == Intent.FILE_COMPLAINT or session.get("complaint_type"):
             analysis = self.complaint_analyzer.analyze(clean_msg, session, image_base64=image_base64)
             
+            # If a new complaint type was resolved or previous session was confirmed, use new values
+            if analysis.get("complaint_type") or session.get("confirmed"):
+                resolved_ct = analysis.get("complaint_type") or session.get("complaint_type")
+                resolved_cat = analysis.get("category") or session.get("category")
+                resolved_dept = analysis.get("department") or session.get("department")
+            else:
+                resolved_ct = session.get("complaint_type")
+                resolved_cat = session.get("category")
+                resolved_dept = session.get("department")
+
             # Update database-derived complaint info
             self.memory.update_session(
                 session_id,
-                complaint_type=analysis["complaint_type"] or session.get("complaint_type"),
-                category=analysis["category"] or session.get("category"),
-                department=analysis["department"] or session.get("department"),
-                priority=analysis["priority"],
-                confidence=analysis["confidence"] if analysis["confidence"] > 0 else session.get("confidence", 0.0),
-                missing_fields=analysis["missing_fields"]
+                complaint_type=resolved_ct,
+                category=resolved_cat,
+                department=resolved_dept,
+                priority=analysis.get("priority", "medium"),
+                confidence=analysis.get("confidence", 0.0) if analysis.get("confidence", 0.0) > 0 else session.get("confidence", 0.0),
+                missing_fields=analysis.get("missing_fields", [])
             )
 
         # Refresh session reference
