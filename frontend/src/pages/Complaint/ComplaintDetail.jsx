@@ -54,13 +54,17 @@ const resolveImageUrl = (imgSrc) => {
     imgSrc = imgSrc.image || imgSrc.url || '';
   }
   if (!imgSrc) return '';
+
+  if (imgSrc.includes('/media/')) {
+    const idx = imgSrc.indexOf('/media/');
+    return imgSrc.substring(idx);
+  }
+
   if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://')) {
     return imgSrc;
   }
-  const backendBase = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
-  const cleanBase = backendBase.replace(/\/api\/?$/, '');
-  const cleanPath = imgSrc.startsWith('/') ? imgSrc : `/${imgSrc}`;
-  return `${cleanBase}${cleanPath}`;
+
+  return imgSrc.startsWith('/') ? imgSrc : `/${imgSrc}`;
 };
 
 /* ─── section fade preset ─── */
@@ -559,7 +563,15 @@ export default function ComplaintDetail() {
               {/* After Photo */}
               <div className="border border-emerald-200 rounded-xl p-3 bg-emerald-50/50">
                 <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded uppercase tracking-wider">Officer Repair Proof (After)</span>
-                <img src={resolveImageUrl(complaint.after_image)} alt="After resolution proof" className="w-full h-44 object-cover rounded-lg border border-emerald-200 mt-2" />
+                <img
+                  src={resolveImageUrl(complaint.after_image)}
+                  alt="After resolution proof"
+                  className="w-full h-44 object-cover rounded-lg border border-emerald-200 mt-2 bg-white"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&w=800&q=80';
+                  }}
+                />
                 {complaint.resolution_remarks && (
                   <p className="text-xs text-emerald-800 font-medium mt-2 italic">"{complaint.resolution_remarks}"</p>
                 )}
