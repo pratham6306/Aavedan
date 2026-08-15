@@ -38,6 +38,7 @@ import {
 } from 'react-icons/hi2';
 
 import { useComplaint, useDeleteComplaint, useSupportComplaint } from '../../hooks/useComplaints';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import {
@@ -75,8 +76,9 @@ export default function ComplaintDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const queryClient = useQueryClient();
   /* ── fetch complaint ── */
-  const { data: complaint, isLoading, error } = useComplaint(id);
+  const { data: complaint, isLoading, error, refetch } = useComplaint(id);
 
   /* ── delete mutation ── */
   const { mutateAsync: deleteComplaint, isPending: isDeleting } = useDeleteComplaint();
@@ -103,21 +105,21 @@ export default function ComplaintDetail() {
 
   const handleOfficerResolve = async (e) => {
     e.preventDefault();
-    if (!proofFile) {
-      toast.error('Please select a resolution proof photo!');
-      return;
-    }
     setIsSubmittingProof(true);
     try {
       const formData = new FormData();
-      formData.append('after_image', proofFile);
+      if (proofFile) {
+        formData.append('after_image', proofFile);
+      }
       formData.append('remarks', proofRemarks || 'Work completed by department officer.');
       formData.append('demo_mode', 'true');
 
       const res = await api.post(`/complaints/${id}/officer-resolve/`, formData);
       if (res.status === 200) {
         toast.success('Resolution proof submitted! Pending citizen verification.');
-        window.location.reload();
+        await queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        await refetch();
+        setShowOfficerPanel(false);
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to submit resolution proof.');
@@ -136,7 +138,8 @@ export default function ComplaintDetail() {
         } else {
           toast.warn('Resolution proof rejected! Complaint re-opened to In Progress.');
         }
-        window.location.reload();
+        await queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        await refetch();
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to process verification.');
