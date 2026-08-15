@@ -59,6 +59,7 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
 class ComplaintListSerializer(serializers.ModelSerializer):
 
     status = serializers.StringRelatedField()
+    category = serializers.StringRelatedField()
     department = serializers.StringRelatedField()
     district = serializers.StringRelatedField()
     state = serializers.StringRelatedField()

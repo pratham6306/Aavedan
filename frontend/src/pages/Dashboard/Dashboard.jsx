@@ -51,6 +51,7 @@ import parliamentBanner from '../../assets/parliament_banner.png';
 /* ── Hooks & Utils ────────────────────────────────────────── */
 import { useAuth } from '../../context/AuthContext';
 import { useMyComplaints } from '../../hooks/useComplaints';
+import api from '../../services/api';
 
 /* ── Sample fallback dataset matching reference layout ───── */
 const SAMPLE_COMPLAINTS = [
@@ -118,37 +119,23 @@ export default function Dashboard() {
   const [civicProjects, setCivicProjects] = React.useState([]);
 
   React.useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-
-    fetch('http://127.0.0.1:8000/api/complaints/budget-analytics/', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => setBudgetInfo(data))
+    api.get('/complaints/budget-analytics/')
+      .then(res => setBudgetInfo(res.data))
       .catch(err => console.error('Failed to fetch budget analytics:', err));
 
-    fetch('http://127.0.0.1:8000/api/complaints/projects/', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => setCivicProjects(data.results || data || []))
+    api.get('/complaints/projects/')
+      .then(res => setCivicProjects(res.data.results || res.data || []))
       .catch(err => console.error('Failed to fetch civic projects:', err));
   }, []);
 
   const handleVoteProject = async (projectId) => {
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/complaints/projects/${projectId}/vote/`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const res = await api.post(`/complaints/projects/${projectId}/vote/`);
+      if (res.status === 200) {
         setCivicProjects(prev => prev.map(p => p.id === projectId ? {
           ...p,
-          votes_count: data.votes_count,
-          voted_by_user: data.voted
+          votes_count: res.data.votes_count,
+          voted_by_user: res.data.voted
         } : p));
       }
     } catch (err) {

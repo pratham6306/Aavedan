@@ -350,6 +350,35 @@ class CivicProjectListView(ListAPIView):
     serializer_class = CivicProjectSerializer
 
     def get_queryset(self):
+        # Auto-cluster complaints if project count is low
+        if CivicProject.objects.count() < 3:
+            import random
+            grouped = {}
+            for c in Complaint.objects.select_related("district", "category", "department", "state").all():
+                if not c.district or not c.category:
+                    continue
+                key = (c.district.id, c.category.id)
+                grouped.setdefault(key, []).append(c)
+
+            for (dist_id, cat_id), comp_list in grouped.items():
+                first = comp_list[0]
+                proj_title = f"{first.district.name} {first.category.name} Infrastructure Improvement Project"
+                proj, _ = CivicProject.objects.get_or_create(
+                    title=proj_title,
+                    district=first.district,
+                    category=first.category,
+                    defaults={
+                        "state": first.state,
+                        "department": first.department,
+                        "ward_name": f"Ward {random.randint(1, 15)}",
+                        "estimated_cost": sum(float(c.estimated_cost or 15000) for c in comp_list) or 350000.00,
+                        "allocated_budget": 200000.00,
+                        "status": "PROPOSED"
+                    }
+                )
+                for c in comp_list:
+                    proj.complaints.add(c)
+
         qs = CivicProject.objects.all()
         district_id = self.request.query_params.get("district_id")
         state_id = self.request.query_params.get("state_id")

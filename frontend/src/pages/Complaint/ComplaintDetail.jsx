@@ -39,6 +39,7 @@ import {
 
 import { useComplaint, useDeleteComplaint, useSupportComplaint } from '../../hooks/useComplaints';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import {
   formatDate,
   formatRelativeTime,
@@ -113,21 +114,15 @@ export default function ComplaintDetail() {
       formData.append('remarks', proofRemarks || 'Work completed by department officer.');
       formData.append('demo_mode', 'true');
 
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`http://127.0.0.1:8000/api/complaints/${id}/officer-resolve/`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+      const res = await api.post(`/complaints/${id}/officer-resolve/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      if (res.ok) {
+      if (res.status === 200) {
         toast.success('Resolution proof submitted! Pending citizen verification.');
         window.location.reload();
-      } else {
-        const json = await res.json();
-        toast.error(json.error || 'Failed to submit resolution proof.');
       }
-    } catch {
-      toast.error('Network error submitting resolution proof.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to submit resolution proof.');
     } finally {
       setIsSubmittingProof(false);
     }
@@ -136,28 +131,17 @@ export default function ComplaintDetail() {
   const handleCitizenVerify = async (action) => {
     setIsVerifyingWork(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`http://127.0.0.1:8000/api/complaints/${id}/verify-resolution/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ action }),
-      });
-      if (res.ok) {
+      const res = await api.post(`/complaints/${id}/verify-resolution/`, { action });
+      if (res.status === 200) {
         if (action === 'approve') {
           toast.success('Work verified and ticket closed!');
         } else {
           toast.warn('Resolution proof rejected! Complaint re-opened to In Progress.');
         }
         window.location.reload();
-      } else {
-        const json = await res.json();
-        toast.error(json.error || 'Failed to process verification.');
       }
-    } catch {
-      toast.error('Network error processing verification.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to process verification.');
     } finally {
       setIsVerifyingWork(false);
     }
