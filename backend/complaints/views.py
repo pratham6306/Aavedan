@@ -422,8 +422,16 @@ from django.utils import timezone
 
 import base64
 from django.core.files.base import ContentFile
+from django.db.models import Max
 
 TINY_JPEG_B64 = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
+
+def get_status_by_name(name_str):
+    status_obj = ComplaintStatus.objects.filter(name__iexact=name_str).first()
+    if not status_obj:
+        max_order = (ComplaintStatus.objects.aggregate(m=Max("order"))["m"] or 0) + 1
+        status_obj = ComplaintStatus.objects.create(name=name_str, order=max_order)
+    return status_obj
 
 class OfficerResolveView(APIView):
     permission_classes = [IsAuthenticated]
@@ -451,8 +459,7 @@ class OfficerResolveView(APIView):
         complaint.resolved_at = timezone.now()
 
         # Set status to Resolved
-        resolved_status, _ = ComplaintStatus.objects.get_or_create(name="Resolved", defaults={"order": 4})
-        complaint.status = resolved_status
+        complaint.status = get_status_by_name("resolved")
         complaint.save()
 
         # If complaint belongs to a civic project, set proof on project too
@@ -478,8 +485,7 @@ class CitizenVerifyView(APIView):
         if action == "approve":
             complaint.is_verified_resolved = True
             complaint.verified_at = timezone.now()
-            resolved_status, _ = ComplaintStatus.objects.get_or_create(name="Resolved", defaults={"order": 4})
-            complaint.status = resolved_status
+            complaint.status = get_status_by_name("resolved")
             complaint.save()
 
             # Mark associated project as completed if all verified
@@ -492,8 +498,7 @@ class CitizenVerifyView(APIView):
         elif action == "reject":
             complaint.is_verified_resolved = False
             complaint.after_image = None
-            in_progress_status, _ = ComplaintStatus.objects.get_or_create(name="In Progress", defaults={"order": 2})
-            complaint.status = in_progress_status
+            complaint.status = get_status_by_name("review")
             complaint.save()
 
             return Response({"message": "Resolution proof rejected. Complaint re-opened to In Progress.", "verified": False}, status=status.HTTP_200_OK)
