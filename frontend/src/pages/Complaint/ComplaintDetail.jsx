@@ -133,9 +133,16 @@ export default function ComplaintDetail() {
       formData.append('remarks', proofRemarks || 'Work completed by department officer.');
       formData.append('demo_mode', 'true');
 
-      const res = await api.post(`/complaints/${id}/officer-resolve/`, formData);
+      const res = await api.post(`/complaints/${id}/officer-resolve/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       if (res.status === 200) {
         toast.success('Resolution proof submitted! Pending citizen verification.');
+        if (res.data?.data) {
+          queryClient.setQueryData(['complaints', id], res.data.data);
+        }
         await queryClient.invalidateQueries({ queryKey: ['complaints'] });
         await refetch();
         setShowOfficerPanel(false);
