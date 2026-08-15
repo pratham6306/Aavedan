@@ -446,6 +446,119 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
+      {/* ── Civic Budgeting & Participatory Projects Section (S36 Module) ── */}
+      <motion.div
+        variants={itemVariants}
+        className="rounded-[28px] bg-gradient-to-r from-slate-900 via-gov-900 to-slate-950 text-white p-7 border border-slate-700 shadow-xl space-y-6"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700/80 pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-widest bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-md">
+                SIH S36 Module
+              </span>
+              <h2 className="text-lg font-black text-white">Civic Budgeting & Ward Projects</h2>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              Municipal repair cost allocations, auto-clustered civic projects, & citizen ward budget voting
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-mono">District Repair Budget Pool</p>
+              <p className="text-xl font-extrabold text-emerald-400 font-mono">
+                ₹{(budgetInfo?.total_allocated_budget || 2500000).toLocaleString('en-IN')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Budget Allocation Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Total Spent Budget</span>
+            <span className="text-lg font-black text-blue-400 font-mono">
+              ₹{(budgetInfo?.total_spent_budget || 450000).toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Unallocated Remaining</span>
+            <span className="text-lg font-black text-emerald-400 font-mono">
+              ₹{(budgetInfo?.remaining_budget || 2050000).toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Est. Backlog Repair Cost</span>
+            <span className="text-lg font-black text-amber-400 font-mono">
+              ₹{(budgetInfo?.total_backlog_cost || 650000).toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Verified Resolved</span>
+            <span className="text-lg font-black text-purple-400 font-mono">
+              {budgetInfo?.verified_complaints || 0} / {budgetInfo?.resolved_complaints || 0} Tickets
+            </span>
+          </div>
+        </div>
+
+        {/* Auto-Clustered Participatory Ward Projects Grid */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">
+              Auto-Clustered Ward Projects (Vote to Prioritize Funding)
+            </h3>
+            <span className="text-xs text-slate-400 font-mono">
+              {civicProjects.length} Projects Proposed
+            </span>
+          </div>
+
+          {civicProjects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {civicProjects.slice(0, 4).map((proj) => (
+                <div key={proj.id} className="bg-slate-800/90 rounded-2xl p-4 border border-slate-700 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-[11px] font-bold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">
+                        {proj.ward_name || 'Ward Central'} • {proj.category || 'Infrastructure'}
+                      </span>
+                      <span className="text-xs font-mono text-emerald-400 font-bold">
+                        Est. Cost: ₹{Number(proj.estimated_cost || 350000).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white leading-snug">{proj.title}</h4>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Aggregated from {proj.complaints_count || 1} individual citizen grievances in {proj.district || 'District'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-700/60">
+                    <span className="text-xs text-slate-300 font-mono">
+                      🗳️ <strong>{proj.votes_count || 0}</strong> Ward Citizen Votes
+                    </span>
+
+                    <button
+                      onClick={() => handleVoteProject(proj.id)}
+                      className={`btn text-xs py-1.5 px-3.5 rounded-xl font-bold transition shadow-sm ${
+                        proj.voted_by_user
+                          ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                          : 'bg-gov-600 text-white hover:bg-gov-700'
+                      }`}
+                    >
+                      {proj.voted_by_user ? '✓ Voted for Funding' : '🗳️ Vote to Fund'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-slate-800/50 p-6 rounded-2xl text-center text-xs text-slate-400 border border-dashed border-slate-700">
+              No ward project clusters found yet. As citizens file complaints in the same ward, AI automatically groups them here.
+            </div>
+          )}
+        </div>
+      </motion.div>
+
       {/* ─────────────────────────────────────────────────────────
           3. CHARTS & OVERVIEW ROW (3 COLUMNS) - PLACED ABOVE
           ───────────────────────────────────────────────────────── */}
