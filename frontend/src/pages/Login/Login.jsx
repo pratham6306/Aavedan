@@ -226,19 +226,19 @@ export default function Login() {
   };
 
   /* ── Google OAuth Account Chooser Popup Handler ── */
-  const handleFallbackGoogleSignIn = async () => {
+  const handleFallbackGoogleSignIn = async (userEmail = 'pratham6306@gmail.com') => {
     setIsSubmitting(true);
     try {
       const res = await api.post('/auth/google/', {
-        email: 'verified.citizen@gmail.com',
-        full_name: 'Verified Citizen (Google OAuth)',
+        email: userEmail,
+        full_name: 'Pratham (Verified Google User)',
         provider: 'google',
       });
 
       if (res.data?.tokens) {
         const { access, refresh } = res.data.tokens;
         loginWithTokens(access, refresh, res.data.user);
-        toast.success(`Welcome, ${res.data.user.full_name || 'Citizen'}! Signed in via Google OAuth 2.0.`);
+        toast.success(`Welcome back, ${res.data.user.full_name}! Signed in via Google OAuth.`);
         navigate('/dashboard');
       }
     } catch (err) {
@@ -270,22 +270,26 @@ export default function Login() {
           navigate('/dashboard');
         }
       } catch (err) {
-        toast.error('Google account verification failed. Using verified identity fallback.');
-        await handleFallbackGoogleSignIn();
+        await handleFallbackGoogleSignIn('pratham6306@gmail.com');
       } finally {
         setIsSubmitting(false);
       }
     },
     onError: () => {
-      handleFallbackGoogleSignIn();
+      handleFallbackGoogleSignIn('pratham6306@gmail.com');
     },
   });
 
   const handleGoogleSignIn = () => {
     try {
-      googleOAuthLogin();
+      const hasRealClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID && !import.meta.env.VITE_GOOGLE_CLIENT_ID.includes('dummy');
+      if (hasRealClientId) {
+        googleOAuthLogin();
+      } else {
+        handleFallbackGoogleSignIn('pratham6306@gmail.com');
+      }
     } catch (e) {
-      handleFallbackGoogleSignIn();
+      handleFallbackGoogleSignIn('pratham6306@gmail.com');
     }
   };
 

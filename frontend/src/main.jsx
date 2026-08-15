@@ -34,7 +34,7 @@ const queryClient = new QueryClient({
 
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "1082956272449-dummyclientid.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "418019728001-5lq4m7f6ps57krd7hid6hcq0nf8j4fdl.apps.googleusercontent.com";
 
 /* ---------- Render Application ---------- */
 ReactDOM.createRoot(document.getElementById('root')).render(
