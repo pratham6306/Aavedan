@@ -286,6 +286,12 @@ export const AuthProvider = ({ children }) => {
   // Memoised context value
   // -----------------------------------------------------------------------
 
+  const loginWithTokens = useCallback((access, refresh, userProfile) => {
+    localStorage.setItem('access_token', access);
+    localStorage.setItem('refresh_token', refresh);
+    dispatch({ type: ActionTypes.AUTH_SUCCESS, payload: userProfile });
+  }, []);
+
   const value = useMemo(
     () => ({
       user: state.user,
@@ -293,11 +299,12 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated: !!state.user,
       login,
       loginWithOTP,
+      loginWithTokens,
       logout,
       register,
       updateProfile,
     }),
-    [state.user, state.loading, login, loginWithOTP, logout, register, updateProfile],
+    [state.user, state.loading, login, loginWithOTP, loginWithTokens, logout, register, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
