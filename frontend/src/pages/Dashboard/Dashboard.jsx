@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -115,10 +115,10 @@ export default function Dashboard() {
   const complaintsList = realComplaints.length > 0 ? realComplaints : SAMPLE_COMPLAINTS;
 
   /* ── Civic Budgeting & Participatory Voting state ── */
-  const [budgetInfo, setBudgetInfo] = React.useState(null);
-  const [civicProjects, setCivicProjects] = React.useState([]);
+  const [budgetInfo, setBudgetInfo] = useState(null);
+  const [civicProjects, setCivicProjects] = useState([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     api.get('/complaints/budget-analytics/')
       .then(res => setBudgetInfo(res.data))
       .catch(err => console.error('Failed to fetch budget analytics:', err));
