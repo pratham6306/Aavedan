@@ -420,6 +420,11 @@ class CivicProjectVoteView(APIView):
 
 from django.utils import timezone
 
+import base64
+from django.core.files.base import ContentFile
+
+TINY_JPEG_B64 = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
+
 class OfficerResolveView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -432,27 +437,28 @@ class OfficerResolveView(APIView):
         if not (request.user.is_staff or is_demo or request.user.is_authenticated):
             return Response({"error": "Officer permissions required to upload resolution proof."}, status=status.HTTP_403_FORBIDDEN)
 
-        after_image = request.FILES.get("after_image")
+        after_image = request.FILES.get("after_image") or request.FILES.get("image")
         remarks = request.data.get("remarks", "Work completed by department officer.")
 
         if after_image:
             complaint.after_image = after_image
         elif not complaint.after_image:
-            # Fallback default image for demo mode testing
-            complaint.after_image = "https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&w=800&q=80"
+            # Create a valid ContentFile for demo mode testing
+            img_data = base64.b64decode(TINY_JPEG_B64)
+            complaint.after_image.save(f"resolution_proof_{complaint.id}.jpg", ContentFile(img_data), save=False)
         
         complaint.resolution_remarks = remarks
         complaint.resolved_at = timezone.now()
-        
-        # Set status to Resolved / RESOLVED_BY_OFFICER
+
+        # Set status to Resolved
         resolved_status, _ = ComplaintStatus.objects.get_or_create(name="Resolved", defaults={"order": 4})
         complaint.status = resolved_status
         complaint.save()
 
         # If complaint belongs to a civic project, set proof on project too
         for project in complaint.civic_projects.all():
-            if after_image:
-                project.after_image = after_image
+            if complaint.after_image:
+                project.after_image = complaint.after_image
             project.status = "IN_EXECUTION"
             project.save()
 

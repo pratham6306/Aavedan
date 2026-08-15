@@ -11,6 +11,7 @@ import {
   HiArrowRightOnRectangle,
   HiChevronRight,
   HiXMark,
+  HiBanknotes,
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { useUnreadNotifications } from '../../hooks/useNotifications';
@@ -23,6 +24,7 @@ export default function Sidebar({ isOpen, onToggle }) {
 
   const navItemsList = [
     { label: 'Dashboard',        to: '/dashboard',         icon: HiHome },
+    { label: 'Civic Budgeting',  to: '/civic-budgeting',   icon: HiBanknotes },
     { label: 'Create Complaint', to: '/complaints/create', icon: HiPlusCircle },
     { label: 'My Complaints',    to: '/my-complaints',     icon: HiClipboardDocumentList },
     { label: 'All Complaints',   to: '/complaints',        icon: HiDocumentText },

@@ -36,10 +36,7 @@ import EditComplaint from './pages/Complaint/EditComplaint.jsx';
 import GovernmentSchemes from './pages/GovernmentSchemes/GovernmentSchemes.jsx';
 import SchemeDetail from './pages/GovernmentSchemes/SchemeDetail.jsx';
 import Notifications from './pages/Notifications/Notifications.jsx';
-import Profile from './pages/Profile/Profile.jsx';
-import FloatingAIAssistant from './components/layout/FloatingAIAssistant.jsx';
-
-import { useState } from 'react';
+import CivicBudgeting from './pages/Budgeting/CivicBudgeting.jsx';
 
 /**
  * PublicLayout - Layout wrapper for public pages (no sidebar)
@@ -137,6 +134,7 @@ function App() {
       {/* ===== Protected Routes (Dashboard Layout) ===== */}
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/civic-budgeting" element={<CivicBudgeting />} />
         <Route path="/complaints" element={<ComplaintList />} />
         <Route path="/complaints/create" element={<CreateComplaint />} />
         <Route path="/complaints/:id" element={<ComplaintDetail />} />

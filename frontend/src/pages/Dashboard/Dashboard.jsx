@@ -464,13 +464,20 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-right">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="text-left sm:text-right">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-mono font-bold">District Repair Budget Pool</p>
               <p className="text-xl font-black text-emerald-600 font-mono">
                 ₹{(budgetInfo?.total_allocated_budget || 50000000).toLocaleString('en-IN')}
               </p>
             </div>
+            <Link
+              to="/civic-budgeting"
+              className="btn text-xs py-2 px-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-xl shadow-2xs flex items-center gap-1 shrink-0"
+            >
+              <span>View All & Filters</span>
+              <HiOutlineArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
 
