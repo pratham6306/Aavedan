@@ -48,6 +48,21 @@ import {
   getPriorityColor,
 } from '../../utils/helpers';
 
+const resolveImageUrl = (imgSrc) => {
+  if (!imgSrc) return '';
+  if (typeof imgSrc !== 'string') {
+    imgSrc = imgSrc.image || imgSrc.url || '';
+  }
+  if (!imgSrc) return '';
+  if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://')) {
+    return imgSrc;
+  }
+  const backendBase = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+  const cleanBase = backendBase.replace(/\/api\/?$/, '');
+  const cleanPath = imgSrc.startsWith('/') ? imgSrc : `/${imgSrc}`;
+  return `${cleanBase}${cleanPath}`;
+};
+
 /* ─── section fade preset ─── */
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -533,7 +548,7 @@ export default function ComplaintDetail() {
               <div className="border border-amber-200 rounded-xl p-3 bg-amber-50/50">
                 <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded uppercase tracking-wider">Original Issue (Before)</span>
                 {images.length > 0 ? (
-                  <img src={images[0].image || images[0]} alt="Before photo" className="w-full h-44 object-cover rounded-lg border border-amber-200 mt-2" />
+                  <img src={resolveImageUrl(images[0])} alt="Before photo" className="w-full h-44 object-cover rounded-lg border border-amber-200 mt-2" />
                 ) : (
                   <div className="h-44 flex items-center justify-center text-xs text-amber-600 bg-white rounded-lg border border-dashed border-amber-300 mt-2">
                     No before photo attached
@@ -544,7 +559,7 @@ export default function ComplaintDetail() {
               {/* After Photo */}
               <div className="border border-emerald-200 rounded-xl p-3 bg-emerald-50/50">
                 <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded uppercase tracking-wider">Officer Repair Proof (After)</span>
-                <img src={complaint.after_image} alt="After resolution proof" className="w-full h-44 object-cover rounded-lg border border-emerald-200 mt-2" />
+                <img src={resolveImageUrl(complaint.after_image)} alt="After resolution proof" className="w-full h-44 object-cover rounded-lg border border-emerald-200 mt-2" />
                 {complaint.resolution_remarks && (
                   <p className="text-xs text-emerald-800 font-medium mt-2 italic">"{complaint.resolution_remarks}"</p>
                 )}
