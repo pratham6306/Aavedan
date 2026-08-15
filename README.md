@@ -2,14 +2,15 @@
 
 <div align="center">
 
-**SOA IDEATHON 2026 · Problem Statements SOAIDEATHON-S36 & SOAIDEATHON-S1**
+**SIH 2026 · Problem Statements S36 & S1**
 
-*An intelligent, Human-in-the-Loop Agentic AI system that empowers citizens to file, track, and resolve public grievances through conversational AI — with community-driven prioritization, smart duplicate detection, and automated official email dispatching.*
+*An intelligent, Human-in-the-Loop Agentic AI system that empowers citizens to file, track, and resolve public grievances through conversational AI — with community-driven participatory budgeting, smart duplicate detection, Google OAuth 2.0, and automated official email dispatching.*
 
 [![Django](https://img.shields.io/badge/Django-5.x-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Gemini](https://img.shields.io/badge/Google_Gemini-AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Google OAuth](https://img.shields.io/badge/Google_OAuth-2.0-EA4335?style=for-the-badge&logo=google&logoColor=white)](https://developers.google.com/identity)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 
@@ -27,6 +28,9 @@
 - 🔍 **Smart Duplicate Detection** — Prevents redundant filings by detecting similar complaints using fuzzy category + location matching
 - 🔒 **Anonymous Filing** — Citizens can hide their identity from authorities while still receiving tracking receipts
 - 📊 **Welfare Scheme Recommendations** — AI-powered eligibility matching for 100+ government welfare schemes across Indian states
+- 💰 **Participatory Civic Budgeting** — Citizens vote to fund ward-level municipal infrastructure repair projects from a transparent District Repair Pool
+- 🔑 **Google OAuth 2.0** — One-click Sign In with Google with official account chooser popup, zero-friction citizen onboarding
+- 📸 **Geotagged Proof Resolution Ledger** — Officers upload geotagged "After Repair" proof; citizens verify or reject via a community ledger
 
 ---
 
@@ -41,8 +45,8 @@
 │  │  (Charts)     │  │ (CRUD+Filter)│  │  (Floating Assistant)    │ │
 │  └──────────────┘  └──────────────┘  └──────────────────────────┘ │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐ │
-│  │  Scheme       │  │ My Complaints│  │  Email Preview Modal     │ │
-│  │  Recommender  │  │ (Owner CRUD) │  │  (Dispatch / Handoff)    │ │
+│  │  Civic        │  │ Officer      │  │  Google OAuth 2.0        │ │
+│  │  Budgeting    │  │ Proof Ledger │  │  Account Chooser Popup   │ │
 │  └──────────────┘  └──────────────┘  └──────────────────────────┘ │
 └────────────────────────────┬───────────────────────────────────────┘
                              │  JSON / JWT Auth
@@ -51,29 +55,25 @@
 │                  DJANGO DRF BACKEND (Port 8000)                    │
 │                                                                    │
 │  ┌──────────┐  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │
-│  │ Auth     │  │ Complaints   │  │ AI Orchestr. │  │ Schemes   │ │
-│  │ (JWT)    │  │ (CRUD+Filter)│  │ (Session Mem)│  │ (Search)  │ │
-│  └──────────┘  └──────────────┘  └──────────────┘  └───────────┘ │
-│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │
-│  │ Email    │  │ Duplicate    │  │ Support/     │  │ Office    │ │
-│  │ Dispatch │  │ Checker      │  │ Upvote API   │  │ Finder    │ │
-│  └──────────┘  └──────────────┘  └──────────────┘  └───────────┘ │
+│  │ Auth +   │  │ Complaints   │  │ AI Orchestr. │  │ Schemes   │ │
+│  │ Google   │  │ (CRUD+Filter)│  │ (Session Mem)│  │ (Search)  │ │
+│  │ OAuth    │  └──────────────┘  └──────────────┘  └───────────┘ │
+│  └──────────┘  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │
+│                │ CivicProject │  │ Officer      │  │ Budget    │ │
+│                │ Vote API     │  │ Resolve API  │  │ Analytics │ │
+│                └──────────────┘  └──────────────┘  └───────────┘ │
 └───────────┬───────────────────────────────┬────────────────────────┘
             │ Read/Write                    │ JSON API Calls
             ▼                               ▼
 ┌────────────────────────┐    ┌──────────────────────────────────────┐
-│   PostgreSQL Database  │    │     FASTAPI AI MICROSERVICE          │
+│   PostgreSQL/SQLite DB │    │     FASTAPI AI MICROSERVICE          │
 │                        │    │           (Port 8010)                 │
 │  • States & Districts  │    │                                      │
-│  • Categories & Depts  │    │  ┌────────────┐  ┌───────────────┐  │
-│  • Complaints          │    │  │ Classify   │  │ Draft         │  │
-│  • Complaint Supports  │    │  │ (Intent +  │  │ (Professional │  │
-│  • Welfare Schemes     │    │  │  Category) │  │  Email Text)  │  │
-│  • Office Directory    │    │  └────────────┘  └───────────────┘  │
-│  • User Accounts       │    │  ┌────────────┐  ┌───────────────┐  │
-│                        │    │  │ Recommend  │  │ Translate     │  │
-│                        │    │  │ (Schemes)  │  │ (Multi-lang)  │  │
-│                        │    │  └────────────┘  └───────────────┘  │
+│  • CivicProject Models │    │  ┌────────────┐  ┌───────────────┐  │
+│  • CivicProjectVote    │    │  │ Classify   │  │ Draft         │  │
+│  • DepartmentBudget    │    │  │ (Intent +  │  │ (Professional │  │
+│  • ComplaintStatus     │    │  │  Category) │  │  Email Text)  │  │
+│  • User (Google OAuth) │    │  └────────────┘  └───────────────┘  │
 └────────────────────────┘    └──────────────┬───────────────────────┘
                                              │ Gemini API (SDK)
                                              ▼
@@ -87,17 +87,47 @@
 
 ## 🔑 Key Features
 
+### 🔐 Google OAuth 2.0 Authentication *(New — Today)*
+| Feature | Description |
+|---------|-------------|
+| **Official Google Account Chooser** | Clicking "Continue with Google" opens the real Google account selector popup with all logged-in Gmail accounts |
+| **Verified Identity Binding** | Each account is bound to a verified `@gmail.com` identity — preventing bot registrations and fake accounts |
+| **Auto Account Creation** | New Google users are automatically registered in the database with name, email, and a generated JWT token pair |
+| **JWT Token Issuance** | Django backend issues `access_token` + `refresh_token` via SimpleJWT on every successful Google OAuth sign-in |
+| **Anti-Spam Vote Protection** | Google-verified citizen identity enforces 1-vote-per-ward-project constraint at database level (`unique_together`) |
+| **Seamless Dashboard Redirect** | After Google sign-in, React AuthContext instantly loads user state and redirects to `/dashboard` |
+
+### 💰 Participatory Civic Budgeting & Ward Projects *(S36 Core Feature)*
+| Feature | Description |
+|---------|-------------|
+| **₹5 Crore District Repair Pool** | Visual budget tracker showing ₹1.45 Cr spent, ₹3.55 Cr remaining, and ₹6.5 Lakh backlog from live grievance data |
+| **AI Auto-Clustering Engine** | Groups all active complaints in the same `(district, category)` cluster into a single **Civic Infrastructure Project** proposal |
+| **Dynamic AI Cost Estimator** | Calculates project repair costs dynamically: Roads ₹4.5L, Potholes ₹1.25L, Electrical ₹85K, Water ₹55K, Sanitation ₹22K |
+| **Citizen Democratic Voting** | Citizens click "🗳️ Vote to Fund" to push high-priority projects to the top of the municipal funding queue |
+| **ACID Vote Toggle** | `get_or_create` atomic DB pattern with `UniqueConstraint(["project", "user"])` prevents duplicate vote injection |
+| **Multi-Attribute Filters** | Filter ward projects by **State**, **District**, **Department**, and **Category** — via dedicated `/civic-budgeting` portal |
+| **Real-Time Vote Counter** | Vote count updates instantly on screen without page reload via React optimistic state update |
+| **Cascade Status Machine** | Project transitions: `PROPOSED` → `IN_EXECUTION` → `COMPLETED` as votes accumulate and budget is allocated |
+
+### 📸 Officer Proof Upload & Citizen Verification Ledger *(Enhanced — Today)*
+| Feature | Description |
+|---------|-------------|
+| **Gallery Image Upload Fixed** | Officer can now pick ANY custom photo from their device gallery — exact file is sent via `multipart/form-data` to `request.FILES` |
+| **Instant Cache Update** | `queryClient.setQueryData(['complaints', id], res.data.data)` immediately renders the uploaded photo without page refresh |
+| **Before / After Side-by-Side** | Citizen's original complaint photo vs officer's uploaded repair proof displayed side-by-side |
+| **Citizen Verification Flow** | Ticket moves to `PENDING_VERIFICATION` → community ledger → `VERIFIED_RESOLVED` only after citizen clicks "✅ Verify Work Done" |
+| **Anti-Spam Rejection** | "❌ Reject Proof (Spam/Unresolved)" instantly re-opens the ticket to `IN_PROGRESS`, flagging the officer |
+
 ### 🤖 AI-Powered Grievance Assistant (Aavedan Saathi)
 | Feature | Description |
 |---------|-------------|
-| **Conversational Filing** | Citizens describe issues in natural language (e.g., *"There's a huge pothole near the bus stop in Khurda"*) and the AI guides them through the process |
+| **Conversational Filing** | Citizens describe issues in natural language (e.g., *"There's a huge pothole near the bus stop in Khurda"*) |
 | **Intent Classification** | Multi-layered pipeline detects intent: `FILE_COMPLAINT`, `CHECK_STATUS`, `ASK_SCHEME`, `GREETING`, or `GENERAL_QUERY` |
 | **Smart Entity Extraction** | AI extracts complaint type, category, department, state, district, and urgency from unstructured text |
-| **Professional Draft Generation** | Raw citizen text → formal, professional grievance letter via Gemini LLM (always in official English) |
+| **Professional Draft Generation** | Raw citizen text → formal, professional grievance letter via Gemini LLM |
 | **Dual Submission Options** | **Option 1:** AI auto-dispatches official email · **Option 2:** Handoff to manual form for image uploads |
 | **Session Memory** | Stateful conversations across multiple messages with entity accumulation |
 | **Resilient Fallback** | When Gemini API is rate-limited (429/503), the local rules-based engine takes over seamlessly |
-| **Optional Photo Evidence** | AI chat never blocks complaint filing to ask for photos — images are always optional and can be uploaded later via the manual form |
 
 ### 📧 Official Email Dispatch System
 | Feature | Description |
@@ -106,7 +136,6 @@
 | **Inline Image Embedding** | Evidence photos embedded directly in email body via `Content-ID` (`cid:evidence_X`), not as attachments |
 | **Anonymous Dispatch** | Citizens can file anonymously — their name/email is replaced with *"Anonymous Citizen"* and receipt goes via BCC |
 | **Email Preview Modal** | Full-screen preview of the email before sending, with copy-to-clipboard and official portal link |
-| **Dispatch Validation** | Smart guard disables the send button when location details are incomplete, with warning banners |
 
 ### 🗳️ Community Upvoting & Support System
 | Feature | Description |
@@ -122,13 +151,6 @@
 | **Animated Warnings** | Visual alert banners on both the AI chat modal and manual form when duplicates are found |
 | **View & Support** | Direct links to duplicate complaints so citizens can support existing grievances instead of creating redundant ones |
 
-### 🔒 Privacy & Anonymous Filing
-| Feature | Description |
-|---------|-------------|
-| **Toggle Checkbox** | One-click anonymity toggle on both the manual form and AI email preview modal |
-| **Name Masking** | All public-facing views display *"Anonymous Citizen"* for anonymous complaints |
-| **BCC Routing** | Official receipt copies sent via BCC instead of CC to protect citizen identity |
-
 ### 🔎 Advanced Multi-Dimensional Filtering
 | Feature | Description |
 |---------|-------------|
@@ -136,9 +158,6 @@
 | **Dynamic Metadata** | All filter dropdown options are loaded live from the database (not hardcoded) |
 | **Cascading Location** | Selecting a State dynamically loads its Districts |
 | **URL Persistence** | Active filters are synced to URL search parameters for shareable, bookmarkable filtered views |
-| **Active Filter Badge** | Counter badge on the filter toggle button showing how many filters are active |
-| **Clear All** | One-click reset button to clear all active filters |
-| **Available On Both Pages** | Full filtering on both **My Complaints** and **All Complaints** views |
 
 ### 📊 Dashboard & Analytics
 | Feature | Description |
@@ -146,67 +165,36 @@
 | **Statistics Cards** | Total, pending, in-progress, and resolved complaint counts with animated counters |
 | **Monthly Trends** | Line chart showing complaint volume over time |
 | **Department Distribution** | Pie/doughnut chart breaking down complaints by department |
-| **Resolution Metrics** | Average resolution time tracking |
-
-### 💰 Civic Budgeting & Participatory Ward Projects (Problem Statement S36)
-| Feature | Description |
-|---------|-------------|
-| **Municipal Budget Tracking** | Tracks allocated, spent, and remaining repair budgets per district & department across 36 Indian states |
-| **Auto-Clustered Ward Projects** | AI auto-clusters individual complaints in the same ward/category into structured **Civic Project Proposals** (e.g. *"Ward 4 Stormwater Drain Overhaul"* — Est. ₹3,50,000) |
-| **Citizen Ward Budget Voting** | Citizens cast priority votes to allocate municipal funds to competing ward projects |
-| **Pan-India Default Budget Fallback** | Applies a standard ₹25 Lakhs quarterly budget pool for any district without a custom budget |
-
-### 📸 Evidence-Grounded Resolution Proof & Verification Ledger
-| Feature | Description |
-|---------|-------------|
-| **Officer Resolution Photo Upload** | Department officers upload geotagged **"After Repair"** proof photos and completion remarks right from `ComplaintDetail.jsx` |
-| **Demo Officer Toggle** | In-app officer demo toggle on `ComplaintDetail.jsx` allows hackathon judges to test officer photo resolution without re-logging |
-| **Side-by-Side Before / After View** | Displays original citizen issue photo vs officer repair proof photo side-by-side for comparison |
-| **Citizen Verification Ledger** | Complaint moves to `RESOLVED_BY_OFFICER` and ONLY reaches `VERIFIED_RESOLVED` once original complainant or community supporters verify |
-| **Anti-Spam Rejection Control** | Citizens can click **"Reject Resolution Proof"** if fake/junk photos are uploaded, automatically re-opening the ticket to `IN_PROGRESS` |
+| **Quick Link to Budgeting** | Direct access button to the `/civic-budgeting` portal from the main dashboard |
 
 ### 🎓 Welfare Scheme Recommendation Engine
 | Feature | Description |
 |---------|-------------|
 | **AI-Powered Matching** | Gemini LLM evaluates eligibility against 100+ schemes using income, age, caste, education, and state |
 | **Residency Enforcement** | Region-locked schemes (e.g., Odisha-only yojanas) are flagged when user is from another state |
-| **Fuzzy Fallback Search** | Typo-tolerant keyword matching when LLM is unavailable (handles `"schlorshipp"` → Education) |
-| **Smart Filtering** | Hides ineligible schemes by default; explains specific failure reasons on demand |
+| **Fuzzy Fallback Search** | Typo-tolerant keyword matching when LLM is unavailable |
 
 ### 🌐 Multi-Language Support (22 Languages)
 | Feature | Description |
 |---------|-------------|
-| **Google Translate Integration** | Full-page translation widget supporting **12 Indian regional languages** (Hindi, Odia, Bengali, Telugu, Tamil, Marathi, Gujarati, Punjabi, Kannada, Malayalam, Urdu, Assamese) + **7 international languages** (Spanish, French, German, Arabic, Chinese, Russian, Japanese) |
-| **Searchable Language Selector** | Custom dropdown with real-time language search, `localStorage` persistence (`preferred_lang`), and auto-reload for full DOM translation |
-| **React DOM Crash Protection** | Inline `Node.prototype.removeChild` / `insertBefore` monkey-patch prevents React white-screen crashes caused by Google Translate DOM mutations |
-| **Backend Operates in English** | All database records, email drafts, and API responses remain in standardized English — Google Translate handles UI-level translation for citizens |
+| **Google Translate Integration** | Full-page translation supporting **12 Indian regional languages** + **7 international languages** |
+| **Searchable Language Selector** | Custom dropdown with real-time language search and `localStorage` persistence |
+| **React DOM Crash Protection** | Inline monkey-patch prevents React white-screen crashes caused by Google Translate DOM mutations |
 
 ### 🗣️ Voice Input & Speech Recognition
 | Feature | Description |
 |---------|-------------|
-| **Voice Complaint Dictation** | Hands-free speech-to-text on the manual complaint form — citizens speak their grievance directly into the description field |
-| **Multi-Locale Voice Input** | Auto-detects site language and switches speech recognition locale (`hi-IN`, `or-IN`, `bn-IN`, `te-IN`, `ta-IN`, `mr-IN`, `gu-IN`, `pa-IN`, `kn-IN`, `ml-IN`, `ur-IN`, `en-US`) |
-| **Voice Navigation Commands** | Saying *"show schemes"* or *"yojana"* navigates to the schemes page; *"file complaint"* or *"shikayat"* navigates to the complaint form |
-| **AI Chat Voice Input** | Microphone button in the floating AI assistant for voice-based conversational complaint filing |
-
-### 🇮🇳 Hindi, Hinglish & Indic Script Detection
-| Feature | Description |
-|---------|-------------|
-| **Devanagari Intent Detection** | Recognizes Hindi keywords like `शिकायत`, `बिजली`, `पानी`, `सड़क`, `कचरा`, `गड्ढा`, `ट्रांसफार्मर` and routes them to the correct complaint category without LLM |
-| **Hinglish Support** | Transliterated keywords (`bijli`, `kachra`, `paani`, `sadak`, `naali`, `shikayat`, `gadda`, `samasya`) are recognized natively |
-| **Unicode Script Fallback** | Any message containing Devanagari (\u0900-\u097F), Odia (\u0B00-\u0B7F), Bengali (\u0980-\u09FF), Telugu (\u0C00-\u0C7F), or Tamil (\u0B80-\u0BFF) characters is auto-routed as a complaint |
-| **Offline Hindi Vocabulary** | When Gemini is unavailable, `knowledge_retriever.py` maps Devanagari words (`ट्रांसफार्मर` → `transformer electricity power`) to English database keywords for 100% offline classification |
-| **Devanagari Location Matching** | `findFuzzyMatch` transliterates Hindi state/district names (`बिहार` → Bihar, `मधेपुरा` → Madhepura, `पटना` → Patna) for seamless form auto-fill |
-| **Hindi Scheme Queries** | Keywords like `योजना`, `छात्रवृत्ति`, `स्कीम` and student terms (`10th`, `12th`, `student`, `suggest`) are recognized for scheme recommendations |
+| **Voice Complaint Dictation** | Hands-free speech-to-text on the manual complaint form |
+| **Multi-Locale Voice Input** | Auto-detects site language and switches speech recognition locale (`hi-IN`, `or-IN`, `bn-IN`, etc.) |
+| **Voice Navigation Commands** | Saying *"show schemes"* navigates to schemes page; *"file complaint"* navigates to the complaint form |
 
 ### 🎨 Premium UI/UX
 | Feature | Description |
 |---------|-------------|
 | **Glassmorphism Design** | Frosted glass cards with backdrop blur and layered depth |
 | **Micro-Animations** | Framer Motion page transitions, card stagger effects, skeleton loaders |
-| **Responsive Layout** | Mobile-first design that scales beautifully from phone to desktop |
 | **Interactive Map** | Leaflet coordinate picker for precise grievance geolocation |
-| **AI Assist Button** | One-click AI description enhancement on the manual complaint form |
+| **Responsive Layout** | Mobile-first design that scales beautifully from phone to desktop |
 
 ---
 
@@ -220,13 +208,13 @@
 | React Router v6 | Client-side routing |
 | TanStack Query v5 | Server state management & caching |
 | Axios | HTTP client with JWT interceptors |
+| `@react-oauth/google` | Official Google OAuth 2.0 Account Chooser |
 | Tailwind CSS v4 | Utility-first styling |
 | Framer Motion | Premium animations & transitions |
 | Chart.js + React-Chartjs-2 | Dashboard analytics charts |
 | Leaflet + React-Leaflet | Interactive maps & coordinate picking |
 | React Toastify | Notification toasts |
 | React Hook Form | Form state management with validation |
-| React Icons (Hi2 & Fi) | Icon library |
 
 ### Backend (Django DRF)
 | Technology | Purpose |
@@ -234,9 +222,9 @@
 | Django 5.x | Web framework |
 | Django REST Framework | REST API layer |
 | SimpleJWT | JWT authentication |
+| `google-auth` | Google OAuth 2.0 ID token verification |
 | django-filters | Advanced queryset filtering |
-| PostgreSQL | Production database |
-| SQLite | Development/testing fallback |
+| PostgreSQL / SQLite | Production / development database |
 | SMTP (Django mail) | Email dispatch with inline attachments |
 
 ### AI Microservice (FastAPI)
@@ -246,7 +234,6 @@
 | Uvicorn | ASGI server |
 | Google GenAI SDK | Gemini LLM client |
 | Pydantic v2 | Strict request/response validation |
-| HTTPX | Async HTTP client |
 
 ---
 
@@ -255,10 +242,13 @@
 ```
 Aavedan-Setu/
 ├── backend/                       # Django DRF Core Backend
-│   ├── accounts/                  # User registration, JWT auth, profiles
-│   ├── complaints/                # Grievance CRUD, filtering, support/upvote system
-│   │   ├── models.py              # Complaint + ComplaintSupport models
-│   │   ├── views.py               # List, Detail, Create, Update, Delete, Support, Duplicate Check
+│   ├── accounts/                  # User auth, Google OAuth, JWT, profiles
+│   │   ├── views.py               # RegisterView, LoginView, GoogleAuthView
+│   │   └── urls.py                # /register/, /login/, /google/ endpoints
+│   ├── complaints/                # Grievance CRUD, filtering, civic budgeting
+│   │   ├── models.py              # Complaint, CivicProject, CivicProjectVote, DepartmentBudget
+│   │   ├── views.py               # ComplaintListView, OfficerResolveView, CitizenVerifyView,
+│   │   │                          # CivicProjectListView, CivicProjectVoteView, BudgetAnalyticsView
 │   │   ├── filters.py             # Multi-field filterset (status, priority, category, dept, location)
 │   │   └── serializers.py         # List, Detail, Create serializers with anonymous masking
 │   ├── departments/               # Government departments registry
@@ -266,13 +256,10 @@ Aavedan-Setu/
 │   ├── locations/                 # Indian states & districts (36 states, 700+ districts)
 │   ├── schemes/                   # Welfare schemes database & eligibility rules
 │   ├── ai/                        # AI orchestrator, session memory, email dispatcher
-│   │   ├── services/
-│   │   │   ├── orchestrator.py    # Intent detection → entity extraction → response generation
-│   │   │   ├── memory.py          # In-memory session state manager
-│   │   │   ├── email_dispatcher.py # Office lookup, email compilation, anonymous routing
-│   │   │   ├── intent_detector.py # Keyword-based intent classifier (LLM fallback)
-│   │   │   └── db_analyzer.py     # Rules-based category/department matcher
-│   │   └── views.py               # Chat, Email Preview, Email Send, Scheme Recommend APIs
+│   │   └── services/
+│   │       ├── orchestrator.py    # Intent detection → entity extraction → response generation
+│   │       ├── memory.py          # In-memory session state manager
+│   │       └── email_dispatcher.py # Office lookup, email compilation, anonymous routing
 │   ├── seed_all.py                # One-command database seeder
 │   └── manage.py
 │
@@ -280,27 +267,28 @@ Aavedan-Setu/
 │   ├── app/
 │   │   ├── api/routers/           # /classify, /draft, /recommend, /translate endpoints
 │   │   ├── llm/                   # Gemini client with retry policies & JSON parsing
-│   │   ├── prompts/               # LLM prompt templates (classification, drafting, schemes)
-│   │   ├── services/              # AI orchestrator, response validators
 │   │   └── main.py                # FastAPI app entrypoint
-│   ├── .env                       # Gemini API key & model configuration
 │   └── requirements.txt
 │
 ├── frontend/                      # React 19 Citizen Portal
+│   ├── .env                       # VITE_GOOGLE_CLIENT_ID (Google OAuth Client ID)
 │   ├── src/
+│   │   ├── main.jsx               # GoogleOAuthProvider wrapper
 │   │   ├── components/
-│   │   │   └── layout/            # Sidebar, Navbar, Footer, FloatingAIAssistant
-│   │   ├── context/               # AuthContext (JWT state management)
-│   │   ├── hooks/                 # TanStack Query hooks for complaints, schemes
+│   │   │   └── layout/            # Sidebar (with Civic Budgeting link), Navbar, FloatingAIAssistant
+│   │   ├── context/               # AuthContext (JWT + loginWithTokens for Google OAuth)
 │   │   ├── pages/
-│   │   │   ├── Dashboard/         # Analytics dashboard with Chart.js visualizations
-│   │   │   ├── Complaint/         # CreateComplaint, MyComplaints, ComplaintList, ComplaintDetail, EditComplaint
-│   │   │   ├── Schemes/           # SchemeList, SchemeDetail (AI-powered recommendations)
-│   │   │   └── Auth/              # Login, Register pages
-│   │   ├── services/              # Axios API service wrappers
-│   │   └── utils/                 # Helper formatters, status colors, date utilities
+│   │   │   ├── Dashboard/         # Analytics dashboard + Civic Budgeting quick link
+│   │   │   ├── Complaint/         # CreateComplaint, ComplaintList, ComplaintDetail
+│   │   │   │                      #  └── OfficerResolvePanel (multipart/form-data gallery upload)
+│   │   │   │                      #  └── CitizenVerificationLedger (Verify / Reject Proof)
+│   │   │   ├── Budgeting/         # CivicBudgeting.jsx — Ward Projects + Vote to Fund portal
+│   │   │   ├── Schemes/           # SchemeList, SchemeDetail
+│   │   │   └── Login/             # Login.jsx (Google OAuth Account Chooser, JWT login, OTP)
+│   │   └── services/              # Axios API service wrappers
 │   └── vite.config.js             # Dev server proxy to Django backend
 │
+├── thery.md                       # SIH 2026 Presentation Script & Technical Defense Guide
 └── README.md
 ```
 
@@ -313,43 +301,28 @@ Aavedan-Setu/
 - **Node.js 18+ (npm)**
 - **PostgreSQL 15+** *(optional — falls back to SQLite)*
 - **Google Gemini API Key** *(free tier available at [ai.google.dev](https://ai.google.dev/))*
+- **Google OAuth Client ID** *(free at [Google Cloud Console](https://console.cloud.google.com/apis/credentials))*
 
 ---
 
 ### 1️⃣ Backend Setup (Django REST Framework)
 
 ```bash
-# Navigate to project root
 cd gov_complaint_schemes
 
-# Create and activate virtual environment
 python -m venv myenv
 myenv\Scripts\activate           # Windows
 # source myenv/bin/activate      # Linux/macOS
 
-# Install dependencies
 pip install -r requirements.txt
+pip install google-auth requests  # For Google OAuth verification
 
-# Configure environment
-# Create backend/.env with:
-#   SECRET_KEY=your_django_secret_key
-#   DEBUG=True
-#   DB_NAME=gov_complaint_db
-#   DB_USER=postgres
-#   DB_PASSWORD=your_password
-
-# Run migrations
 cd backend
 python manage.py makemigrations
 python manage.py migrate
 
-# Seed the database (categories, departments, locations, schemes)
 python seed_all.py
-
-# Create admin account
 python manage.py createsuperuser
-
-# Start the server
 python manage.py runserver
 # → http://127.0.0.1:8000/
 ```
@@ -359,20 +332,13 @@ python manage.py runserver
 ### 2️⃣ AI Microservice Setup (FastAPI)
 
 ```bash
-# Navigate to Ai directory
 cd ../Ai
-
-# Install requirements (reuse same venv)
 pip install -r requirements.txt
 
-# Configure environment
 # Create Ai/.env with:
-#   APP_ENVIRONMENT=local
 #   GEMINI_API_KEY=your_gemini_api_key_here
 #   GEMINI_MODEL_NAME=gemini-flash-latest
-#   DB_DSN=postgresql://postgres:password@localhost:5432/gov_assist_db
 
-# Start FastAPI server
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8010 --reload
 # → http://127.0.0.1:8010/
 ```
@@ -382,41 +348,40 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8010 --reload
 ### 3️⃣ Frontend Setup (React 19 + Vite)
 
 ```bash
-# Navigate to frontend
 cd ../frontend
 
-# Install npm packages
 npm install
 
-# Start development server
+# Create frontend/.env with:
+#   VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+
 npm run dev
 # → http://localhost:5173/
 ```
 
+#### Google OAuth Setup (for "Sign in with Google")
+1. Open [Google Cloud Credentials Console](https://console.cloud.google.com/apis/credentials)
+2. Create **OAuth 2.0 Client ID** → Web Application
+3. Authorized JavaScript origins: `http://localhost:5173`
+4. Authorized redirect URIs: `http://localhost:5173`, `http://localhost:5173/login`
+5. Copy Client ID → paste in `frontend/.env` as `VITE_GOOGLE_CLIENT_ID=...`
+
 ---
 
 ## 📊 Database Seeding
-
-Aavedan Setu includes comprehensive seeding scripts to populate the database with Indian government data:
 
 ```bash
 cd backend
 python seed_all.py
 ```
 
-This runs the following seeders in dependency order:
-
 | Seeder | Data |
 |--------|------|
-| `seed_categories.py` | 6 complaint categories (Road & Infrastructure, Water Supply, Electricity, etc.) |
+| `seed_categories.py` | 6 complaint categories |
 | `seed_departments.py` | Corresponding government departments |
 | `seed_locations.py` | 36 Indian states/UTs with 700+ districts |
 | `seed_knowledge.py` | Department office directory with contact emails |
 | `seed_schemes.py` | 100+ welfare schemes with eligibility criteria |
-
-### Custom CSV Import
-For importing custom schemes or office directories, refer to the specifications document:
-- 📄 **[CSV_Seeding_Templates_Specifications.pdf](CSV_Seeding_Templates_Specifications.pdf)**
 
 ---
 
@@ -427,6 +392,7 @@ For importing custom schemes or office directories, refer to the specifications 
 |--------|----------|-------------|
 | `POST` | `/api/auth/register/` | Create a citizen account |
 | `POST` | `/api/auth/login/` | Login and receive JWT tokens |
+| `POST` | `/api/auth/google/` | **Google OAuth 2.0** — verify Google ID token, issue JWT |
 | `POST` | `/api/auth/token/refresh/` | Refresh expired access tokens |
 | `GET` | `/api/auth/profile/` | Fetch authenticated user profile |
 
@@ -439,9 +405,17 @@ For importing custom schemes or office directories, refer to the specifications 
 | `GET` | `/api/complaints/{id}/` | Complaint detail with full metadata |
 | `PATCH` | `/api/complaints/{id}/update/` | Edit complaint fields |
 | `DELETE` | `/api/complaints/{id}/delete/` | Soft-delete a complaint |
-| `POST` | `/api/complaints/{id}/support/` | Toggle upvote/support on a complaint |
+| `POST` | `/api/complaints/{id}/support/` | Toggle upvote/support |
+| `POST` | `/api/complaints/{id}/officer-resolve/` | **Upload geotagged "After Repair" proof photo** |
+| `POST` | `/api/complaints/{id}/citizen-verify/` | **Citizen verifies or rejects officer proof** |
 | `POST` | `/api/complaints/check-duplicate/` | Check for existing similar complaints |
-| `POST` | `/api/complaints/{id}/images/upload/` | Upload evidence images |
+
+### Civic Budgeting Module — `/api/complaints/`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/complaints/projects/` | **List auto-clustered Ward Civic Projects** |
+| `POST` | `/api/complaints/projects/{id}/vote/` | **Toggle citizen "Vote to Fund" on a project** |
+| `GET` | `/api/complaints/budget-analytics/` | **District budget pool, spent, remaining, backlog** |
 
 ### AI Assistant Module — `/api/ai/`
 | Method | Endpoint | Description |
@@ -451,129 +425,114 @@ For importing custom schemes or office directories, refer to the specifications 
 | `POST` | `/api/ai/chat/send-email/` | Dispatch official grievance email to department |
 | `POST` | `/api/ai/recommend-schemes/` | AI-powered welfare scheme recommendations |
 
-### AI Microservice — `http://localhost:8010/`
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Service health check |
-| `POST` | `/api/v1/complaints/classify` | Classify complaint category & intent |
-| `POST` | `/api/v1/complaints/draft` | Generate professional grievance draft |
-| `POST` | `/api/v1/schemes/recommend` | Evaluate scheme eligibility |
-| `POST` | `/api/v1/translate` | Multi-language translation |
-
 ---
 
-## 📧 Core Workflows
+## 🔄 Core Workflows
 
-### 1. AI Grievance Assistant & Email Dispatching
-
-```
-Citizen: "There's too much water logged due to heavy rain near the bus stop in Khurda, Odisha"
-    │
-    ▼
-┌─ Intent Detection ─────────────────────────────────────────────┐
-│  Intent: FILE_COMPLAINT                                        │
-│  Category: Drainage & Sewerage                                 │
-│  Department: Municipal Corporation                             │
-│  Location: Khurda, Odisha                                      │
-│  Description: "too much water logged due to heavy rain..."     │
-└────────────────────────────────────────────────────────────────┘
-    │
-    ▼
-┌─ Duplicate Check ──────────────────────────────────────────────┐
-│  Checks existing complaints with same category + location      │
-│  If found → Shows warning banner with "View & Support" link    │
-└────────────────────────────────────────────────────────────────┘
-    │
-    ▼
-┌─ Two Options ──────────────────────────────────────────────────┐
-│                                                                │
-│  Option 1: Send Email                Option 2: Complete Form   │
-│  ┌──────────────────┐                ┌──────────────────────┐  │
-│  │ AI generates      │                │ Navigate to manual   │  │
-│  │ professional draft │                │ form with all fields │  │
-│  │ → Preview modal   │                │ auto-filled from AI  │  │
-│  │ → Office lookup   │                │ → Upload images      │  │
-│  │ → Send official   │                │ → Submit to database │  │
-│  │   email to dept   │                │                      │  │
-│  └──────────────────┘                └──────────────────────┘  │
-└────────────────────────────────────────────────────────────────┘
-```
-
-### 2. Community Support & Prioritization
+### 1. Google OAuth 2.0 Sign-In Flow *(New — Today)*
 
 ```
-Citizen A files: "Street light broken on MG Road, Bhubaneswar"
-    │
-    ├── Citizen B sees it in All Complaints → Clicks "Support" → Count: 2
-    ├── Citizen C sees it in All Complaints → Clicks "Support" → Count: 3
-    ├── Citizen D files same complaint → Duplicate warning shown
-    │   └── Clicks "View & Support" → Redirected → Count: 4
-    │
-    ▼
-Complaint now has 4 community supports → Higher visibility for authorities
+[Citizen clicks "Continue with Google" on Login Page]
+       │
+       ▼
+[Official Google Account Chooser Popup opens]
+(shows all logged-in @gmail.com accounts)
+       │ Citizen selects their account
+       ▼
+[React fetches verified name + email from Google userinfo API]
+       │
+       ▼
+[React POSTs to POST /api/auth/google/ with {email, full_name}]
+       │
+       ▼
+[Django GoogleAuthView: get_or_create User in DB, issue JWT]
+       │
+       ▼
+[loginWithTokens(access, refresh, user) updates AuthContext]
+       │
+       ▼
+[Toast: "Welcome, Pratham! Signed in with pratham6306@gmail.com"]
+[Redirect → /dashboard]
 ```
 
-### 3. Welfare Scheme Recommendation
+### 2. Citizen Vote to Fund (Participatory Budgeting) Flow *(New — Today)*
 
 ```
-Citizen asks: "What scholarship schemes are available for SC students in Odisha?"
-    │
-    ▼
-┌─ AI Evaluation ────────────────────────────────────────────────┐
-│  Matches against 100+ schemes using:                           │
-│  • Income criteria    • Age limits                             │
-│  • Caste category     • Education level                        │
-│  • State residency    • Gender requirements                    │
-│                                                                │
-│  Returns: Eligible schemes with benefit details                │
-│  Flags: Region-locked schemes from other states                │
-└────────────────────────────────────────────────────────────────┘
+[1. AI Clusters 11 Road complaints in Madhepura → CivicProject created]
+       │
+       ▼
+[2. Citizen opens /civic-budgeting → Filters by District: Madhepura]
+       │
+       ▼
+[3. Citizen clicks "🗳️ Vote to Fund" on Road & Infrastructure Project]
+       │  POST /api/complaints/projects/<id>/vote/
+       ▼
+[4. Django: get_or_create CivicProjectVote(project, user)]
+   (UniqueConstraint guarantees 1 vote per user per project)
+       │
+       ▼
+[5. Vote count increments instantly on screen]
+[6. When threshold reached → Status: PROPOSED → IN_EXECUTION]
+[7. Budget allocated → All 11 complaints receive "In Progress" status]
 ```
 
----
+### 3. Officer Proof Upload & Citizen Verification Flow *(Fixed — Today)*
 
-## 🧪 Testing
-
-```bash
-# Run Django backend test suite
-cd backend
-python manage.py test
-
-# Health check for AI microservice
-curl http://127.0.0.1:8010/health
+```
+[Officer opens any /complaints/:id page]
+       │ Clicks "👮 Switch to Officer Mode (Demo)"
+       ▼
+[Selects custom photo from device gallery]
+       │  POST /api/complaints/:id/officer-resolve/
+       │  Content-Type: multipart/form-data
+       ▼
+[Django saves exact gallery file to complaint.after_image]
+[Status → PENDING_VERIFICATION]
+       │
+       ▼
+[queryClient.setQueryData instantly updates React UI]
+[Before/After photos appear side-by-side]
+       │
+       ▼
+[Citizen clicks "✅ Verify Work Done" → Status: VERIFIED_RESOLVED]
+[OR clicks "❌ Reject Proof" → Status: IN_PROGRESS (re-opened)]
 ```
 
 ---
 
 ## 🏗️ Problem Statement Alignment
 
-### SOAIDEATHON-S36: Civic Grievance Triage and Budgeting
+### SIH S36: Civic Grievance Triage and Participatory Budgeting
 > *"Build an AI-powered platform for civic grievance classification, prioritization, and community-driven triage."*
 
 ✅ AI-powered complaint classification with Gemini LLM  
 ✅ Community upvoting system for collective prioritization  
+✅ **Participatory Civic Budgeting Portal** with ₹5 Crore District Repair Pool  
+✅ **AI Auto-Clustering** of complaints into Ward Civic Infrastructure Projects  
+✅ **Citizen Vote to Fund** — democratic municipal capital allocation  
+✅ **Officer Proof Upload + Citizen Verification Ledger** — evidence-grounded resolution  
 ✅ Fuzzy duplicate detection to prevent redundant filings  
 ✅ Multi-dimensional filtering (status, priority, category, department, location)  
-✅ Automated email dispatch to correct government offices  
 ✅ Multi-language support (22 languages) with Google Translate integration  
 ✅ Hindi, Hinglish & Devanagari intent detection (zero-LLM offline capable)  
 
-### SOAIDEATHON-S1: Human-in-the-Loop Agentic AI
+### SIH S1: Human-in-the-Loop Agentic AI
 > *"Create an agentic AI system where humans remain in control of critical decisions."*
 
+✅ **Google OAuth 2.0** — verified citizen identity, no fake accounts  
 ✅ AI suggests — Human approves (email preview before dispatch)  
 ✅ Dual submission paths (AI auto-dispatch OR manual form completion)  
 ✅ Citizens can override AI-inferred categories and departments  
 ✅ Anonymous filing option gives citizens control over privacy  
 ✅ Resilient hybrid architecture: LLM + local rules-based fallback  
 ✅ Voice input & speech recognition for hands-free complaint filing in 12+ Indian languages  
-✅ Optional photo evidence — AI never blocks filing to demand images  
+✅ **Citizens control resolution** — Verify or Reject officer proof photos  
 
 ---
 
 ## 👥 Team
 
-**Aavedan-Setu** — SOA IDEATHON 2026
+**Aavedan-Setu** — SIH 2026
 
 ---
 
