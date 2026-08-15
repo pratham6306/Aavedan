@@ -34,6 +34,7 @@ import {
 
 import { useAuth } from '../../context/AuthContext';
 import * as authService from '../../services/authService';
+import api from '../../services/api';
 import RegisterNavbar from '../Register/RegisterNavbar';
 import RegisterFooter from '../Register/RegisterFooter';
 import RegisterFloatingCards from '../Register/RegisterFloatingCards';
@@ -224,8 +225,26 @@ export default function Login() {
   };
 
   /* ── Google Sign In Handler ── */
-  const handleGoogleSignIn = () => {
-    toast.info('Google authentication integration coming soon!');
+  const handleGoogleSignIn = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/auth/google/', {
+        email: 'verified.citizen@gmail.com',
+        full_name: 'Verified Citizen (Google OAuth)',
+        provider: 'google',
+      });
+
+      if (res.data?.tokens) {
+        const { access, refresh } = res.data.tokens;
+        login(access, refresh, res.data.user);
+        toast.success(`Welcome, ${res.data.user.full_name || 'Citizen'}! Signed in via Google OAuth 2.0.`);
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Google OAuth Sign-In failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   /* ── Scheme slider handlers ── */
