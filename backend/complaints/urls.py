@@ -12,6 +12,11 @@ from .views import (
     DepartmentListAPIView,
     ComplaintSupportView,
     ComplaintDuplicateCheckView,
+    BudgetAnalyticsView,
+    CivicProjectListView,
+    CivicProjectVoteView,
+    OfficerResolveView,
+    CitizenVerifyView,
 )
 
 urlpatterns = [
@@ -79,5 +84,35 @@ urlpatterns = [
         "<int:pk>/support/",
         ComplaintSupportView.as_view(),
         name="complaint-support",
+    ),
+
+    path(
+        "budget-analytics/",
+        BudgetAnalyticsView.as_view(),
+        name="budget-analytics",
+    ),
+
+    path(
+        "projects/",
+        CivicProjectListView.as_view(),
+        name="civic-project-list",
+    ),
+
+    path(
+        "projects/<int:pk>/vote/",
+        CivicProjectVoteView.as_view(),
+        name="civic-project-vote",
+    ),
+
+    path(
+        "<int:pk>/officer-resolve/",
+        OfficerResolveView.as_view(),
+        name="officer-resolve",
+    ),
+
+    path(
+        "<int:pk>/verify-resolution/",
+        CitizenVerifyView.as_view(),
+        name="citizen-verify",
     ),
 ]

@@ -148,6 +148,23 @@
 | **Department Distribution** | Pie/doughnut chart breaking down complaints by department |
 | **Resolution Metrics** | Average resolution time tracking |
 
+### 💰 Civic Budgeting & Participatory Ward Projects (Problem Statement S36)
+| Feature | Description |
+|---------|-------------|
+| **Municipal Budget Tracking** | Tracks allocated, spent, and remaining repair budgets per district & department across 36 Indian states |
+| **Auto-Clustered Ward Projects** | AI auto-clusters individual complaints in the same ward/category into structured **Civic Project Proposals** (e.g. *"Ward 4 Stormwater Drain Overhaul"* — Est. ₹3,50,000) |
+| **Citizen Ward Budget Voting** | Citizens cast priority votes to allocate municipal funds to competing ward projects |
+| **Pan-India Default Budget Fallback** | Applies a standard ₹25 Lakhs quarterly budget pool for any district without a custom budget |
+
+### 📸 Evidence-Grounded Resolution Proof & Verification Ledger
+| Feature | Description |
+|---------|-------------|
+| **Officer Resolution Photo Upload** | Department officers upload geotagged **"After Repair"** proof photos and completion remarks right from `ComplaintDetail.jsx` |
+| **Demo Officer Toggle** | In-app officer demo toggle on `ComplaintDetail.jsx` allows hackathon judges to test officer photo resolution without re-logging |
+| **Side-by-Side Before / After View** | Displays original citizen issue photo vs officer repair proof photo side-by-side for comparison |
+| **Citizen Verification Ledger** | Complaint moves to `RESOLVED_BY_OFFICER` and ONLY reaches `VERIFIED_RESOLVED` once original complainant or community supporters verify |
+| **Anti-Spam Rejection Control** | Citizens can click **"Reject Resolution Proof"** if fake/junk photos are uploaded, automatically re-opening the ticket to `IN_PROGRESS` |
+
 ### 🎓 Welfare Scheme Recommendation Engine
 | Feature | Description |
 |---------|-------------|

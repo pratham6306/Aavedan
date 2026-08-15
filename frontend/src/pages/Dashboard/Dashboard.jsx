@@ -113,6 +113,49 @@ export default function Dashboard() {
   const realComplaints = complaintsData?.results ?? (Array.isArray(complaintsData) ? complaintsData : []);
   const complaintsList = realComplaints.length > 0 ? realComplaints : SAMPLE_COMPLAINTS;
 
+  /* ── Civic Budgeting & Participatory Voting state ── */
+  const [budgetInfo, setBudgetInfo] = React.useState(null);
+  const [civicProjects, setCivicProjects] = React.useState([]);
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    fetch('http://127.0.0.1:8000/api/complaints/budget-analytics/', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setBudgetInfo(data))
+      .catch(err => console.error('Failed to fetch budget analytics:', err));
+
+    fetch('http://127.0.0.1:8000/api/complaints/projects/', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setCivicProjects(data.results || data || []))
+      .catch(err => console.error('Failed to fetch civic projects:', err));
+  }, []);
+
+  const handleVoteProject = async (projectId) => {
+    const token = localStorage.getItem('access_token');
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/complaints/projects/${projectId}/vote/`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCivicProjects(prev => prev.map(p => p.id === projectId ? {
+          ...p,
+          votes_count: data.votes_count,
+          voted_by_user: data.voted
+        } : p));
+      }
+    } catch (err) {
+      console.error('Vote failed:', err);
+    }
+  };
+
   /* Metric Stat Values calculated directly from backend data */
   const stats = useMemo(() => {
     if (realComplaints.length === 0) {
@@ -514,20 +557,6 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-2 text-xs font-bold text-slate-700">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#ff9900]" />
-                <span>Pending</span>
-              </span>
-              <span className="text-slate-500 font-mono">{stats.pending} ({pendingPct}%)</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0052cc]" />
-                <span>Under Review</span>
-              </span>
-              <span className="text-slate-500 font-mono">{stats.underReview} ({underReviewPct}%)</span>
-            </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#10b981]" />

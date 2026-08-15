@@ -86,6 +86,11 @@ class ComplaintListSerializer(serializers.ModelSerializer):
             "supports_count",
             "supported_by_user",
             "is_anonymous",
+            "estimated_cost",
+            "budget_allocated",
+            "after_image",
+            "resolution_remarks",
+            "is_verified_resolved",
             "created_at",
         )
 
@@ -155,6 +160,13 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             "ai_confidence",
             "is_ai_processed",
             "is_anonymous",
+            "estimated_cost",
+            "budget_allocated",
+            "after_image",
+            "resolution_remarks",
+            "resolved_at",
+            "verified_at",
+            "is_verified_resolved",
             "complainant_name",
             "supports_count",
             "supported_by_user",
@@ -195,3 +207,65 @@ class ComplaintUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         return attrs
+
+
+class DepartmentBudgetSerializer(serializers.ModelSerializer):
+    department = serializers.StringRelatedField()
+    district = serializers.StringRelatedField()
+    state = serializers.StringRelatedField()
+
+    class Meta:
+        from .models import DepartmentBudget
+        model = DepartmentBudget
+        fields = (
+            "id",
+            "department",
+            "district",
+            "state",
+            "fiscal_year",
+            "allocated_budget",
+            "spent_budget",
+        )
+
+
+class CivicProjectSerializer(serializers.ModelSerializer):
+    category = serializers.StringRelatedField()
+    department = serializers.StringRelatedField()
+    district = serializers.StringRelatedField()
+    state = serializers.StringRelatedField()
+    complaints_count = serializers.SerializerMethodField()
+    votes_count = serializers.SerializerMethodField()
+    voted_by_user = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import CivicProject
+        model = CivicProject
+        fields = (
+            "id",
+            "title",
+            "category",
+            "department",
+            "district",
+            "state",
+            "ward_name",
+            "estimated_cost",
+            "allocated_budget",
+            "status",
+            "after_image",
+            "complaints_count",
+            "votes_count",
+            "voted_by_user",
+            "created_at",
+        )
+
+    def get_complaints_count(self, obj):
+        return obj.complaints.count()
+
+    def get_votes_count(self, obj):
+        return obj.votes.count()
+
+    def get_voted_by_user(self, obj):
+        user = self.context.get('request') and self.context['request'].user
+        if user and user.is_authenticated:
+            return obj.votes.filter(user=user).exists()
+        return False

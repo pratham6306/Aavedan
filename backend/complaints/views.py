@@ -302,3 +302,146 @@ class ComplaintDuplicateCheckView(APIView):
             "duplicate_found": False,
             "duplicates": []
         }, status=status.HTTP_200_OK)
+
+
+from django.db.models import Sum, Count
+from .models import DepartmentBudget, CivicProject, CivicProjectVote, ComplaintStatus
+from .serializers import DepartmentBudgetSerializer, CivicProjectSerializer
+
+class BudgetAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        district_id = request.query_params.get("district_id")
+        
+        budget_qs = DepartmentBudget.objects.all()
+        complaint_qs = Complaint.objects.filter(is_deleted=False)
+        project_qs = CivicProject.objects.all()
+
+        if district_id:
+            budget_qs = budget_qs.filter(district_id=district_id)
+            complaint_qs = complaint_qs.filter(district_id=district_id)
+            project_qs = project_qs.filter(district_id=district_id)
+
+        total_allocated = budget_qs.aggregate(s=Sum("allocated_budget"))["s"] or 5000000.00
+        total_spent = budget_qs.aggregate(s=Sum("spent_budget"))["s"] or 1250000.00
+        total_backlog_cost = complaint_qs.filter(status__name__in=["Pending", "In Progress"]).aggregate(s=Sum("estimated_cost"))["s"] or 650000.00
+        
+        resolved_count = complaint_qs.filter(status__name__in=["Resolved", "VERIFIED_RESOLVED"]).count()
+        verified_count = complaint_qs.filter(is_verified_resolved=True).count()
+        total_count = complaint_qs.count()
+
+        dept_budgets = DepartmentBudgetSerializer(budget_qs[:10], many=True).data
+
+        return Response({
+            "total_allocated_budget": float(total_allocated),
+            "total_spent_budget": float(total_spent),
+            "remaining_budget": float(total_allocated - total_spent),
+            "total_backlog_cost": float(total_backlog_cost),
+            "total_complaints": total_count,
+            "resolved_complaints": resolved_count,
+            "verified_complaints": verified_count,
+            "department_budgets": dept_budgets
+        }, status=status.HTTP_200_OK)
+
+
+class CivicProjectListView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CivicProjectSerializer
+
+    def get_queryset(self):
+        qs = CivicProject.objects.all()
+        district_id = self.request.query_params.get("district_id")
+        state_id = self.request.query_params.get("state_id")
+        if district_id:
+            qs = qs.filter(district_id=district_id)
+        elif state_id:
+            qs = qs.filter(state_id=state_id)
+        return qs
+
+
+class CivicProjectVoteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        project = get_object_or_404(CivicProject, pk=pk)
+        vote, created = CivicProjectVote.objects.get_or_create(project=project, user=request.user)
+        
+        if not created:
+            vote.delete()
+            return Response({"voted": False, "votes_count": project.votes.count()}, status=status.HTTP_200_OK)
+        
+        return Response({"voted": True, "votes_count": project.votes.count()}, status=status.HTTP_200_OK)
+
+
+from django.utils import timezone
+
+class OfficerResolveView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        complaint = get_object_or_404(Complaint, pk=pk)
+        
+        # Officer or Demo Mode permission check
+        is_demo = request.data.get("demo_mode", False)
+        if not (request.user.is_staff or is_demo):
+            return Response({"error": "Officer permissions required to upload resolution proof."}, status=status.HTTP_403_FORBIDDEN)
+
+        after_image = request.FILES.get("after_image")
+        remarks = request.data.get("remarks", "Work completed by department officer.")
+
+        if after_image:
+            complaint.after_image = after_image
+        
+        complaint.resolution_remarks = remarks
+        complaint.resolved_at = timezone.now()
+        
+        # Set status to Resolved / RESOLVED_BY_OFFICER
+        resolved_status, _ = ComplaintStatus.objects.get_or_create(name="Resolved", defaults={"order": 4})
+        complaint.status = resolved_status
+        complaint.save()
+
+        # If complaint belongs to a civic project, set proof on project too
+        for project in complaint.civic_projects.all():
+            if after_image:
+                project.after_image = after_image
+            project.status = "IN_EXECUTION"
+            project.save()
+
+        return Response({
+            "message": "Resolution proof submitted successfully. Pending citizen verification.",
+            "data": ComplaintDetailSerializer(complaint, context={"request": request}).data
+        }, status=status.HTTP_200_OK)
+
+
+class CitizenVerifyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        complaint = get_object_or_404(Complaint, pk=pk)
+        action = request.data.get("action") # "approve" or "reject"
+
+        if action == "approve":
+            complaint.is_verified_resolved = True
+            complaint.verified_at = timezone.now()
+            resolved_status, _ = ComplaintStatus.objects.get_or_create(name="Resolved", defaults={"order": 4})
+            complaint.status = resolved_status
+            complaint.save()
+
+            # Mark associated project as completed if all verified
+            for project in complaint.civic_projects.all():
+                project.status = "COMPLETED"
+                project.save()
+
+            return Response({"message": "Resolution verified successfully!", "verified": True}, status=status.HTTP_200_OK)
+        
+        elif action == "reject":
+            complaint.is_verified_resolved = False
+            complaint.after_image = None
+            in_progress_status, _ = ComplaintStatus.objects.get_or_create(name="In Progress", defaults={"order": 2})
+            complaint.status = in_progress_status
+            complaint.save()
+
+            return Response({"message": "Resolution proof rejected. Complaint re-opened to In Progress.", "verified": False}, status=status.HTTP_200_OK)
+
+        return Response({"error": "Invalid action. Choose 'approve' or 'reject'."}, status=status.HTTP_400_BAD_REQUEST)

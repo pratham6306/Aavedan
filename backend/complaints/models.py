@@ -145,6 +145,43 @@ class Complaint(BaseModel):
         default=False,
     )
 
+    estimated_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=15000.00,
+    )
+
+    budget_allocated = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    after_image = models.ImageField(
+        upload_to="complaints/resolutions/",
+        null=True,
+        blank=True,
+    )
+
+    resolution_remarks = models.TextField(
+        blank=True,
+    )
+
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    is_verified_resolved = models.BooleanField(
+        default=False,
+    )
+
     class Meta:
         ordering = ["-created_at"]
         verbose_name = "Complaint"
@@ -344,3 +381,88 @@ def create_complaint_notification(sender, instance, created, **kwargs):
                 notification_type=notif_type,
                 action_url=f"/complaints/{instance.id}"
             )
+
+
+class DepartmentBudget(BaseModel):
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name="budgets",
+    )
+    state = models.ForeignKey(
+        State,
+        on_delete=models.CASCADE,
+        related_name="department_budgets",
+    )
+    district = models.ForeignKey(
+        District,
+        on_delete=models.CASCADE,
+        related_name="department_budgets",
+    )
+    fiscal_year = models.CharField(
+        max_length=20,
+        default="2025-2026",
+    )
+    allocated_budget = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=2500000.00, # 25 Lakhs default
+    )
+    spent_budget = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=0.00,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["department", "district", "fiscal_year"],
+                name="unique_dept_district_budget"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.department.name} - {self.district.name} ({self.fiscal_year})"
+
+
+class CivicProject(BaseModel):
+    PROJECT_STATUS_CHOICES = (
+        ("PROPOSED", "Proposed Cluster"),
+        ("VOTED_FOR_FUNDING", "Voted for Funding"),
+        ("IN_EXECUTION", "In Execution"),
+        ("COMPLETED", "Completed & Verified"),
+    )
+
+    title = models.CharField(max_length=255)
+    category = models.ForeignKey(ComplaintCategory, on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    state = models.ForeignKey(State, on_delete=models.CASCADE)
+    district = models.ForeignKey(District, on_delete=models.CASCADE)
+    ward_name = models.CharField(max_length=150, default="Ward Central")
+    
+    estimated_cost = models.DecimalField(max_digits=12, decimal_places=2, default=350000.00)
+    allocated_budget = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=30, choices=PROJECT_STATUS_CHOICES, default="PROPOSED")
+    
+    after_image = models.ImageField(upload_to="projects/resolutions/", null=True, blank=True)
+    complaints = models.ManyToManyField(Complaint, related_name="civic_projects", blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title} ({self.district.name})"
+
+
+class CivicProjectVote(BaseModel):
+    project = models.ForeignKey(CivicProject, on_delete=models.CASCADE, related_name="votes")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="project_votes")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["project", "user"], name="unique_project_vote")
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} voted for {self.project.title}"
