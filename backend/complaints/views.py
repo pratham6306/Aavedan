@@ -451,9 +451,11 @@ class OfficerResolveView(APIView):
         if after_image:
             complaint.after_image = after_image
         elif not complaint.after_image:
-            # Create a valid ContentFile for demo mode testing
-            img_data = base64.b64decode(TINY_JPEG_B64)
-            complaint.after_image.save(f"resolution_proof_{complaint.id}.jpg", ContentFile(img_data), save=False)
+            if complaint.images.exists():
+                complaint.after_image = complaint.images.first().image
+            else:
+                img_data = base64.b64decode(TINY_JPEG_B64)
+                complaint.after_image.save(f"resolution_proof_{complaint.id}.jpg", ContentFile(img_data), save=False)
         
         complaint.resolution_remarks = remarks
         complaint.resolved_at = timezone.now()
