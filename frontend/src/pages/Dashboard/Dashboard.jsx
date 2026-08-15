@@ -449,26 +449,26 @@ export default function Dashboard() {
       {/* ── Civic Budgeting & Participatory Projects Section (S36 Module) ── */}
       <motion.div
         variants={itemVariants}
-        className="rounded-[28px] bg-gradient-to-r from-slate-900 via-gov-900 to-slate-950 text-white p-7 border border-slate-700 shadow-xl space-y-6"
+        className="rounded-[28px] bg-white/95 backdrop-blur-md p-7 border-2 border-amber-200/80 shadow-sm space-y-6"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700/80 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-amber-100 pb-5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-widest bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-md">
+              <span className="text-xs font-black uppercase tracking-widest bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300">
                 SIH S36 Module
               </span>
-              <h2 className="text-lg font-black text-white">Civic Budgeting & Ward Projects</h2>
+              <h2 className="text-lg font-black text-slate-900">Civic Budgeting & Ward Projects</h2>
             </div>
-            <p className="text-xs text-slate-300 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Municipal repair cost allocations, auto-clustered civic projects, & citizen ward budget voting
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-mono">District Repair Budget Pool</p>
-              <p className="text-xl font-extrabold text-emerald-400 font-mono">
-                ₹{(budgetInfo?.total_allocated_budget || 2500000).toLocaleString('en-IN')}
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-mono font-bold">District Repair Budget Pool</p>
+              <p className="text-xl font-black text-emerald-600 font-mono">
+                ₹{(budgetInfo?.total_allocated_budget || 50000000).toLocaleString('en-IN')}
               </p>
             </div>
           </div>
@@ -476,27 +476,27 @@ export default function Dashboard() {
 
         {/* Budget Allocation Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Total Spent Budget</span>
-            <span className="text-lg font-black text-blue-400 font-mono">
-              ₹{(budgetInfo?.total_spent_budget || 450000).toLocaleString('en-IN')}
+          <div className="bg-[#eef6ff] p-4 rounded-2xl border border-[#bcdcff]">
+            <span className="text-[10px] text-[#0052cc] font-bold uppercase block mb-1">Total Spent Budget</span>
+            <span className="text-lg font-black text-[#0052cc] font-mono">
+              ₹{(budgetInfo?.total_spent_budget || 14500000).toLocaleString('en-IN')}
             </span>
           </div>
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Unallocated Remaining</span>
-            <span className="text-lg font-black text-emerald-400 font-mono">
-              ₹{(budgetInfo?.remaining_budget || 2050000).toLocaleString('en-IN')}
+          <div className="bg-[#ecfdf5] p-4 rounded-2xl border border-[#a7f3d0]">
+            <span className="text-[10px] text-[#047857] font-bold uppercase block mb-1">Unallocated Remaining</span>
+            <span className="text-lg font-black text-[#047857] font-mono">
+              ₹{(budgetInfo?.remaining_budget || 35500000).toLocaleString('en-IN')}
             </span>
           </div>
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Est. Backlog Repair Cost</span>
-            <span className="text-lg font-black text-amber-400 font-mono">
+          <div className="bg-[#fffbeb] p-4 rounded-2xl border border-[#fde68a]">
+            <span className="text-[10px] text-[#854d0e] font-bold uppercase block mb-1">Est. Backlog Repair Cost</span>
+            <span className="text-lg font-black text-[#854d0e] font-mono">
               ₹{(budgetInfo?.total_backlog_cost || 650000).toLocaleString('en-IN')}
             </span>
           </div>
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Verified Resolved</span>
-            <span className="text-lg font-black text-purple-400 font-mono">
+          <div className="bg-[#f0f3ff] p-4 rounded-2xl border border-[#c7d2fe]">
+            <span className="text-[10px] text-[#4338ca] font-bold uppercase block mb-1">Verified Resolved</span>
+            <span className="text-lg font-black text-[#4338ca] font-mono">
               {budgetInfo?.verified_complaints || 0} / {budgetInfo?.resolved_complaints || 0} Tickets
             </span>
           </div>
@@ -505,10 +505,10 @@ export default function Dashboard() {
         {/* Auto-Clustered Participatory Ward Projects Grid */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
               Auto-Clustered Ward Projects (Vote to Prioritize Funding)
             </h3>
-            <span className="text-xs text-slate-400 font-mono">
+            <span className="text-xs text-slate-500 font-mono font-bold">
               {civicProjects.length} Projects Proposed
             </span>
           </div>
@@ -516,33 +516,33 @@ export default function Dashboard() {
           {civicProjects.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {civicProjects.slice(0, 4).map((proj) => (
-                <div key={proj.id} className="bg-slate-800/90 rounded-2xl p-4 border border-slate-700 flex flex-col justify-between space-y-3">
+                <div key={proj.id} className="bg-slate-50/90 rounded-2xl p-4 border border-slate-200 flex flex-col justify-between space-y-3 hover:border-amber-300 transition-colors">
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="text-[11px] font-bold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">
+                      <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
                         {proj.ward_name || 'Ward Central'} • {proj.category || 'Infrastructure'}
                       </span>
-                      <span className="text-xs font-mono text-emerald-400 font-bold">
+                      <span className="text-xs font-mono text-emerald-700 font-bold">
                         Est. Cost: ₹{Number(proj.estimated_cost || 350000).toLocaleString('en-IN')}
                       </span>
                     </div>
-                    <h4 className="text-sm font-bold text-white leading-snug">{proj.title}</h4>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <h4 className="text-sm font-bold text-slate-900 leading-snug">{proj.title}</h4>
+                    <p className="text-xs text-slate-500 mt-1">
                       Aggregated from {proj.complaints_count || 1} individual citizen grievances in {proj.district || 'District'}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-700/60">
-                    <span className="text-xs text-slate-300 font-mono">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                    <span className="text-xs text-slate-600 font-mono font-semibold">
                       🗳️ <strong>{proj.votes_count || 0}</strong> Ward Citizen Votes
                     </span>
 
                     <button
                       onClick={() => handleVoteProject(proj.id)}
-                      className={`btn text-xs py-1.5 px-3.5 rounded-xl font-bold transition shadow-sm ${
+                      className={`btn text-xs py-1.5 px-3.5 rounded-xl font-bold transition shadow-2xs ${
                         proj.voted_by_user
                           ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
-                          : 'bg-gov-600 text-white hover:bg-gov-700'
+                          : 'bg-[#0052cc] text-white hover:bg-[#003d99]'
                       }`}
                     >
                       {proj.voted_by_user ? '✓ Voted for Funding' : '🗳️ Vote to Fund'}
@@ -552,7 +552,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div className="bg-slate-800/50 p-6 rounded-2xl text-center text-xs text-slate-400 border border-dashed border-slate-700">
+            <div className="bg-slate-50 p-6 rounded-2xl text-center text-xs text-slate-500 border border-dashed border-slate-300">
               No ward project clusters found yet. As citizens file complaints in the same ward, AI automatically groups them here.
             </div>
           )}
