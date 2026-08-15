@@ -35,8 +35,11 @@ import ComplaintDetail from './pages/Complaint/ComplaintDetail.jsx';
 import EditComplaint from './pages/Complaint/EditComplaint.jsx';
 import GovernmentSchemes from './pages/GovernmentSchemes/GovernmentSchemes.jsx';
 import SchemeDetail from './pages/GovernmentSchemes/SchemeDetail.jsx';
+import { useState } from 'react';
 import Notifications from './pages/Notifications/Notifications.jsx';
+import Profile from './pages/Profile/Profile.jsx';
 import CivicBudgeting from './pages/Budgeting/CivicBudgeting.jsx';
+import FloatingAIAssistant from './components/layout/FloatingAIAssistant.jsx';
 
 /**
  * PublicLayout - Layout wrapper for public pages (no sidebar)
