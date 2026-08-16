@@ -454,9 +454,6 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-amber-100 pb-5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-widest bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300">
-                SIH S36 Module
-              </span>
               <h2 className="text-lg font-black text-slate-900">Civic Budgeting & Ward Projects</h2>
             </div>
             <p className="text-xs text-slate-500 mt-1">

@@ -21,7 +21,7 @@ async def translate_text(
     request: TranslateRequest,
     orchestrator: AIOrchestrator = Depends(get_ai_orchestrator),
 ) -> TranslateResponse:
-    """Translate text between supported languages (English, Hindi, Odia)."""
+    """Translate text between 22 supported languages"""
     translated_text, detected_source = await orchestrator.translate(
         text=request.text,
         source_language=request.source_language,

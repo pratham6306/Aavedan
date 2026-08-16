@@ -128,9 +128,6 @@ export default function CivicBudgeting() {
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase tracking-widest bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300">
-              SIH S36 Module
-            </span>
             <h1 className="page-title text-2xl font-black text-slate-900">Participatory Budgeting & Ward Projects</h1>
           </div>
           <p className="page-subtitle text-xs text-slate-500 mt-1">
