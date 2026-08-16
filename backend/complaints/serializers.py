@@ -239,6 +239,8 @@ class CivicProjectSerializer(serializers.ModelSerializer):
     voted_by_user = serializers.SerializerMethodField()
     verifications_count = serializers.SerializerMethodField()
     verified_by_user = serializers.SerializerMethodField()
+    rejections_count = serializers.SerializerMethodField()
+    rejected_by_user = serializers.SerializerMethodField()
 
     class Meta:
         from .models import CivicProject
@@ -261,6 +263,8 @@ class CivicProjectSerializer(serializers.ModelSerializer):
             "voted_by_user",
             "verifications_count",
             "verified_by_user",
+            "rejections_count",
+            "rejected_by_user",
             "created_at",
         )
 
@@ -283,6 +287,15 @@ class CivicProjectSerializer(serializers.ModelSerializer):
         user = self.context.get('request') and self.context['request'].user
         if user and user.is_authenticated:
             return obj.verified_by.filter(id=user.id).exists()
+        return False
+
+    def get_rejections_count(self, obj):
+        return obj.rejected_by.count()
+
+    def get_rejected_by_user(self, obj):
+        user = self.context.get('request') and self.context['request'].user
+        if user and user.is_authenticated:
+            return obj.rejected_by.filter(id=user.id).exists()
         return False
 
 

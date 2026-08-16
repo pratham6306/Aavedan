@@ -486,6 +486,8 @@ class GroupProjectVerifyView(APIView):
 
         if action == "approve":
             project.verified_by.add(request.user)
+            if project.rejected_by.filter(id=request.user.id).exists():
+                project.rejected_by.remove(request.user)
             v_count = project.verified_by.count()
 
             # Require 3 citizen approvals to mark whole group project as COMPLETED
@@ -509,21 +511,30 @@ class GroupProjectVerifyView(APIView):
             }, status=status.HTTP_200_OK)
 
         elif action == "reject":
-            project.status = "IN_EXECUTION"
-            project.after_image = None
-            project.verified_by.clear()
-            project.save()
+            project.rejected_by.add(request.user)
+            if project.verified_by.filter(id=request.user.id).exists():
+                project.verified_by.remove(request.user)
+            r_count = project.rejected_by.count()
 
-            pending_status = get_status_by_name("pending")
-            for complaint in project.complaints.all():
-                complaint.is_verified_resolved = False
-                complaint.after_image = None
-                complaint.status = pending_status
-                complaint.save()
+            # Require 3 citizen rejections to invalidate proof and re-open all complaints
+            if r_count >= 3:
+                project.status = "IN_EXECUTION"
+                project.after_image = None
+                project.verified_by.clear()
+                project.rejected_by.clear()
+                project.save()
+
+                pending_status = get_status_by_name("pending")
+                for complaint in project.complaints.all():
+                    complaint.is_verified_resolved = False
+                    complaint.after_image = None
+                    complaint.status = pending_status
+                    complaint.save()
 
             from .serializers import CivicProjectDetailSerializer
             return Response({
-                "message": "Group resolution proof rejected. All associated complaints re-opened.",
+                "message": f"Group rejection recorded! ({r_count}/3 citizen rejections)",
+                "rejections_count": r_count,
                 "project_status": project.status,
                 "data": CivicProjectDetailSerializer(project, context={"request": request}).data
             }, status=status.HTTP_200_OK)

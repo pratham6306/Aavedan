@@ -579,14 +579,19 @@ export default function CivicBudgeting() {
                     {/* Resolution Proof & Citizen Verification Ledger */}
                     {selectedProject.after_image && (
                       <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-300 space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
                           <h4 className="text-xs font-black text-emerald-900 uppercase flex items-center gap-1.5">
                             <HiOutlineShieldCheck className="w-5 h-5 text-emerald-600" />
                             Group Resolution Proof (Submitted by Department)
                           </h4>
-                          <span className="text-xs font-bold font-mono text-emerald-700">
-                            {selectedProject.verifications_count || 0} / 3 Citizen Approvals Needed
-                          </span>
+                          <div className="flex items-center gap-3 text-xs font-bold font-mono">
+                            <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                              ✅ {selectedProject.verifications_count || 0} / 3 Approvals
+                            </span>
+                            <span className="text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200">
+                              ❌ {selectedProject.rejections_count || 0} / 3 Rejections
+                            </span>
+                          </div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4 items-center">
@@ -599,7 +604,7 @@ export default function CivicBudgeting() {
                           <div className="space-y-2 text-xs text-emerald-950 flex-1">
                             <p><strong>Official Remarks:</strong> {selectedProject.resolution_remarks || 'Group infrastructure repair completed.'}</p>
                             <p className="text-[11px] text-emerald-700">
-                              When 3 citizens approve this proof, all {selectedProject.complaints_count || 0} associated complaints will automatically be marked <strong>RESOLVED</strong>!
+                              Requires <strong>3 citizen approvals</strong> to auto-resolve all {selectedProject.complaints_count || 0} complaints, or <strong>3 citizen rejections</strong> to re-open the ticket.
                             </p>
                           </div>
                         </div>
@@ -610,14 +615,14 @@ export default function CivicBudgeting() {
                             disabled={isVerifying || selectedProject.verified_by_user}
                             className="btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1 disabled:opacity-50"
                           >
-                            {selectedProject.verified_by_user ? '✓ You Approved This Group Proof' : '✅ Verify Group Work Done'}
+                            {selectedProject.verified_by_user ? '✓ Approved (1 Vote)' : `✅ Approve Work (${selectedProject.verifications_count || 0}/3)`}
                           </button>
                           <button
                             onClick={() => handleGroupCitizenVerify('reject')}
-                            disabled={isVerifying}
-                            className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1"
+                            disabled={isVerifying || selectedProject.rejected_by_user}
+                            className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1 disabled:opacity-50"
                           >
-                            ❌ Reject Proof (Fake/Incomplete)
+                            {selectedProject.rejected_by_user ? '✓ Rejected (1 Vote)' : `❌ Reject Proof (${selectedProject.rejections_count || 0}/3)`}
                           </button>
                         </div>
                       </div>

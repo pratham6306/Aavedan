@@ -448,6 +448,7 @@ class CivicProject(BaseModel):
     after_image = models.ImageField(upload_to="projects/resolutions/", null=True, blank=True)
     resolution_remarks = models.TextField(blank=True, null=True)
     verified_by = models.ManyToManyField(User, related_name="verified_civic_projects", blank=True)
+    rejected_by = models.ManyToManyField(User, related_name="rejected_civic_projects", blank=True)
     complaints = models.ManyToManyField(Complaint, related_name="civic_projects", blank=True)
 
     class Meta:
