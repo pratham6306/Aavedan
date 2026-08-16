@@ -447,6 +447,7 @@ class CivicProject(BaseModel):
     
     after_image = models.ImageField(upload_to="projects/resolutions/", null=True, blank=True)
     resolution_remarks = models.TextField(blank=True, null=True)
+    resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="resolved_civic_projects")
     verified_by = models.ManyToManyField(User, related_name="verified_civic_projects", blank=True)
     rejected_by = models.ManyToManyField(User, related_name="rejected_civic_projects", blank=True)
     complaints = models.ManyToManyField(Complaint, related_name="civic_projects", blank=True)

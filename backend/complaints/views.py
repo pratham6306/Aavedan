@@ -458,6 +458,7 @@ class GroupProjectResolveView(APIView):
             project.after_image = 'projects/resolutions/review_RpJMYxS.png'
         
         project.resolution_remarks = remarks
+        project.resolved_by = request.user
         project.status = "IN_EXECUTION"
         project.save()
 
@@ -518,6 +519,8 @@ class GroupProjectVerifyView(APIView):
 
             # ONLY transition back to PROPOSED (Pending) & invalidate proof when STRICTLY 3 or more rejections are received!
             if r_count >= 3:
+                uploader_email = project.resolved_by.email if project.resolved_by else None
+
                 project.status = "PROPOSED"
                 project.after_image = None
                 project.verified_by.clear()
@@ -530,6 +533,34 @@ class GroupProjectVerifyView(APIView):
                     complaint.after_image = None
                     complaint.status = pending_status
                     complaint.save()
+
+                # Dispatch automated rejection alert email to the SPECIFIC officer who uploaded the photo!
+                if uploader_email:
+                    from django.core.mail import send_mail
+                    from django.conf import settings
+                    subject = f"[URGENT ALERT] Resolution Proof Rejected: {project.title}"
+                    body = f"""Dear Officer,
+
+The resolution proof photo uploaded from your account ({uploader_email}) for '{project.title}' in {project.district.name} has been REJECTED by 3 citizens.
+
+Status Update:
+- Ward Project status reverted to PENDING (Proposed).
+- All {project.complaints.count()} associated citizen complaints re-opened.
+
+Please re-inspect the location and upload a new geotagged repair proof once re-work is completed.
+
+Aavedan Setu Governance Team
+"""
+                    try:
+                        send_mail(
+                            subject=subject,
+                            message=body,
+                            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@aavedansetu.gov.in'),
+                            recipient_list=[uploader_email],
+                            fail_silently=True,
+                        )
+                    except Exception as e:
+                        print("Email send error:", e)
 
             from .serializers import CivicProjectDetailSerializer
             return Response({
