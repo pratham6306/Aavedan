@@ -19,6 +19,12 @@ import {
   HiOutlineExclamationTriangle,
   HiOutlineShieldCheck,
   HiOutlineCheckBadge,
+  HiOutlineHandThumbUp,
+  HiOutlineUser,
+  HiOutlineDocumentText,
+  HiOutlineArrowPath,
+  HiCheck,
+  HiXMark,
 } from 'react-icons/hi2';
 
 import api from '../../services/api';
@@ -31,6 +37,7 @@ export default function CivicBudgeting() {
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
 
   /* ── Options for dropdowns ── */
   const [statesList, setStatesList] = useState([]);
@@ -107,10 +114,11 @@ export default function CivicBudgeting() {
 
       const matchDept = !selectedDepartment || String(proj.department) === String(selectedDepartment);
       const matchCat = !selectedCategory || String(proj.category) === String(selectedCategory);
+      const matchStatus = !selectedStatus || proj.status === selectedStatus;
 
-      return matchSearch && matchDept && matchCat;
+      return matchSearch && matchDept && matchCat && matchStatus;
     });
-  }, [projects, search, selectedDepartment, selectedCategory]);
+  }, [projects, search, selectedDepartment, selectedCategory, selectedStatus]);
 
   /* ── Vote handler ── */
   const handleVote = async (projectId) => {
@@ -128,7 +136,7 @@ export default function CivicBudgeting() {
               : p
           )
         );
-        toast.success(res.data.voted ? 'Voted for Ward Project funding!' : 'Removed vote from Ward Project.');
+        toast.success(res.data.voted ? 'Voted for Ward Project funding.' : 'Removed vote from Ward Project.');
       }
     } catch {
       toast.error('Failed to register vote.');
@@ -169,7 +177,7 @@ export default function CivicBudgeting() {
       });
 
       if (res.status === 200) {
-        toast.success(`Group resolution proof submitted! All ${selectedProject.complaints_count || ''} associated complaints updated to Under Review.`);
+        toast.success(`Group resolution proof submitted. Associated complaints updated to Under Review.`);
         setSelectedProject(res.data.data);
         setShowOfficerPanel(false);
         setProofFile(null);
@@ -191,9 +199,9 @@ export default function CivicBudgeting() {
       const res = await api.post(`/complaints/projects/${selectedProject.id}/verify/`, { action });
       if (res.status === 200) {
         if (action === 'approve') {
-          toast.success(res.data.message || 'Group resolution approved!');
+          toast.success(res.data.message || 'Group resolution approved.');
         } else {
-          toast.warn('Group resolution rejected! Associated complaints re-opened.');
+          toast.warn(res.data.message || 'Group resolution rejected.');
         }
         setSelectedProject(res.data.data);
         fetchProjects();
@@ -211,9 +219,10 @@ export default function CivicBudgeting() {
     setSelectedDistrict('');
     setSelectedDepartment('');
     setSelectedCategory('');
+    setSelectedStatus('');
   };
 
-  const activeFiltersCount = [selectedState, selectedDistrict, selectedDepartment, selectedCategory, search].filter(Boolean).length;
+  const activeFiltersCount = [selectedState, selectedDistrict, selectedDepartment, selectedCategory, selectedStatus, search].filter(Boolean).length;
 
   return (
     <div className="page-container space-y-6">
@@ -224,7 +233,7 @@ export default function CivicBudgeting() {
             <h1 className="page-title text-2xl font-black text-slate-900">Participatory Budgeting & Ward Projects</h1>
           </div>
           <p className="page-subtitle text-xs text-slate-500 mt-1">
-            Transforming aggregated ward complaints (3+ complaints) into funded municipal micro-projects with citizen budget voting & multi-complaint auto-resolution
+            Aggregating high-density ward complaints (3+ tickets) into municipal micro-projects with democratic budget allocation
           </p>
         </div>
 
@@ -262,7 +271,7 @@ export default function CivicBudgeting() {
         <div className="bg-[#f0f3ff] p-4 rounded-2xl border border-[#c7d2fe]">
           <span className="text-[10px] text-[#4338ca] font-bold uppercase block mb-1">Verified Resolutions</span>
           <span className="text-lg font-black text-[#4338ca] font-mono">
-            {budgetInfo?.verified_complaints || 0} / {budgetInfo?.resolved_complaints || 0} Tickets
+            {budgetInfo?.verified_complaints || 0} / {budgetInfo?.total_complaints || 0} Tickets
           </span>
         </div>
       </motion.div>
@@ -273,7 +282,7 @@ export default function CivicBudgeting() {
           <div className="flex items-center gap-2">
             <HiOutlineFunnel className="w-5 h-5 text-gov-600" />
             <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-              Filter Civic Projects
+              Filter Ward Projects
             </h2>
             {activeFiltersCount > 0 && (
               <span className="badge bg-gov-100 text-gov-700 text-xs px-2 py-0.5 rounded-full font-bold">
@@ -284,21 +293,21 @@ export default function CivicBudgeting() {
 
           {activeFiltersCount > 0 && (
             <button onClick={clearFilters} className="text-xs text-rose-600 font-bold hover:underline flex items-center gap-1">
-              <HiOutlineXMark className="w-4 h-4" /> Clear All Filters
+              <HiOutlineXMark className="w-4 h-4" /> Clear Filters
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
           {/* Search */}
-          <div className="relative">
+          <div className="relative col-span-1 sm:col-span-2 md:col-span-1">
             <HiOutlineMagnifyingGlass className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search ward/project..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500"
+              className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500 font-medium"
             />
           </div>
 
@@ -309,7 +318,7 @@ export default function CivicBudgeting() {
               setSelectedState(e.target.value);
               setSelectedDistrict('');
             }}
-            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500"
+            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500 font-medium"
           >
             <option value="">All States</option>
             {statesList.map((st) => (
@@ -324,7 +333,7 @@ export default function CivicBudgeting() {
             value={selectedDistrict}
             onChange={(e) => setSelectedDistrict(e.target.value)}
             disabled={!selectedState && districtsList.length === 0}
-            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500 disabled:opacity-50"
+            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500 disabled:opacity-50 font-medium"
           >
             <option value="">All Districts</option>
             {districtsList.map((d) => (
@@ -338,7 +347,7 @@ export default function CivicBudgeting() {
           <select
             value={selectedDepartment}
             onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500"
+            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500 font-medium"
           >
             <option value="">All Departments</option>
             {departmentsList.map((dept) => (
@@ -352,7 +361,7 @@ export default function CivicBudgeting() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500"
+            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500 font-medium"
           >
             <option value="">All Categories</option>
             {categoriesList.map((cat) => (
@@ -361,18 +370,30 @@ export default function CivicBudgeting() {
               </option>
             ))}
           </select>
+
+          {/* Status Filter */}
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500 font-medium"
+          >
+            <option value="">All Statuses</option>
+            <option value="PROPOSED">Proposed (Pending Work)</option>
+            <option value="IN_EXECUTION">In Execution (Proof Uploaded)</option>
+            <option value="COMPLETED">Completed & Verified</option>
+          </select>
         </div>
       </motion.div>
 
       {/* ── Projects Grid ── */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <div className="flex items-center justify-between mb-4">
-          <div>
+          <div className="flex items-center gap-2">
             <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
               Auto-Clustered Ward Projects ({filteredProjects.length})
             </h2>
-            <span className="text-[11px] text-gov-700 font-bold bg-gov-50 px-2 py-0.5 rounded border border-gov-200">
-              ⚡ Minimum 3+ complaints threshold active
+            <span className="text-[10px] text-gov-700 font-bold bg-gov-50 px-2 py-0.5 rounded border border-gov-200">
+              Minimum 3+ complaints threshold
             </span>
           </div>
           <p className="text-xs text-slate-500">Vote for your ward to allocate municipal funds</p>
@@ -397,12 +418,18 @@ export default function CivicBudgeting() {
                     <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-200">
                       {proj.ward_name || 'Ward Central'} • {proj.category}
                     </span>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md flex items-center gap-1 ${
                       proj.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
                       proj.status === 'IN_EXECUTION' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                       'bg-amber-100 text-amber-800 border border-amber-300'
                     }`}>
-                      {proj.status === 'COMPLETED' ? '✓ Completed & Verified' : proj.status === 'IN_EXECUTION' ? '⚡ In Execution (Proof Uploaded)' : 'PROPOSED'}
+                      {proj.status === 'COMPLETED' ? (
+                        <><HiOutlineCheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Completed & Verified</>
+                      ) : proj.status === 'IN_EXECUTION' ? (
+                        <><HiOutlineArrowPath className="w-3.5 h-3.5 text-blue-600" /> In Execution (Proof Uploaded)</>
+                      ) : (
+                        <><HiOutlineTag className="w-3.5 h-3.5 text-amber-600" /> Proposed</>
+                      )}
                     </span>
                   </div>
 
@@ -420,8 +447,8 @@ export default function CivicBudgeting() {
                   </div>
 
                   <div className="flex items-center justify-between mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-700">
-                      🔗 Aggregated from <strong className="text-gov-700">{proj.complaints_count || 3}</strong> citizen grievances
+                    <p className="text-xs text-slate-700 font-medium">
+                      Aggregated from <strong className="text-gov-700">{proj.complaints_count || 3}</strong> citizen grievances
                     </p>
                     <span className="text-xs font-mono font-black text-emerald-700">
                       Cost: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
@@ -432,24 +459,25 @@ export default function CivicBudgeting() {
                 <div className="flex items-center justify-between pt-3 border-t border-slate-200 gap-2">
                   <button
                     onClick={() => handleOpenDetailModal(proj.id)}
-                    className="text-xs font-bold text-gov-600 hover:text-gov-800 bg-gov-50 hover:bg-gov-100 px-3 py-1.5 rounded-xl border border-gov-200 transition flex items-center gap-1"
+                    className="text-xs font-bold text-gov-600 hover:text-gov-800 bg-gov-50 hover:bg-gov-100 px-3 py-1.5 rounded-xl border border-gov-200 transition flex items-center gap-1.5"
                   >
                     <HiOutlineEye className="w-4 h-4" /> View Group Complaints ({proj.complaints_count})
                   </button>
 
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-700 font-mono font-bold hidden sm:inline">
-                      🗳️ {proj.votes_count || 0}
+                      {proj.votes_count || 0} Votes
                     </span>
                     <button
                       onClick={() => handleVote(proj.id)}
-                      className={`btn text-xs py-1.5 px-3 rounded-xl font-bold transition shadow-2xs ${
+                      className={`btn text-xs py-1.5 px-3 rounded-xl font-bold transition shadow-2xs flex items-center gap-1 ${
                         proj.voted_by_user
                           ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
                           : 'bg-gov-600 text-white hover:bg-gov-700'
                       }`}
                     >
-                      {proj.voted_by_user ? '✓ Voted' : '🗳️ Vote to Fund'}
+                      <HiOutlineHandThumbUp className="w-3.5 h-3.5" />
+                      {proj.voted_by_user ? 'Voted' : 'Vote to Fund'}
                     </button>
                   </div>
                 </div>
@@ -459,8 +487,8 @@ export default function CivicBudgeting() {
         ) : (
           <div className="card p-12 text-center text-slate-500">
             <HiOutlineBanknotes className="w-12 h-12 mx-auto mb-3 opacity-40" />
-            <p className="text-sm font-bold text-slate-700">No Ward Projects Found (Min 3+ complaints threshold)</p>
-            <p className="text-xs text-slate-500 mt-1">Try adjusting your state, district, or category search filters above.</p>
+            <p className="text-sm font-bold text-slate-700">No Ward Projects Found</p>
+            <p className="text-xs text-slate-500 mt-1">Try adjusting your state, district, department, or status search filters above.</p>
           </div>
         )}
       </motion.div>
@@ -509,27 +537,28 @@ export default function CivicBudgeting() {
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 font-bold uppercase block">Citizen Votes</span>
-                        <span className="font-black text-amber-700 text-sm">🗳️ {selectedProject.votes_count || 0} Votes</span>
+                        <span className="font-black text-amber-700 text-sm">{selectedProject.votes_count || 0} Votes</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 font-bold uppercase block">Citizen Approvals</span>
-                        <span className="font-black text-indigo-700 text-sm">✅ {selectedProject.verifications_count || 0} / 3 Approvals</span>
+                        <span className="font-black text-indigo-700 text-sm">{selectedProject.verifications_count || 0} / 3 Approvals</span>
                       </div>
                     </div>
 
                     {/* Officer Mode Action Toggle Banner */}
                     <div className="flex items-center justify-between bg-gov-50 p-4 rounded-2xl border border-gov-200">
                       <div>
-                        <p className="text-xs font-bold text-gov-900">👮 Department Officer Group Resolution Portal</p>
+                        <p className="text-xs font-bold text-gov-900">Department Officer Group Resolution Portal</p>
                         <p className="text-[11px] text-gov-600 mt-0.5">
-                          Upload 1 geotagged proof photo here to automatically resolve ALL {selectedProject.complaints_count || 0} associated complaints at once!
+                          Upload 1 geotagged proof photo here to update all {selectedProject.complaints_count || 0} associated complaints to Under Review.
                         </p>
                       </div>
                       <button
                         onClick={() => setShowOfficerPanel(!showOfficerPanel)}
-                        className="btn-primary text-xs py-1.5 px-3 rounded-xl font-bold whitespace-nowrap"
+                        className="btn-primary text-xs py-1.5 px-3 rounded-xl font-bold whitespace-nowrap flex items-center gap-1"
                       >
-                        {showOfficerPanel ? 'Cancel Panel' : '👮 Switch to Officer Mode'}
+                        <HiOutlineUser className="w-4 h-4" />
+                        {showOfficerPanel ? 'Cancel Panel' : 'Officer Resolution Panel'}
                       </button>
                     </div>
 
@@ -569,9 +598,10 @@ export default function CivicBudgeting() {
                         <button
                           type="submit"
                           disabled={isSubmittingProof}
-                          className="btn bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs py-2 px-4 rounded-xl font-black w-full"
+                          className="btn bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs py-2 px-4 rounded-xl font-black w-full flex items-center justify-center gap-2"
                         >
-                          {isSubmittingProof ? 'Uploading Group Proof...' : '⚡ Submit Group Resolution Proof & Auto-Resolve All Complaints'}
+                          <HiOutlineCloudArrowUp className="w-4 h-4" />
+                          {isSubmittingProof ? 'Uploading Group Proof...' : 'Submit Group Resolution Proof'}
                         </button>
                       </motion.form>
                     )}
@@ -585,11 +615,11 @@ export default function CivicBudgeting() {
                             Group Resolution Proof (Submitted by Department)
                           </h4>
                           <div className="flex items-center gap-3 text-xs font-bold font-mono">
-                            <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
-                              ✅ {selectedProject.verifications_count || 0} / 3 Approvals
+                            <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                              <HiCheck className="w-3.5 h-3.5" /> {selectedProject.verifications_count || 0} / 3 Approvals
                             </span>
-                            <span className="text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200">
-                              ❌ {selectedProject.rejections_count || 0} / 3 Rejections
+                            <span className="text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200 flex items-center gap-1">
+                              <HiXMark className="w-3.5 h-3.5" /> {selectedProject.rejections_count || 0} / 3 Rejections
                             </span>
                           </div>
                         </div>
@@ -604,7 +634,7 @@ export default function CivicBudgeting() {
                           <div className="space-y-2 text-xs text-emerald-950 flex-1">
                             <p><strong>Official Remarks:</strong> {selectedProject.resolution_remarks || 'Group infrastructure repair completed.'}</p>
                             <p className="text-[11px] text-emerald-700">
-                              Requires <strong>3 citizen approvals</strong> to auto-resolve all {selectedProject.complaints_count || 0} complaints, or <strong>3 citizen rejections</strong> to re-open the ticket.
+                              Requires <strong>3 citizen approvals</strong> to auto-resolve all {selectedProject.complaints_count || 0} complaints, or <strong>3 citizen rejections</strong> to reset ticket to Pending.
                             </p>
                           </div>
                         </div>
@@ -613,16 +643,18 @@ export default function CivicBudgeting() {
                           <button
                             onClick={() => handleGroupCitizenVerify('approve')}
                             disabled={isVerifying || selectedProject.verified_by_user}
-                            className="btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1 disabled:opacity-50"
+                            className="btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1 disabled:opacity-50 flex items-center justify-center gap-1.5"
                           >
-                            {selectedProject.verified_by_user ? '✓ Approved (1 Vote)' : `✅ Approve Work (${selectedProject.verifications_count || 0}/3)`}
+                            <HiCheck className="w-4 h-4" />
+                            {selectedProject.verified_by_user ? 'Approved (1 Vote)' : `Approve Work (${selectedProject.verifications_count || 0}/3)`}
                           </button>
                           <button
                             onClick={() => handleGroupCitizenVerify('reject')}
                             disabled={isVerifying || selectedProject.rejected_by_user}
-                            className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1 disabled:opacity-50"
+                            className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1 disabled:opacity-50 flex items-center justify-center gap-1.5"
                           >
-                            {selectedProject.rejected_by_user ? '✓ Rejected (1 Vote)' : `❌ Reject Proof (${selectedProject.rejections_count || 0}/3)`}
+                            <HiXMark className="w-4 h-4" />
+                            {selectedProject.rejected_by_user ? 'Rejected (1 Vote)' : `Reject Proof (${selectedProject.rejections_count || 0}/3)`}
                           </button>
                         </div>
                       </div>

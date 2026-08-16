@@ -516,9 +516,9 @@ class GroupProjectVerifyView(APIView):
                 project.verified_by.remove(request.user)
             r_count = project.rejected_by.count()
 
-            # ONLY transition back to PENDING & invalidate proof when STRICTLY 3 or more rejections are received!
+            # ONLY transition back to PROPOSED (Pending) & invalidate proof when STRICTLY 3 or more rejections are received!
             if r_count >= 3:
-                project.status = "IN_EXECUTION"
+                project.status = "PROPOSED"
                 project.after_image = None
                 project.verified_by.clear()
                 project.rejected_by.clear()
