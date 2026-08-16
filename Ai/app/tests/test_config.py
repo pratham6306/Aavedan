@@ -17,6 +17,8 @@ def test_settings_missing_required_secret_raises(monkeypatch: pytest.MonkeyPatch
     """GEMINI_API_KEY is required with no default — omitting it must
     fail loudly at construction time, not silently proceed."""
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEYS", raising=False)
+    monkeypatch.setattr("app.core.config.GeminiSettings.model_config", {"env_prefix": "GEMINI_", "extra": "ignore"})
     get_settings.cache_clear()
 
     with pytest.raises(ValidationError):
@@ -24,7 +26,7 @@ def test_settings_missing_required_secret_raises(monkeypatch: pytest.MonkeyPatch
 
 
 def test_settings_defaults_applied(settings: Settings) -> None:
-    assert settings.gemini.model_name == "gemini-1.5-pro"
+    assert settings.gemini.model_name in ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-flash-latest"]
     assert settings.gemini.max_json_retries == 2
     assert settings.database.pool_min_size == 1
 

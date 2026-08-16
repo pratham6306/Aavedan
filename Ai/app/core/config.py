@@ -51,7 +51,7 @@ class GeminiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="GEMINI_", env_file=".env", extra="ignore")
 
     api_key: SecretStr = Field(...)
-    model_name: str = Field(default="gemini-1.5-flash")
+    model_name: str = Field(default="gemini-1.5-pro")
     request_timeout_seconds: float = Field(default=12.0, gt=0)
     max_output_tokens: int = Field(default=2048, gt=0)
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
@@ -59,6 +59,29 @@ class GeminiSettings(BaseSettings):
     # LLM call resilience — used by llm/gemini_client.py and
     # llm/response_parser.py for the "retry on invalid JSON" workflow.
     max_json_retries: int = Field(default=2, ge=0, le=5)
+
+
+def get_dynamic_gemini_api_keys() -> list[str]:
+    """Dynamically loads and hot-reloads Gemini API keys from .env file.
+    Allows live zero-restart API key updates in GEMINI_API_KEYS (comma-separated).
+    """
+    import os
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+    except ImportError:
+        pass
+
+    keys_str = os.getenv("GEMINI_API_KEYS") or os.getenv("GEMINI_API_KEY") or ""
+    keys = [k.strip() for k in keys_str.split(",") if k.strip()]
+    if not keys:
+        try:
+            sec = get_settings().gemini.api_key.get_secret_value()
+            if sec:
+                keys = [sec]
+        except Exception:
+            pass
+    return keys if keys else ["dev_key"]
 
 
 class DatabaseSettings(BaseSettings):

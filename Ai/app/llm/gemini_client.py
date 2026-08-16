@@ -26,15 +26,19 @@ from app.exceptions.llm import LLMProviderError, LLMTimeoutError
 
 logger = get_logger(__name__)
 
+import asyncio
+import random
+from app.core.config import get_dynamic_gemini_api_keys
+
 _GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
 class GeminiClient:
-    """Async client for calling the Gemini generateContent endpoint.
+    """Async client for calling the Gemini generateContent endpoint with multi-key rotation & failover.
 
     Args:
-        api_key: Gemini API key (from settings.gemini.api_key).
-        model_name: Model identifier, e.g. "gemini-1.5-pro".
+        api_key: Optional single API key or list of keys. If omitted, dynamically reloads from .env.
+        model_name: Model identifier, e.g. "gemini-1.5-flash".
         timeout_seconds: Per-request timeout.
         temperature: Sampling temperature.
         max_output_tokens: Max tokens in the generated response.
@@ -43,38 +47,34 @@ class GeminiClient:
     def __init__(
         self,
         *,
-        api_key: str,
-        model_name: str,
+        api_key: str | list[str] | None = None,
+        model_name: str = "gemini-1.5-flash",
         timeout_seconds: float = 30.0,
         temperature: float = 0.2,
         max_output_tokens: int = 2048,
     ) -> None:
-        self._api_key = api_key
+        self._initial_api_key = api_key
         self._model_name = model_name
         self._timeout_seconds = timeout_seconds
         self._temperature = temperature
         self._max_output_tokens = max_output_tokens
+        self._key_index = 0
+
+    def _get_active_keys(self) -> list[str]:
+        keys = get_dynamic_gemini_api_keys()
+        if self._initial_api_key:
+            if isinstance(self._initial_api_key, list):
+                keys = self._initial_api_key + keys
+            elif isinstance(self._initial_api_key, str) and self._initial_api_key not in keys and self._initial_api_key != "dev_key":
+                keys.insert(0, self._initial_api_key)
+        return keys if keys else ["dev_key"]
 
     async def generate(self, prompt: str, image_data: dict | None = None) -> str:
-        """Send `prompt` to Gemini and return the raw text response.
+        """Send `prompt` to Gemini with automatic multi-key rotation and 429/503 resilience."""
+        keys = self._get_active_keys()
+        models = [self._model_name, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+        models = list(dict.fromkeys(models))
 
-        Args:
-            prompt: Fully-rendered prompt text (already built via
-                PromptBuilder — this method does no templating).
-            image_data: Optional dictionary containing "mimeType" and "data" (base64 string).
-
-        Returns:
-            The raw text content of the model's response. May or may
-            not be valid JSON — that's response_parser's concern.
-
-        Raises:
-            LLMTimeoutError: if the request exceeds the configured
-                timeout.
-            LLMProviderError: for any other network error, non-2xx
-                response, or a response with no usable text content
-                (e.g. blocked by safety filters).
-        """
-        url = f"{_GEMINI_BASE_URL}/{self._model_name}:generateContent"
         parts = [{"text": prompt}]
         if image_data:
             parts.append({
@@ -90,34 +90,54 @@ class GeminiClient:
                 "maxOutputTokens": self._max_output_tokens,
             },
         }
-        headers = {
-            "Content-Type": "application/json",
-            "x-goog-api-key": self._api_key,
-        }
 
-        try:
-            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
-                response = await client.post(url, json=payload, headers=headers)
-        except httpx.TimeoutException as exc:
-            logger.warning("Gemini request timed out", extra={"model": self._model_name})
-            raise LLMTimeoutError(
-                f"Gemini request timed out after {self._timeout_seconds}s"
-            ) from exc
-        except httpx.HTTPError as exc:
-            logger.error("Gemini request failed", extra={"error": str(exc)})
-            raise LLMProviderError(f"Gemini request failed: {exc}") from exc
+        max_attempts = min(len(keys) * len(models), 12)
+        last_error = None
 
-        if response.status_code != 200:
-            logger.error(
-                "Gemini returned non-200 response",
-                extra={"status_code": response.status_code, "body": response.text[:500]},
-            )
-            raise LLMProviderError(
-                f"Gemini returned status {response.status_code}",
-                details={"status_code": response.status_code},
-            )
+        for attempt in range(max_attempts):
+            current_key = keys[self._key_index % len(keys)]
+            current_model = models[(attempt // len(keys)) % len(models)]
 
-        return self._extract_text(response.json())
+            url = f"{_GEMINI_BASE_URL}/{current_model}:generateContent"
+            headers = {
+                "Content-Type": "application/json",
+                "x-goog-api-key": current_key,
+            }
+
+            try:
+                async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+                    response = await client.post(url, json=payload, headers=headers)
+
+                if response.status_code == 200:
+                    return self._extract_text(response.json())
+
+                if response.status_code in [429, 503, 502, 504]:
+                    logger.warning(
+                        f"Gemini API returned status {response.status_code} for model {current_model} on Key #{self._key_index % len(keys) + 1}. Rotating to next key..."
+                    )
+                    self._key_index = (self._key_index + 1) % len(keys)
+                    if attempt > 0 and attempt % len(keys) == 0:
+                        await asyncio.sleep(0.5 + random.uniform(0.1, 0.3))
+                    continue
+
+                logger.error(
+                    f"Gemini non-200 response ({response.status_code}): {response.text[:300]}"
+                )
+                raise LLMProviderError(
+                    f"Gemini returned status {response.status_code}",
+                    details={"status_code": response.status_code},
+                )
+
+            except httpx.TimeoutException as exc:
+                logger.warning(f"Gemini timeout on model {current_model}. Rotating key...")
+                self._key_index = (self._key_index + 1) % len(keys)
+                last_error = exc
+            except httpx.HTTPError as exc:
+                logger.error(f"Gemini HTTP error: {exc}")
+                self._key_index = (self._key_index + 1) % len(keys)
+                last_error = exc
+
+        raise LLMProviderError(f"All Gemini API keys and fallback models exhausted. Last error: {last_error}")
 
     @staticmethod
     def _extract_text(body: dict) -> str:
