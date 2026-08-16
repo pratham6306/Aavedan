@@ -414,23 +414,31 @@ export default function CivicBudgeting() {
             {filteredProjects.map((proj) => (
               <div key={proj.id} className="card card-hover p-6 flex flex-col justify-between space-y-4 border-2 border-slate-200/80">
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                     <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-200">
                       {proj.ward_name || 'Ward Central'} • {proj.category}
                     </span>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                      proj.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                      proj.status === 'IN_EXECUTION' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
-                      'bg-amber-100 text-amber-800 border border-amber-300'
-                    }`}>
-                      {proj.status === 'COMPLETED' ? (
-                        <><HiOutlineCheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Completed & Verified</>
-                      ) : proj.status === 'IN_EXECUTION' ? (
-                        <><HiOutlineArrowPath className="w-3.5 h-3.5 text-blue-600" /> In Execution (Proof Uploaded)</>
-                      ) : (
-                        <><HiOutlineTag className="w-3.5 h-3.5 text-amber-600" /> Proposed</>
+                    <div className="flex items-center gap-1.5">
+                      {proj.is_rejected && (
+                        <span className="text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md border border-rose-300 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+                          Proof Rejected (Re-opened)
+                        </span>
                       )}
-                    </span>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                        proj.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                        proj.status === 'IN_EXECUTION' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                        'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}>
+                        {proj.status === 'COMPLETED' ? (
+                          <><HiOutlineCheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Completed & Verified</>
+                        ) : proj.status === 'IN_EXECUTION' ? (
+                          <><HiOutlineArrowPath className="w-3.5 h-3.5 text-blue-600" /> In Execution (Proof Uploaded)</>
+                        ) : (
+                          <><HiOutlineTag className="w-3.5 h-3.5 text-amber-600" /> Proposed</>
+                        )}
+                      </span>
+                    </div>
                   </div>
 
                   <h3 className="text-base font-bold text-slate-900 leading-snug">{proj.title}</h3>
@@ -594,16 +602,39 @@ export default function CivicBudgeting() {
                             className="w-full text-xs p-3 bg-white border border-amber-300 rounded-xl"
                           />
                         </div>
+                          <button
+                            type="submit"
+                            disabled={isSubmittingProof}
+                            className="btn bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs py-2 px-4 rounded-xl font-black w-full flex items-center justify-center gap-2"
+                          >
+                            <HiOutlineCloudArrowUp className="w-4 h-4" />
+                            {isSubmittingProof ? 'Uploading Group Proof...' : 'Submit Group Resolution Proof'}
+                          </button>
+                        </motion.form>
+                      )}
 
-                        <button
-                          type="submit"
-                          disabled={isSubmittingProof}
-                          className="btn bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs py-2 px-4 rounded-xl font-black w-full flex items-center justify-center gap-2"
-                        >
-                          <HiOutlineCloudArrowUp className="w-4 h-4" />
-                          {isSubmittingProof ? 'Uploading Group Proof...' : 'Submit Group Resolution Proof'}
-                        </button>
-                      </motion.form>
+                    {/* Previous Rejected Proof Inspection Card (For Officials & Citizens) */}
+                    {selectedProject.rejected_image && (
+                      <div className="p-5 bg-rose-50 rounded-2xl border border-rose-200 space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-black text-rose-900 uppercase">
+                          <HiXMark className="w-5 h-5 text-rose-600 bg-rose-200 rounded-full p-0.5" />
+                          Previous Rejected Resolution Proof (Inspected by Officials & Citizens)
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                          <img
+                            src={resolveImageUrl(selectedProject.rejected_image)}
+                            alt="Rejected Resolution Proof"
+                            className="w-full sm:w-48 h-32 object-cover rounded-xl border border-rose-300 shadow-sm opacity-90 filter grayscale-25"
+                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=400'; }}
+                          />
+                          <div className="space-y-1.5 text-xs text-rose-950 flex-1">
+                            <p><strong>Previous Upload Remarks:</strong> {selectedProject.rejected_remarks || 'Uploaded resolution proof was rejected by 3 citizens.'}</p>
+                            <p className="text-[11px] text-rose-700 font-medium">
+                              ⚠️ This photo was rejected by 3 citizens. Officials can inspect this photo to understand citizen feedback before submitting a new geotagged proof.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     )}
 
                     {/* Resolution Proof & Citizen Verification Ledger */}

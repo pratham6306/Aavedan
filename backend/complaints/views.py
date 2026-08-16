@@ -459,6 +459,7 @@ class GroupProjectResolveView(APIView):
         
         project.resolution_remarks = remarks
         project.resolved_by = request.user
+        project.is_rejected = False
         project.status = "IN_EXECUTION"
         project.save()
 
@@ -520,6 +521,11 @@ class GroupProjectVerifyView(APIView):
             # ONLY transition back to PROPOSED (Pending) & invalidate proof when STRICTLY 3 or more rejections are received!
             if r_count >= 3:
                 uploader_email = project.resolved_by.email if project.resolved_by else None
+
+                # Preserve rejected photo history for officials & citizens to inspect!
+                project.rejected_image = project.after_image
+                project.rejected_remarks = project.resolution_remarks or "Resolution proof rejected by 3 citizens."
+                project.is_rejected = True
 
                 project.status = "PROPOSED"
                 project.after_image = None
