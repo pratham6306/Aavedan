@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+import random
 
 from rest_framework import status
 from rest_framework.generics import GenericAPIView, ListAPIView, ListAPIView
@@ -247,7 +248,7 @@ class ComplaintSupportView(APIView):
 
 
 class ComplaintDuplicateCheckView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def post(self, request):
         category_id = request.data.get("category")
@@ -263,14 +264,15 @@ class ComplaintDuplicateCheckView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Base query for active, non-deleted complaints in the same state/district and category/department
+        # Base query for active, pending complaints in the same state/district and category/department
         qs = Complaint.objects.filter(
             is_deleted=False,
+            is_verified_resolved=False,
             state_id=state_id,
             district_id=district_id,
             category_id=category_id,
             department_id=department_id
-        )
+        ).exclude(status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"])
 
         duplicates = []
 
@@ -365,12 +367,14 @@ class CivicProjectListView(ListAPIView):
     serializer_class = CivicProjectSerializer
 
     def get_queryset(self):
-        # Auto-cluster exclusively from active complaints in the database
-        import random
-        
-        # Sync projects with active database complaints (minimum 3 complaints threshold)
+        # Auto-cluster active, pending complaints into municipal micro-projects (minimum 3 complaints threshold)
         grouped = {}
-        active_complaints = Complaint.objects.filter(is_deleted=False).select_related("district", "category", "department", "state").all()
+        active_complaints = Complaint.objects.filter(
+            is_deleted=False,
+            is_verified_resolved=False
+        ).exclude(
+            status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"]
+        ).select_related("district", "category", "department", "state").all()
         
         for c in active_complaints:
             if not c.district or not c.category:
