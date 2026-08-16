@@ -235,6 +235,7 @@ class CivicProjectSerializer(serializers.ModelSerializer):
     district = serializers.StringRelatedField()
     state = serializers.StringRelatedField()
     complaints_count = serializers.SerializerMethodField()
+    resolved_complaints_count = serializers.SerializerMethodField()
     votes_count = serializers.SerializerMethodField()
     voted_by_user = serializers.SerializerMethodField()
     verifications_count = serializers.SerializerMethodField()

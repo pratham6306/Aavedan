@@ -499,9 +499,9 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="bg-[#f0f3ff] p-4 rounded-2xl border border-[#c7d2fe]">
-            <span className="text-[10px] text-[#4338ca] font-bold uppercase block mb-1">Verified Resolved</span>
+            <span className="text-[10px] text-[#4338ca] font-bold uppercase block mb-1">Verified Group Projects</span>
             <span className="text-lg font-black text-[#4338ca] font-mono">
-              {budgetInfo?.verified_complaints || 0} / {budgetInfo?.resolved_complaints || 0} Tickets
+              {budgetInfo?.completed_projects || 0} / {budgetInfo?.total_projects || 0} Projects
             </span>
           </div>
         </div>

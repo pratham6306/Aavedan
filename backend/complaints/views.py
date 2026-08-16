@@ -334,13 +334,15 @@ class BudgetAnalyticsView(APIView):
         
         total_count = complaint_qs.count()
         verified_count = complaint_qs.filter(is_verified_resolved=True).count()
-        # Guarantee mathematical integrity: verified_count can NEVER exceed total_count
         if total_count > 0:
             verified_count = min(verified_count, total_count)
         else:
             verified_count = 0
             
         resolved_count = complaint_qs.filter(status__name__iexact="resolved").count()
+
+        total_projects = project_qs.count()
+        completed_projects = project_qs.filter(status="COMPLETED").count()
 
         dept_budgets = DepartmentBudgetSerializer(budget_qs[:10], many=True).data
 
@@ -352,12 +354,14 @@ class BudgetAnalyticsView(APIView):
             "total_complaints": total_count,
             "resolved_complaints": resolved_count,
             "verified_complaints": verified_count,
+            "total_projects": total_projects,
+            "completed_projects": completed_projects,
             "department_budgets": dept_budgets
         }, status=status.HTTP_200_OK)
 
 
 class CivicProjectListView(ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     serializer_class = CivicProjectSerializer
 
     def get_queryset(self):
@@ -418,11 +422,6 @@ class CivicProjectListView(ListAPIView):
                 proj.complaints.add(c)
             proj.estimated_cost = calc_cost
             proj.save()
-
-        # Delete any projects that have < 3 complaints attached
-        for p in CivicProject.objects.all():
-            if p.complaints.count() < 3:
-                p.delete()
 
         qs = CivicProject.objects.all()
         district_id = self.request.query_params.get("district_id")

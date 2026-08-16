@@ -269,9 +269,9 @@ export default function CivicBudgeting() {
           </span>
         </div>
         <div className="bg-[#f0f3ff] p-4 rounded-2xl border border-[#c7d2fe]">
-          <span className="text-[10px] text-[#4338ca] font-bold uppercase block mb-1">Verified Resolutions</span>
+          <span className="text-[10px] text-[#4338ca] font-bold uppercase block mb-1">Verified Group Projects</span>
           <span className="text-lg font-black text-[#4338ca] font-mono">
-            {budgetInfo?.verified_complaints || 0} / {budgetInfo?.total_complaints || 0} Tickets
+            {budgetInfo?.completed_projects || 0} / {budgetInfo?.total_projects || 0} Projects
           </span>
         </div>
       </motion.div>
@@ -454,18 +454,13 @@ export default function CivicBudgeting() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex-wrap gap-2">
+                  <div className="flex items-center justify-between mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                     <p className="text-xs text-slate-700 font-medium">
                       Aggregated from <strong className="text-gov-700">{proj.complaints_count || 3}</strong> citizen grievances
                     </p>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-mono">
-                        {proj.resolved_complaints_count || 0} / {proj.complaints_count || 3} Resolved
-                      </span>
-                      <span className="text-xs font-mono font-black text-emerald-700">
-                        Cost: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
-                      </span>
-                    </div>
+                    <span className="text-xs font-mono font-black text-emerald-700">
+                      Cost: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
+                    </span>
                   </div>
                 </div>
 
