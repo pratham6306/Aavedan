@@ -309,18 +309,13 @@ from .models import DepartmentBudget, CivicProject, CivicProjectVote, ComplaintS
 from .serializers import DepartmentBudgetSerializer, CivicProjectSerializer
 
 class BudgetAnalyticsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         district_id = request.query_params.get("district_id")
+        state_id = request.query_params.get("state_id")
         
-        # If no district passed, filter by the district of the most recent complaint or default district
         complaint_qs = Complaint.objects.filter(is_deleted=False)
-        if not district_id and complaint_qs.exists():
-            first_comp = complaint_qs.filter(district__isnull=False).first()
-            if first_comp:
-                district_id = first_comp.district_id
-
         budget_qs = DepartmentBudget.objects.all()
         project_qs = CivicProject.objects.all()
 
@@ -328,14 +323,24 @@ class BudgetAnalyticsView(APIView):
             budget_qs = budget_qs.filter(district_id=district_id)
             complaint_qs = complaint_qs.filter(district_id=district_id)
             project_qs = project_qs.filter(district_id=district_id)
+        elif state_id:
+            budget_qs = budget_qs.filter(state_id=state_id)
+            complaint_qs = complaint_qs.filter(state_id=state_id)
+            project_qs = project_qs.filter(state_id=state_id)
 
         total_allocated = budget_qs.aggregate(s=Sum("allocated_budget"))["s"] or 50000000.00
         total_spent = budget_qs.aggregate(s=Sum("spent_budget"))["s"] or 14500000.00
         total_backlog_cost = complaint_qs.filter(status__name__in=["Pending", "In Progress", "pending", "review"]).aggregate(s=Sum("estimated_cost"))["s"] or 650000.00
         
-        resolved_count = complaint_qs.filter(status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"]).count()
-        verified_count = complaint_qs.filter(is_verified_resolved=True).count()
         total_count = complaint_qs.count()
+        verified_count = complaint_qs.filter(is_verified_resolved=True).count()
+        # Guarantee mathematical integrity: verified_count can NEVER exceed total_count
+        if total_count > 0:
+            verified_count = min(verified_count, total_count)
+        else:
+            verified_count = 0
+            
+        resolved_count = complaint_qs.filter(status__name__iexact="resolved").count()
 
         dept_budgets = DepartmentBudgetSerializer(budget_qs[:10], many=True).data
 

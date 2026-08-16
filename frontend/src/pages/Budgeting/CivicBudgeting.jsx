@@ -454,13 +454,18 @@ export default function CivicBudgeting() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex-wrap gap-2">
                     <p className="text-xs text-slate-700 font-medium">
                       Aggregated from <strong className="text-gov-700">{proj.complaints_count || 3}</strong> citizen grievances
                     </p>
-                    <span className="text-xs font-mono font-black text-emerald-700">
-                      Cost: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-mono">
+                        {proj.resolved_complaints_count || 0} / {proj.complaints_count || 3} Resolved
+                      </span>
+                      <span className="text-xs font-mono font-black text-emerald-700">
+                        Cost: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

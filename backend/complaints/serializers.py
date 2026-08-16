@@ -262,6 +262,7 @@ class CivicProjectSerializer(serializers.ModelSerializer):
             "rejected_remarks",
             "is_rejected",
             "complaints_count",
+            "resolved_complaints_count",
             "votes_count",
             "voted_by_user",
             "verifications_count",
@@ -273,6 +274,9 @@ class CivicProjectSerializer(serializers.ModelSerializer):
 
     def get_complaints_count(self, obj):
         return obj.complaints.count()
+
+    def get_resolved_complaints_count(self, obj):
+        return obj.complaints.filter(status__name__iexact="resolved").count()
 
     def get_votes_count(self, obj):
         return obj.votes.count()
