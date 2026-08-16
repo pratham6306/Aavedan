@@ -237,6 +237,8 @@ class CivicProjectSerializer(serializers.ModelSerializer):
     complaints_count = serializers.SerializerMethodField()
     votes_count = serializers.SerializerMethodField()
     voted_by_user = serializers.SerializerMethodField()
+    verifications_count = serializers.SerializerMethodField()
+    verified_by_user = serializers.SerializerMethodField()
 
     class Meta:
         from .models import CivicProject
@@ -253,9 +255,12 @@ class CivicProjectSerializer(serializers.ModelSerializer):
             "allocated_budget",
             "status",
             "after_image",
+            "resolution_remarks",
             "complaints_count",
             "votes_count",
             "voted_by_user",
+            "verifications_count",
+            "verified_by_user",
             "created_at",
         )
 
@@ -269,4 +274,21 @@ class CivicProjectSerializer(serializers.ModelSerializer):
         user = self.context.get('request') and self.context['request'].user
         if user and user.is_authenticated:
             return obj.votes.filter(user=user).exists()
-        return False
+        return False
+
+    def get_verifications_count(self, obj):
+        return obj.verified_by.count()
+
+    def get_verified_by_user(self, obj):
+        user = self.context.get('request') and self.context['request'].user
+        if user and user.is_authenticated:
+            return obj.verified_by.filter(id=user.id).exists()
+        return False
+
+
+class CivicProjectDetailSerializer(CivicProjectSerializer):
+    complaints = ComplaintListSerializer(many=True, read_only=True)
+
+    class Meta(CivicProjectSerializer.Meta):
+        fields = CivicProjectSerializer.Meta.fields + ("complaints",)
+

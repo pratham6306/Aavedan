@@ -14,6 +14,29 @@
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Image URL Resolution
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resolves media image path to relative Vite proxy URL.
+ * @param {string} imgSrc
+ * @returns {string}
+ */
+export const resolveImageUrl = (imgSrc) => {
+  if (!imgSrc) return '';
+  if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://') || imgSrc.startsWith('data:')) {
+    return imgSrc;
+  }
+  if (imgSrc.startsWith('/media/')) {
+    return imgSrc;
+  }
+  if (imgSrc.startsWith('media/')) {
+    return `/${imgSrc}`;
+  }
+  return `/media/${imgSrc}`;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Date & Time
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -94,16 +117,18 @@ export const formatRelativeTime = (dateString) => {
  * getStatusColor('pending'); // → { className: 'badge badge-pending', label: 'Pending' }
  */
 export const getStatusColor = (status) => {
+  const normalized = (status || '').toLowerCase().trim();
   const map = {
-    pending:     { className: 'badge badge-pending',  label: 'Pending' },
-    in_progress: { className: 'badge badge-review',   label: 'In Progress' },
-    under_review:{ className: 'badge badge-review',   label: 'Under Review' },
-    resolved:    { className: 'badge badge-resolved',  label: 'Resolved' },
-    rejected:    { className: 'badge badge-rejected',  label: 'Rejected' },
-    closed:      { className: 'badge badge-resolved',  label: 'Closed' },
+    pending:      { className: 'badge badge-pending',  label: 'Pending' },
+    review:       { className: 'badge badge-review',   label: 'Under Review' },
+    under_review: { className: 'badge badge-review',   label: 'Under Review' },
+    in_progress:  { className: 'badge badge-review',   label: 'In Progress' },
+    resolved:     { className: 'badge badge-resolved', label: 'Resolved' },
+    rejected:     { className: 'badge badge-rejected', label: 'Rejected' },
+    closed:       { className: 'badge badge-resolved', label: 'Closed' },
   };
 
-  return map[status] || { className: 'badge badge-pending', label: status || 'Unknown' };
+  return map[normalized] || { className: 'badge badge-pending', label: status || 'Unknown' };
 };
 
 /**
@@ -284,31 +309,21 @@ export const complaintStatuses = [
   {
     value: 'pending',
     label: 'Pending',
-    description: 'Complaint has been submitted and is awaiting review.',
-  },
-  {
-    value: 'in_progress',
-    label: 'In Progress',
-    description: 'Complaint is being actively worked on.',
+    description: 'Complaint has been submitted and is awaiting department action.',
   },
   {
     value: 'under_review',
     label: 'Under Review',
-    description: 'Complaint is being reviewed by the concerned department.',
+    description: 'Resolution proof submitted; pending citizen verification.',
   },
   {
     value: 'resolved',
     label: 'Resolved',
-    description: 'Complaint has been resolved successfully.',
+    description: 'Complaint has been resolved and verified successfully.',
   },
   {
     value: 'rejected',
     label: 'Rejected',
-    description: 'Complaint has been rejected after review.',
-  },
-  {
-    value: 'closed',
-    label: 'Closed',
-    description: 'Complaint has been closed.',
+    description: 'Complaint or resolution proof has been rejected.',
   },
 ];

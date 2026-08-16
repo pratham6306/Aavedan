@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
 import {
   HiOutlineBanknotes,
   HiOutlineFunnel,
@@ -12,10 +13,16 @@ import {
   HiOutlineTag,
   HiOutlineXMark,
   HiOutlineChevronRight,
-  HiOutlineChartPie,
+  HiOutlineEye,
+  HiOutlinePhoto,
+  HiOutlineCloudArrowUp,
+  HiOutlineExclamationTriangle,
+  HiOutlineShieldCheck,
+  HiOutlineCheckBadge,
 } from 'react-icons/hi2';
 
 import api from '../../services/api';
+import { getStatusColor, resolveImageUrl } from '../../utils/helpers';
 
 export default function CivicBudgeting() {
   /* ── Filter state ── */
@@ -36,6 +43,18 @@ export default function CivicBudgeting() {
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  /* ── Modal / Group Complaint Detail State ── */
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
+  /* ── Group Officer Resolution State ── */
+  const [showOfficerPanel, setShowOfficerPanel] = useState(false);
+  const [proofFile, setProofFile] = useState(null);
+  const [proofRemarks, setProofRemarks] = useState('');
+  const [isSubmittingProof, setIsSubmittingProof] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+
   /* ── Fetch filter options ── */
   useEffect(() => {
     api.get('/locations/states/').then((res) => setStatesList(res.data.results || res.data || [])).catch(() => {});
@@ -55,7 +74,7 @@ export default function CivicBudgeting() {
   }, [selectedState]);
 
   /* ── Fetch budget analytics & projects ── */
-  useEffect(() => {
+  const fetchProjects = () => {
     setIsLoading(true);
     const params = new URLSearchParams();
     if (selectedDistrict) params.append('district_id', selectedDistrict);
@@ -71,9 +90,13 @@ export default function CivicBudgeting() {
       })
       .catch((err) => console.error('Failed to load civic budgeting data:', err))
       .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    fetchProjects();
   }, [selectedState, selectedDistrict]);
 
-  /* ── Local filtering by search, category & department ── */
+  /* ── Local filtering ── */
   const filteredProjects = useMemo(() => {
     return projects.filter((proj) => {
       const matchSearch =
@@ -112,6 +135,76 @@ export default function CivicBudgeting() {
     }
   };
 
+  /* ── Open Group Detail Modal ── */
+  const handleOpenDetailModal = async (projectId) => {
+    setIsLoadingDetail(true);
+    setIsModalOpen(true);
+    setShowOfficerPanel(false);
+    try {
+      const res = await api.get(`/complaints/projects/${projectId}/`);
+      setSelectedProject(res.data);
+    } catch {
+      toast.error('Failed to load group project details.');
+      setIsModalOpen(false);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
+
+  /* ── Group Officer Resolution Submit ── */
+  const handleGroupOfficerResolve = async (e) => {
+    e.preventDefault();
+    if (!selectedProject) return;
+    setIsSubmittingProof(true);
+    try {
+      const formData = new FormData();
+      if (proofFile) {
+        formData.append('after_image', proofFile);
+      }
+      formData.append('remarks', proofRemarks || 'Group infrastructure repair completed by department.');
+      formData.append('demo_mode', 'true');
+
+      const res = await api.post(`/complaints/projects/${selectedProject.id}/resolve/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (res.status === 200) {
+        toast.success(`Group resolution proof submitted! All ${selectedProject.complaints_count || ''} associated complaints updated to Under Review.`);
+        setSelectedProject(res.data.data);
+        setShowOfficerPanel(false);
+        setProofFile(null);
+        setProofRemarks('');
+        fetchProjects();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to submit group resolution proof.');
+    } finally {
+      setIsSubmittingProof(false);
+    }
+  };
+
+  /* ── Group Citizen Verification Handler ── */
+  const handleGroupCitizenVerify = async (action) => {
+    if (!selectedProject) return;
+    setIsVerifying(true);
+    try {
+      const res = await api.post(`/complaints/projects/${selectedProject.id}/verify/`, { action });
+      if (res.status === 200) {
+        if (action === 'approve') {
+          toast.success(res.data.message || 'Group resolution approved!');
+        } else {
+          toast.warn('Group resolution rejected! Associated complaints re-opened.');
+        }
+        setSelectedProject(res.data.data);
+        fetchProjects();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to verify group project.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const clearFilters = () => {
     setSearch('');
     setSelectedState('');
@@ -131,7 +224,7 @@ export default function CivicBudgeting() {
             <h1 className="page-title text-2xl font-black text-slate-900">Participatory Budgeting & Ward Projects</h1>
           </div>
           <p className="page-subtitle text-xs text-slate-500 mt-1">
-            Transforming aggregated ward complaints into funded municipal micro-projects with citizen budget voting
+            Transforming aggregated ward complaints (3+ complaints) into funded municipal micro-projects with citizen budget voting & multi-complaint auto-resolution
           </p>
         </div>
 
@@ -219,9 +312,9 @@ export default function CivicBudgeting() {
             className="text-xs px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-1 focus:ring-gov-500"
           >
             <option value="">All States</option>
-            {statesList.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
+            {statesList.map((st) => (
+              <option key={st.id} value={st.id}>
+                {st.name}
               </option>
             ))}
           </select>
@@ -274,9 +367,14 @@ export default function CivicBudgeting() {
       {/* ── Projects Grid ── */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-            Auto-Clustered Ward Projects ({filteredProjects.length})
-          </h2>
+          <div>
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+              Auto-Clustered Ward Projects ({filteredProjects.length})
+            </h2>
+            <span className="text-[11px] text-gov-700 font-bold bg-gov-50 px-2 py-0.5 rounded border border-gov-200">
+              ⚡ Minimum 3+ complaints threshold active
+            </span>
+          </div>
           <p className="text-xs text-slate-500">Vote for your ward to allocate municipal funds</p>
         </div>
 
@@ -299,8 +397,12 @@ export default function CivicBudgeting() {
                     <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-200">
                       {proj.ward_name || 'Ward Central'} • {proj.category}
                     </span>
-                    <span className="text-xs font-mono font-bold text-emerald-700">
-                      Est. Repair Cost: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                      proj.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                      proj.status === 'IN_EXECUTION' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                      'bg-amber-100 text-amber-800 border border-amber-300'
+                    }`}>
+                      {proj.status === 'COMPLETED' ? '✓ Completed & Verified' : proj.status === 'IN_EXECUTION' ? '⚡ In Execution (Proof Uploaded)' : 'PROPOSED'}
                     </span>
                   </div>
 
@@ -317,26 +419,39 @@ export default function CivicBudgeting() {
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-600 mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    🔗 Aggregated from <strong>{proj.complaints_count || 1}</strong> individual citizen grievances in {proj.district}
-                  </p>
+                  <div className="flex items-center justify-between mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <p className="text-xs text-slate-700">
+                      🔗 Aggregated from <strong className="text-gov-700">{proj.complaints_count || 3}</strong> citizen grievances
+                    </p>
+                    <span className="text-xs font-mono font-black text-emerald-700">
+                      Cost: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                  <span className="text-xs text-slate-700 font-mono font-bold">
-                    🗳️ <strong>{proj.votes_count || 0}</strong> Ward Citizen Votes
-                  </span>
-
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200 gap-2">
                   <button
-                    onClick={() => handleVote(proj.id)}
-                    className={`btn text-xs py-1.5 px-3.5 rounded-xl font-bold transition shadow-2xs ${
-                      proj.voted_by_user
-                        ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
-                        : 'bg-gov-600 text-white hover:bg-gov-700'
-                    }`}
+                    onClick={() => handleOpenDetailModal(proj.id)}
+                    className="text-xs font-bold text-gov-600 hover:text-gov-800 bg-gov-50 hover:bg-gov-100 px-3 py-1.5 rounded-xl border border-gov-200 transition flex items-center gap-1"
                   >
-                    {proj.voted_by_user ? '✓ Voted for Funding' : '🗳️ Vote to Fund'}
+                    <HiOutlineEye className="w-4 h-4" /> View Group Complaints ({proj.complaints_count})
                   </button>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-700 font-mono font-bold hidden sm:inline">
+                      🗳️ {proj.votes_count || 0}
+                    </span>
+                    <button
+                      onClick={() => handleVote(proj.id)}
+                      className={`btn text-xs py-1.5 px-3 rounded-xl font-bold transition shadow-2xs ${
+                        proj.voted_by_user
+                          ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                          : 'bg-gov-600 text-white hover:bg-gov-700'
+                      }`}
+                    >
+                      {proj.voted_by_user ? '✓ Voted' : '🗳️ Vote to Fund'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -344,11 +459,213 @@ export default function CivicBudgeting() {
         ) : (
           <div className="card p-12 text-center text-slate-500">
             <HiOutlineBanknotes className="w-12 h-12 mx-auto mb-3 opacity-40" />
-            <p className="text-sm font-bold text-slate-700">No Ward Projects Found</p>
+            <p className="text-sm font-bold text-slate-700">No Ward Projects Found (Min 3+ complaints threshold)</p>
             <p className="text-xs text-slate-500 mt-1">Try adjusting your state, district, or category search filters above.</p>
           </div>
         )}
       </motion.div>
+
+      {/* ── Group Project Details & Resolution Modal ── */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200"
+            >
+              {/* Modal Header */}
+              <div className="p-5 bg-gradient-to-r from-gov-800 to-gov-900 text-white flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-amber-300">
+                    Group Infrastructure Project • {selectedProject?.ward_name}
+                  </span>
+                  <h3 className="text-lg font-black text-white leading-snug">{selectedProject?.title}</h3>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="text-slate-300 hover:text-white p-1 rounded-lg">
+                  <HiOutlineXMark className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-6">
+                {isLoadingDetail ? (
+                  <div className="p-12 text-center">
+                    <div className="spinner mx-auto mb-3" />
+                    <p className="text-xs text-slate-500">Loading associated citizen complaints...</p>
+                  </div>
+                ) : selectedProject ? (
+                  <>
+                    {/* Project Metadata Stats */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Associated Complaints</span>
+                        <span className="font-black text-slate-900 text-sm">{selectedProject.complaints_count || 0} Tickets</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Est. Repair Budget</span>
+                        <span className="font-black text-emerald-700 text-sm">₹{Number(selectedProject.estimated_cost).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Citizen Votes</span>
+                        <span className="font-black text-amber-700 text-sm">🗳️ {selectedProject.votes_count || 0} Votes</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Citizen Approvals</span>
+                        <span className="font-black text-indigo-700 text-sm">✅ {selectedProject.verifications_count || 0} / 3 Approvals</span>
+                      </div>
+                    </div>
+
+                    {/* Officer Mode Action Toggle Banner */}
+                    <div className="flex items-center justify-between bg-gov-50 p-4 rounded-2xl border border-gov-200">
+                      <div>
+                        <p className="text-xs font-bold text-gov-900">👮 Department Officer Group Resolution Portal</p>
+                        <p className="text-[11px] text-gov-600 mt-0.5">
+                          Upload 1 geotagged proof photo here to automatically resolve ALL {selectedProject.complaints_count || 0} associated complaints at once!
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowOfficerPanel(!showOfficerPanel)}
+                        className="btn-primary text-xs py-1.5 px-3 rounded-xl font-bold whitespace-nowrap"
+                      >
+                        {showOfficerPanel ? 'Cancel Panel' : '👮 Switch to Officer Mode'}
+                      </button>
+                    </div>
+
+                    {/* Officer Resolution Upload Panel */}
+                    {showOfficerPanel && (
+                      <motion.form
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        onSubmit={handleGroupOfficerResolve}
+                        className="p-5 bg-amber-50 rounded-2xl border-2 border-amber-300 space-y-4"
+                      >
+                        <h4 className="text-xs font-black text-amber-900 uppercase">
+                          Upload Group Repair Proof Photo & Remarks
+                        </h4>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Select "After Repair" Geotagged Image File</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setProofFile(e.target.files[0])}
+                            className="w-full text-xs p-2 bg-white border border-amber-300 rounded-xl"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Officer Resolution Remarks</label>
+                          <textarea
+                            rows="2"
+                            placeholder="Enter official group repair completion notes..."
+                            value={proofRemarks}
+                            onChange={(e) => setProofRemarks(e.target.value)}
+                            className="w-full text-xs p-3 bg-white border border-amber-300 rounded-xl"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={isSubmittingProof}
+                          className="btn bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs py-2 px-4 rounded-xl font-black w-full"
+                        >
+                          {isSubmittingProof ? 'Uploading Group Proof...' : '⚡ Submit Group Resolution Proof & Auto-Resolve All Complaints'}
+                        </button>
+                      </motion.form>
+                    )}
+
+                    {/* Resolution Proof & Citizen Verification Ledger */}
+                    {selectedProject.after_image && (
+                      <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-300 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-black text-emerald-900 uppercase flex items-center gap-1.5">
+                            <HiOutlineShieldCheck className="w-5 h-5 text-emerald-600" />
+                            Group Resolution Proof (Submitted by Department)
+                          </h4>
+                          <span className="text-xs font-bold font-mono text-emerald-700">
+                            {selectedProject.verifications_count || 0} / 3 Citizen Approvals Needed
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                          <img
+                            src={resolveImageUrl(selectedProject.after_image)}
+                            alt="Group Resolution Proof"
+                            className="w-full sm:w-48 h-32 object-cover rounded-xl border border-emerald-300 shadow-sm"
+                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=400'; }}
+                          />
+                          <div className="space-y-2 text-xs text-emerald-950 flex-1">
+                            <p><strong>Official Remarks:</strong> {selectedProject.resolution_remarks || 'Group infrastructure repair completed.'}</p>
+                            <p className="text-[11px] text-emerald-700">
+                              When 3 citizens approve this proof, all {selectedProject.complaints_count || 0} associated complaints will automatically be marked <strong>RESOLVED</strong>!
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                          <button
+                            onClick={() => handleGroupCitizenVerify('approve')}
+                            disabled={isVerifying || selectedProject.verified_by_user}
+                            className="btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1 disabled:opacity-50"
+                          >
+                            {selectedProject.verified_by_user ? '✓ You Approved This Group Proof' : '✅ Verify Group Work Done'}
+                          </button>
+                          <button
+                            onClick={() => handleGroupCitizenVerify('reject')}
+                            disabled={isVerifying}
+                            className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs py-2 px-4 rounded-xl font-bold flex-1"
+                          >
+                            ❌ Reject Proof (Fake/Incomplete)
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Associated Citizen Complaints List Table */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        Associated Citizen Grievances ({selectedProject.complaints?.length || 0})
+                      </h4>
+
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        {selectedProject.complaints && selectedProject.complaints.length > 0 ? (
+                          selectedProject.complaints.map((c) => {
+                            const badge = getStatusColor(c.status?.name || c.status);
+                            return (
+                              <div key={c.id} className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono font-bold text-gov-700">{c.reference_number}</span>
+                                    <span className={badge.className}>{badge.label}</span>
+                                  </div>
+                                  <p className="font-bold text-slate-900 mt-0.5 line-clamp-1">{c.title}</p>
+                                  <p className="text-[10px] text-slate-500 mt-0.5">By {c.complainant_name || 'Citizen'} • {c.district}, {c.state}</p>
+                                </div>
+
+                                <Link
+                                  to={`/complaints/${c.id}`}
+                                  target="_blank"
+                                  className="text-gov-600 hover:text-gov-800 font-bold hover:underline whitespace-nowrap text-[11px]"
+                                >
+                                  View Ticket ↗
+                                </Link>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-xs text-slate-500 italic">No associated complaints loaded.</p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

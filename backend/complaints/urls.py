@@ -14,7 +14,10 @@ from .views import (
     ComplaintDuplicateCheckView,
     BudgetAnalyticsView,
     CivicProjectListView,
+    CivicProjectDetailView,
     CivicProjectVoteView,
+    GroupProjectResolveView,
+    GroupProjectVerifyView,
     OfficerResolveView,
     CitizenVerifyView,
 )
@@ -99,9 +102,27 @@ urlpatterns = [
     ),
 
     path(
+        "projects/<int:pk>/",
+        CivicProjectDetailView.as_view(),
+        name="civic-project-detail",
+    ),
+
+    path(
         "projects/<int:pk>/vote/",
         CivicProjectVoteView.as_view(),
         name="civic-project-vote",
+    ),
+
+    path(
+        "projects/<int:pk>/resolve/",
+        GroupProjectResolveView.as_view(),
+        name="civic-project-resolve",
+    ),
+
+    path(
+        "projects/<int:pk>/verify/",
+        GroupProjectVerifyView.as_view(),
+        name="civic-project-verify",
     ),
 
     path(

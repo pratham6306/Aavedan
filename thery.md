@@ -1,5 +1,26 @@
-# 🏛️ SIH 2026 Presentation Script & Technical Defense Guide
-## Problem Statement S36: Civic Grievance Triage & Participatory Budgeting
+### 🏛️ PART 7: Civic Budgeting Group Resolution & Cascading Auto-Close Architecture
+
+### 1. ⚡ Minimum 3+ Complaints Clustering Threshold
+- **Rule Enforced**: A ward category issue is **ONLY** auto-clustered into a **Civic Infrastructure Project** if there are **3 or more complaints (`>= 3`)** in that ward/category!
+- **Why this matters for Judges**: Single complaints (1-2 reports) remain individual tickets. Once 3 or more citizens independently report issues in the same ward, the system promotes them to a **Community Ward Project**.
+
+### 2. 🧮 Realistic Base + Scope Cost Calculation Model
+- **Problem Avoided**: Multiplying base cost by 100 complaints would produce absurd ₹1.5 Crore costs for a single pothole project!
+- **Municipal Scaling Formula**:
+  - `Base Category Cost`: Roads ₹1.5L, Electricity ₹85K, Water ₹60K, Sanitation ₹25K.
+  - `Project Cost = Base Cost + min(num_complaints - 3, 10) * ₹5,000`
+  - *Example*: A 11-complaint road project costs **₹1,90,000** (₹1.9 Lakhs), accurately reflecting real-world contractor work orders.
+
+### 3. 👮 1-Click Group Officer Resolution (`/api/complaints/projects/<id>/resolve/`)
+- Officers do **NOT** have to manually open and upload photos for 100 individual complaints!
+- An officer logs into the **Group Resolution Portal** on `/civic-budgeting` and uploads 1 geotagged proof photo.
+- **Cascading Auto-Resolution**: The backend automatically copies the proof photo & remarks to **ALL associated citizen complaints** (`project.complaints.all()`) and updates their status to **Under Review**!
+
+### 4. 👥 Multi-Citizen Verification & Automatic Group Close (`/api/complaints/projects/<id>/verify/`)
+- **3-Citizen Verification Threshold**: When 3 citizens (or project supporters/complainants) inspect the group proof photo and click **"✅ Verify Group Work Done"**:
+  - `CivicProject.status` shifts to **`COMPLETED`**.
+  - **Cascading Auto-Close**: All associated citizen complaints inside that group are automatically marked **`RESOLVED`** (`is_verified_resolved = True`) without needing manual intervention on each ticket!
+- **Rejection Flow**: If citizens click **"❌ Reject Proof"**, the group project resets to `IN_EXECUTION` and associated complaints are re-opened to `PENDING`.
 
 ---
 
