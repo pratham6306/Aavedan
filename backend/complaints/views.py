@@ -490,8 +490,8 @@ class GroupProjectVerifyView(APIView):
                 project.rejected_by.remove(request.user)
             v_count = project.verified_by.count()
 
-            # Require 3 citizen approvals to mark whole group project as COMPLETED
-            if v_count >= 3 or project.complaints.count() <= 3:
+            # ONLY transition to COMPLETED & resolved when STRICTLY 3 or more approvals are received!
+            if v_count >= 3:
                 project.status = "COMPLETED"
                 project.save()
 
@@ -504,7 +504,7 @@ class GroupProjectVerifyView(APIView):
 
             from .serializers import CivicProjectDetailSerializer
             return Response({
-                "message": f"Group verification recorded! ({v_count}/3 citizen approvals)",
+                "message": f"Group verification recorded! ({v_count}/3 citizen approvals). Status remains Under Review until 3 approvals.",
                 "verifications_count": v_count,
                 "project_status": project.status,
                 "data": CivicProjectDetailSerializer(project, context={"request": request}).data
@@ -516,7 +516,7 @@ class GroupProjectVerifyView(APIView):
                 project.verified_by.remove(request.user)
             r_count = project.rejected_by.count()
 
-            # Require 3 citizen rejections to invalidate proof and re-open all complaints
+            # ONLY transition back to PENDING & invalidate proof when STRICTLY 3 or more rejections are received!
             if r_count >= 3:
                 project.status = "IN_EXECUTION"
                 project.after_image = None
@@ -533,7 +533,7 @@ class GroupProjectVerifyView(APIView):
 
             from .serializers import CivicProjectDetailSerializer
             return Response({
-                "message": f"Group rejection recorded! ({r_count}/3 citizen rejections)",
+                "message": f"Group rejection recorded! ({r_count}/3 citizen rejections). Status remains Under Review until 3 rejections.",
                 "rejections_count": r_count,
                 "project_status": project.status,
                 "data": CivicProjectDetailSerializer(project, context={"request": request}).data
