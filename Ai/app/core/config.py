@@ -51,7 +51,7 @@ class GeminiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="GEMINI_", env_file=".env", extra="ignore")
 
     api_key: SecretStr = Field(...)
-    model_name: str = Field(default="gemini-1.5-pro")
+    model_name: str = Field(default="gemini-flash-latest")
     request_timeout_seconds: float = Field(default=12.0, gt=0)
     max_output_tokens: int = Field(default=2048, gt=0)
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)

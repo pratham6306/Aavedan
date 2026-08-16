@@ -48,7 +48,7 @@ class GeminiClient:
         self,
         *,
         api_key: str | list[str] | None = None,
-        model_name: str = "gemini-1.5-flash",
+        model_name: str = "gemini-flash-latest",
         timeout_seconds: float = 30.0,
         temperature: float = 0.2,
         max_output_tokens: int = 2048,
@@ -72,7 +72,8 @@ class GeminiClient:
     async def generate(self, prompt: str, image_data: dict | None = None) -> str:
         """Send `prompt` to Gemini with automatic multi-key rotation and 429/503 resilience."""
         keys = self._get_active_keys()
-        models = [self._model_name, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+        # Strictly use verified active model aliases
+        models = [self._model_name, "gemini-flash-latest"]
         models = list(dict.fromkeys(models))
 
         parts = [{"text": prompt}]
