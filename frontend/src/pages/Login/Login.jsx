@@ -599,23 +599,6 @@ export default function Login() {
                 </p>
               </div>
 
-              {/* Top Auth Navigation Tabs (Register / Login) */}
-              <div className="flex border-b border-slate-200/80 text-sm font-bold select-none gap-6 relative">
-                <button
-                  type="button"
-                  onClick={() => navigate("/register")}
-                  className="pb-2.5 text-[15px] font-semibold text-slate-400 hover:text-slate-700 border-b-2 border-transparent transition-all cursor-pointer -mb-[1px]"
-                >
-                  Register
-                </button>
-                <button
-                  type="button"
-                  className="pb-2.5 text-[15px] font-extrabold text-indigo-600 border-b-2 border-indigo-600 cursor-default transition-all -mb-[1px]"
-                >
-                  Login
-                </button>
-              </div>
-
               {/* Login Mode Selector Tabs (Password / OTP) */}
               <div className="p-1 bg-slate-100/90 backdrop-blur-sm rounded-2xl flex items-center gap-1 border border-slate-200/60 select-none">
                 <button
