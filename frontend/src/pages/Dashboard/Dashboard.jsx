@@ -146,7 +146,7 @@ export default function Dashboard() {
   /* Metric Stat Values calculated directly from backend data */
   const stats = useMemo(() => {
     if (realComplaints.length === 0) {
-      return { total: 2, pending: 2, underReview: 0, resolved: 0, rejected: 0 };
+      return { total: 0, pending: 0, underReview: 0, resolved: 0, rejected: 0 };
     }
     const total = realComplaints.length;
     const pending = realComplaints.filter((c) => (c.status || '').toLowerCase().includes('pending')).length;
