@@ -16,7 +16,10 @@ class DistrictListView(ListAPIView):
 
     def get_queryset(self):
         queryset = District.objects.all().order_by('name')
-        state_id = self.request.query_params.get('state_id')
-        if state_id:
-            queryset = queryset.filter(state_id=state_id)
+        state_param = self.request.query_params.get('state_id') or self.request.query_params.get('state')
+        if state_param:
+            if str(state_param).isdigit():
+                queryset = queryset.filter(state_id=state_param)
+            else:
+                queryset = queryset.filter(state__name__iexact=state_param)
         return queryset

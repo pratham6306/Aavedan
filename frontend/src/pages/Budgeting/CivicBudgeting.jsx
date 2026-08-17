@@ -71,8 +71,9 @@ export default function CivicBudgeting() {
 
   /* ── Fetch districts when state changes ── */
   useEffect(() => {
+    setSelectedDistrict('');
     if (selectedState) {
-      api.get(`/locations/districts/?state=${selectedState}`)
+      api.get(`/locations/districts/?state_id=${selectedState}`)
         .then((res) => setDistrictsList(res.data.results || res.data || []))
         .catch(() => setDistrictsList([]));
     } else {
