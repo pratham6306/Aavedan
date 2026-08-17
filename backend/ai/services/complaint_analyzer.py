@@ -202,4 +202,24 @@ class ComplaintAnalyzer:
             # If no complaint type is matched, we need clarification/details
             analysis["needs_clarification"] = True
 
+        # Generate a clean, professional 3-line offline formal description using department, location, and issue
+        comp_type = analysis.get("complaint_type") or "Civic Grievance"
+        dept = analysis.get("department") or "Municipal Authority"
+        cat = analysis.get("category") or "Public Infrastructure"
+        
+        entities_dict = session_data.get("entities", {}) if isinstance(session_data.get("entities"), dict) else {}
+        loc_parts = []
+        for loc_k in ["address", "landmark", "district", "state"]:
+            val = session_data.get(loc_k) or entities_dict.get(loc_k)
+            if val:
+                loc_parts.append(str(val))
+        
+        loc_str = ", ".join(loc_parts) if loc_parts else "specified municipal area"
+
+        line1 = f"Official Grievance Notice regarding {comp_type} reported under {dept} ({cat})."
+        line2 = f"Location & Site details: {loc_str}."
+        line3 = f"Public Urgency: Escalated for immediate municipal inspection and resolution dispatch."
+        
+        analysis["generated_description"] = f"{line1}\n{line2}\n{line3}"
+
         return analysis

@@ -71,3 +71,34 @@ class DraftService:
             draft_text=llm_signal.draft_text.strip(),
             suggested_documents=suggested_labels,
         )
+
+    def fallback_draft(
+        self,
+        *,
+        category_code: str,
+        language: Language,
+        text: str = "",
+    ) -> DraftResult:
+        """Generate a clean, professional 3-line formal description when LLM is offline or rate limited."""
+        category = self._knowledge.get_category(category_code)
+        dept_code = category.default_department_code if category else "MUNICIPAL_CORP"
+        dept = self._knowledge.get_department(dept_code)
+        
+        cat_name = category.display_name.get("en", "Civic Grievance") if category else "Civic Grievance"
+        dept_name = dept.name if dept else "Municipal Authority"
+
+        line1 = f"Official Grievance Notice regarding {cat_name} routed to {dept_name}."
+        line2 = f"Reported Issue Details: {text.strip() if text else category.description}."
+        line3 = "Public Urgency: Escalated for immediate municipal site inspection and resolution dispatch."
+
+        draft_text = f"{line1}\n{line2}\n{line3}"
+        required_docs = self._knowledge.get_required_documents(category_code)
+        suggested_labels = [
+            self._knowledge.get_document_display_name(doc_code, language.value)
+            for doc_code in required_docs
+        ]
+
+        return DraftResult(
+            draft_text=draft_text,
+            suggested_documents=suggested_labels,
+        )
