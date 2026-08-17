@@ -23,6 +23,7 @@ import uuid
 
 from app.core.config import Settings
 from app.core.logging import get_logger
+from app.exceptions.llm import LLMProviderError, LLMTimeoutError
 from app.llm.gemini_client import GeminiClient
 from app.llm.prompt_builder import PromptBuilder
 from app.llm.response_parser import parse_with_retries
@@ -102,17 +103,22 @@ class AIOrchestrator:
                     mime_type = header.split(";", 1)[0].replace("data:", "")
             image_data = {"mimeType": mime_type, "data": base64_data}
 
-        raw_response = await self._client.generate(prompt, image_data=image_data)
-        signal = await parse_with_retries(
-            initial_response=raw_response,
-            schema=LLMClassificationSignal,
-            client=self._client,
-            prompt_builder=self._prompt_builder,
-            max_retries=self._settings.gemini.max_json_retries,
-            image_data=image_data,
-        )
-
-        result = self._classification_service.resolve(signal)
+        try:
+            raw_response = await self._client.generate(prompt, image_data=image_data)
+            signal = await parse_with_retries(
+                initial_response=raw_response,
+                schema=LLMClassificationSignal,
+                client=self._client,
+                prompt_builder=self._prompt_builder,
+                max_retries=self._settings.gemini.max_json_retries,
+                image_data=image_data,
+            )
+            result = self._classification_service.resolve(signal)
+        except (LLMProviderError, LLMTimeoutError) as exc:
+            logger.warning(
+                f"Gemini API rate limited or unavailable ({exc}). Utilizing zero-downtime offline classification rules."
+            )
+            result = self._classification_service.fallback_classify(cleaned_text)
 
         complaint = Complaint(
             id=uuid.uuid4(),

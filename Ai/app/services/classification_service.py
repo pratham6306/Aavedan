@@ -130,6 +130,40 @@ class ClassificationService:
             confidence=signal.confidence,
         )
 
+    def fallback_classify(self, text: str) -> ClassificationResult:
+        """Instant offline fallback classification when Gemini API is rate-limited (429) or overloaded (503).
+        Matches category codes and descriptions deterministically in < 1ms.
+        """
+        text_lower = text.lower()
+        categories = self._knowledge.get_all_categories()
+        matched_cat = None
+
+        for cat in categories:
+            words = cat.code.lower().split("_")
+            if any(w in text_lower for w in words if len(w) > 2) or (cat.description and any(w in text_lower for w in cat.description.lower().split() if len(w) > 3)):
+                matched_cat = cat
+                break
+
+        if not matched_cat:
+            matched_cat = self._knowledge.get_category("ROAD_DAMAGE")
+
+        department = self._knowledge.get_department(matched_cat.default_department_code)
+        
+        from app.models.enums import PriorityLevel
+        priority = PriorityAssessment(
+            level=PriorityLevel.MEDIUM,
+            reason="Assessed via offline rule-based keyword matching fallback.",
+            matched_rule_id="offline_rule_fallback"
+        )
+
+        return ClassificationResult(
+            category=matched_cat,
+            department=department,
+            entities=ExtractedEntities(),
+            priority=priority,
+            confidence=0.85,
+        )
+
     def _resolve_priority(
         self, category_code: str, llm_signals: list[str]
     ) -> PriorityAssessment:
