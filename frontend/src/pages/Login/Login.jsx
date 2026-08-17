@@ -582,8 +582,8 @@ export default function Login() {
               {/* Form Headers */}
               <div className="flex flex-col select-none">
                 <div className="flex items-center justify-between mb-1">
-                  <h2 className="text-3xl font-black text-slate-800 flex items-center gap-2">
-                    Welcome Back! 👋
+                  <h2 className="text-3xl font-black text-slate-800">
+                    Welcome Back!
                   </h2>
                   <Link
                     to="/"

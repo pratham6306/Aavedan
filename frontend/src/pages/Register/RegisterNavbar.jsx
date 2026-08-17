@@ -22,15 +22,8 @@ export default function RegisterNavbar() {
         </div>
       </Link>
 
-      {/* Right (Home / Login / Register buttons with identical gradient styling) */}
+      {/* Right (Login / Register buttons matching global Navbar guest buttons exactly) */}
       <div className="flex items-center gap-2">
-        <Link 
-          to="/" 
-          className="flex items-center gap-1.5 px-5 py-2 text-[15px] bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl shadow-md hover:scale-[1.02] transition-all cursor-pointer"
-        >
-          <Home size={16} className="text-white" />
-          <span>Home</span>
-        </Link>
         <Link 
           to="/login" 
           className="px-5 py-2 text-[15px] bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl shadow-md hover:scale-[1.02] transition-all cursor-pointer"
