@@ -35,6 +35,24 @@ class ChatResponseSerializer(serializers.Serializer):
         allow_blank=True
     )
     
+    description = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+    
+    draft_description = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+    
+    generated_description = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+    
     office = serializers.DictField(
         required=False,
         allow_null=True

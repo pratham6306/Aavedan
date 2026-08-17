@@ -53,12 +53,14 @@ class ResponseGenerator:
         
         elif next_action_str == NextAction.CONFIRM_AND_FILE.value:
             loc_str = ", ".join(filter(None, [address, landmark, district, state]))
+            desc_summary = session.get("generated_description") or session.get("description") or f"Official grievance regarding {complaint_type} under {department}."
             reply = (
                 f"I have gathered all the necessary details. Here is a summary of your complaint:\n\n"
                 f"• **Complaint Type**: {complaint_type}\n"
                 f"• **Department**: {department}\n"
                 f"• **Priority**: {priority}\n"
-                f"• **Location**: {loc_str}\n\n"
+                f"• **Location**: {loc_str}\n"
+                f"• **Description**:\n{desc_summary}\n\n"
                 "Would you like to proceed with lodging this complaint officially?"
             )
         
@@ -88,7 +90,7 @@ class ResponseGenerator:
             reply = "To track a complaint, please enter the official grievance reference number (e.g., GC-2026-000001)."
         
         elif next_action_str == NextAction.SHOW_SCHEME.value:
-            reply = "Certainly! What government welfare schemes (such as scholarships, crop relief, or Biju Pucca Ghar Yojana) would you like to inquire about?"
+            reply = "Which scheme (e.g., Subhadra Yojana, PM-KISAN, Odisha Mukhyamantri Krushi Shiksha, Kalia Yojana, Abadha Scheme, Madhubabu Pension, Disaster relief, or Biju Pucca Ghar Yojana) would you like to inquire about?"
         
         elif next_action_str == NextAction.SHOW_OFFICE.value:
             reply = "Please tell me the department name and your district/state, and I will find the nearest office details for you."
@@ -99,6 +101,8 @@ class ResponseGenerator:
         else:
             reply = "I'm sorry, I couldn't understand your request. How can I help you today?"
 
+        desc_text = session.get("generated_description") or session.get("description")
+
         return {
             "success": True,
             "reply": reply,
@@ -108,6 +112,9 @@ class ResponseGenerator:
             "complaint_type": complaint_type,
             "category": category,
             "department": department,
+            "description": desc_text,
+            "draft_description": desc_text,
+            "generated_description": desc_text,
             "office": office,
             "entities": entities,
             "missing_fields": missing_fields,

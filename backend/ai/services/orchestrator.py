@@ -83,14 +83,19 @@ class AIOrchestrator:
             except Exception:
                 pass
 
-        # Save initial/updated description if a complaint flow is active or triggered
-        if intent == Intent.FILE_COMPLAINT or session.get("complaint_type") or "description:" in message.lower():
-            if desc_text and not (desc_text.lower().startswith("please help me") and "description:" not in message.lower()):
-                self.memory.update_session(session_id, description=desc_text)
-
-        # 4. Handle context-aware answers in active flows
         prev_action = session.get("next_action")
         active_complaint = session.get("complaint_type")
+
+        # Save initial description if a complaint flow is triggered
+        # (Do NOT overwrite description when user is merely answering location/address questions)
+        is_answering_location = prev_action in [
+            NextAction.ASK_STATE.value, NextAction.ASK_DISTRICT.value, 
+            NextAction.ASK_ADDRESS.value, NextAction.ASK_LANDMARK.value, NextAction.ASK_PHOTO.value
+        ]
+        
+        if (intent == Intent.FILE_COMPLAINT and not session.get("description")) or ("description:" in message.lower()):
+            if desc_text and not is_answering_location:
+                self.memory.update_session(session_id, description=desc_text)
 
         # If user is responding to a question in a complaint flow
         if active_complaint and prev_action:
@@ -134,7 +139,8 @@ class AIOrchestrator:
                 resolved_cat = session.get("category")
                 resolved_dept = session.get("department")
 
-            # Update database-derived complaint info
+            # Update database-derived complaint info and generated description
+            gen_desc = analysis.get("generated_description")
             self.memory.update_session(
                 session_id,
                 complaint_type=resolved_ct,
@@ -142,7 +148,8 @@ class AIOrchestrator:
                 department=resolved_dept,
                 priority=analysis.get("priority", "medium"),
                 confidence=analysis.get("confidence", 0.0) if analysis.get("confidence", 0.0) > 0 else session.get("confidence", 0.0),
-                missing_fields=analysis.get("missing_fields", [])
+                missing_fields=analysis.get("missing_fields", []),
+                generated_description=gen_desc
             )
 
         # Refresh session reference

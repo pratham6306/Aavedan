@@ -26,7 +26,20 @@ class EmailDispatcher:
         district = session_data.get("district") or entities.get("district")
         address = session_data.get("address") or entities.get("address", "Not provided")
         landmark = session_data.get("landmark") or entities.get("landmark", "Not provided")
-        raw_desc = session_data.get("description") or "Please see details below."
+        
+        # 3-line formal description generator for offline & preview handoffs
+        gen_desc = session_data.get("generated_description")
+        user_desc = session_data.get("description")
+        
+        if gen_desc:
+            raw_desc = gen_desc
+        elif user_desc and user_desc.strip() != address.strip() and len(user_desc.strip()) > 10:
+            raw_desc = user_desc
+        else:
+            line1 = f"Official Grievance Notice regarding {complaint_type or category} reported under {department or 'Municipal Authority'} ({category})."
+            line2 = f"Location & Site details: {address}, Landmark: {landmark}, District: {district}, State: {state}."
+            line3 = "Public Urgency: Escalated for immediate municipal inspection and resolution dispatch."
+            raw_desc = f"{line1}\n{line2}\n{line3}"
         
         # Call AI Microservice to generate a professional draft
         description = raw_desc
@@ -276,7 +289,19 @@ class EmailDispatcher:
         district = session_data.get("district") or entities.get("district")
         address = session_data.get("address") or entities.get("address", "Not provided")
         landmark = session_data.get("landmark") or entities.get("landmark", "Not provided")
-        raw_desc = session_data.get("description") or "Please see details below."
+        # 3-line formal description generator for offline & preview handoffs
+        gen_desc = session_data.get("generated_description")
+        user_desc = session_data.get("description")
+        
+        if gen_desc:
+            raw_desc = gen_desc
+        elif user_desc and user_desc.strip() != address.strip() and len(user_desc.strip()) > 10:
+            raw_desc = user_desc
+        else:
+            line1 = f"Official Grievance Notice regarding {complaint_type or category} reported under {department or 'Municipal Authority'} ({category})."
+            line2 = f"Location & Site details: {address}, Landmark: {landmark}, District: {district}, State: {state}."
+            line3 = "Public Urgency: Escalated for immediate municipal inspection and resolution dispatch."
+            raw_desc = f"{line1}\n{line2}\n{line3}"
         
         # Call AI Microservice to generate a professional draft
         description = raw_desc

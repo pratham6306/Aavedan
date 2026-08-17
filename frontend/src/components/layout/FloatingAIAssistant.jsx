@@ -224,7 +224,7 @@ Landmark: ${data.landmark || ''}`;
 
       const handoffData = {
         title: `AI Grievance: ${data.subject ? data.subject.replace("[Grievance Registration] ", "").split(" - ")[0] : ""}`,
-        description: data.draft_description || data.original_description || getVal("• Description: "),
+        description: data.draft_description || data.generated_description || data.original_description || getVal("• Description: "),
         category: data.category || getVal("• Category: "),
         department: data.department || getVal("• Department: "),
         state: data.state || preloadedEntities?.state || getVal("• State: ") || "",
