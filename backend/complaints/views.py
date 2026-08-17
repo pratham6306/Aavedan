@@ -345,10 +345,10 @@ class BudgetAnalyticsView(APIView):
             d_id = int(district_id) if str(district_id).isdigit() else 1
             # District Municipal Base Pool: ₹3.0 Cr base + proportional scaling
             total_allocated = float(30000000.00 + (d_id * 2500000.00))
-            total_spent = float(real_spent + 4500000.00)
+            total_spent = float(real_spent) if real_spent > 0 else 0.0
         else:
             total_allocated = 50000000.00
-            total_spent = float(real_spent + 14500000.00)
+            total_spent = float(real_spent) if real_spent > 0 else 14500000.00
 
         total_backlog_cost = complaint_qs.filter(status__name__in=["Pending", "In Progress", "pending", "review"]).aggregate(s=Sum("estimated_cost"))["s"] or 650000.00
         
