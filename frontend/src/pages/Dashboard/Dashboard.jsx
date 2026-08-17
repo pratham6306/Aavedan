@@ -570,48 +570,48 @@ export default function Dashboard() {
         {/* Status Distribution Donut Chart */}
         <motion.div
           variants={itemVariants}
-          className="rounded-[28px] bg-white/90 backdrop-blur-md p-7 border border-amber-200/50 shadow-xs"
+          className="rounded-[28px] bg-white/90 backdrop-blur-md p-7 border border-amber-200/50 shadow-xs flex flex-col justify-between"
         >
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-2">
             <HiOutlineChartPie className="h-5 w-5 text-[#0052cc]" />
             <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider">
               Status Distribution
             </h2>
           </div>
 
-          <div className="flex items-center justify-between gap-3">
-            <div className="h-40 w-40 relative shrink-0">
+          <div className="flex flex-col items-center justify-center my-auto">
+            <div className="h-32 w-32 relative shrink-0 my-1">
               <Doughnut data={doughnutData} options={doughnutOptions} />
             </div>
 
-            <div className="space-y-2 text-xs font-bold text-slate-700 flex-1 min-w-0">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-bold text-slate-700 w-full pt-3 mt-2 border-t border-slate-100/80">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 truncate">
+                <span className="flex items-center gap-1.5 min-w-0">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#ff9900] shrink-0" />
                   <span className="truncate">Pending</span>
                 </span>
-                <span className="text-slate-500 font-mono text-[11px] shrink-0">{stats.pending} ({pendingPct}%)</span>
+                <span className="text-slate-500 font-mono text-[11px] ml-1 shrink-0">{stats.pending} ({pendingPct}%)</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 truncate">
+                <span className="flex items-center gap-1.5 min-w-0">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#0052cc] shrink-0" />
                   <span className="truncate">Under Review</span>
                 </span>
-                <span className="text-slate-500 font-mono text-[11px] shrink-0">{stats.underReview} ({underReviewPct}%)</span>
+                <span className="text-slate-500 font-mono text-[11px] ml-1 shrink-0">{stats.underReview} ({underReviewPct}%)</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 truncate">
+                <span className="flex items-center gap-1.5 min-w-0">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#10b981] shrink-0" />
                   <span className="truncate">Resolved</span>
                 </span>
-                <span className="text-slate-500 font-mono text-[11px] shrink-0">{stats.resolved} ({resolvedPct}%)</span>
+                <span className="text-slate-500 font-mono text-[11px] ml-1 shrink-0">{stats.resolved} ({resolvedPct}%)</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 truncate">
+                <span className="flex items-center gap-1.5 min-w-0">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444] shrink-0" />
                   <span className="truncate">Rejected</span>
                 </span>
-                <span className="text-slate-500 font-mono text-[11px] shrink-0">{stats.rejected} ({rejectedPct}%)</span>
+                <span className="text-slate-500 font-mono text-[11px] ml-1 shrink-0">{stats.rejected} ({rejectedPct}%)</span>
               </div>
             </div>
           </div>
