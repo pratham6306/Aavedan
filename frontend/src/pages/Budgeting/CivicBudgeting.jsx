@@ -243,7 +243,7 @@ export default function CivicBudgeting() {
           <div>
             <p className="text-[10px] uppercase font-bold text-slate-400 font-mono">District Repair Pool</p>
             <p className="text-lg font-black text-emerald-700 font-mono">
-              ₹{(budgetInfo?.total_allocated_budget || 50000000).toLocaleString('en-IN')}
+              ₹{(budgetInfo?.total_allocated_budget ?? 50000000).toLocaleString('en-IN')}
             </p>
           </div>
         </div>
@@ -254,19 +254,19 @@ export default function CivicBudgeting() {
         <div className="bg-[#eef6ff] p-4 rounded-2xl border border-[#bcdcff]">
           <span className="text-[10px] text-[#0052cc] font-bold uppercase block mb-1">Total Spent Budget</span>
           <span className="text-lg font-black text-[#0052cc] font-mono">
-            ₹{(budgetInfo?.total_spent_budget || 14500000).toLocaleString('en-IN')}
+            ₹{(budgetInfo?.total_spent_budget ?? 0).toLocaleString('en-IN')}
           </span>
         </div>
         <div className="bg-[#ecfdf5] p-4 rounded-2xl border border-[#a7f3d0]">
           <span className="text-[10px] text-[#047857] font-bold uppercase block mb-1">Unallocated Remaining</span>
           <span className="text-lg font-black text-[#047857] font-mono">
-            ₹{(budgetInfo?.remaining_budget || 35500000).toLocaleString('en-IN')}
+            ₹{(budgetInfo?.remaining_budget ?? 0).toLocaleString('en-IN')}
           </span>
         </div>
         <div className="bg-[#fffbeb] p-4 rounded-2xl border border-[#fde68a]">
           <span className="text-[10px] text-[#854d0e] font-bold uppercase block mb-1">Est. Backlog Repair Cost</span>
           <span className="text-lg font-black text-[#854d0e] font-mono">
-            ₹{(budgetInfo?.total_backlog_cost || 650000).toLocaleString('en-IN')}
+            ₹{(budgetInfo?.total_backlog_cost ?? 0).toLocaleString('en-IN')}
           </span>
         </div>
         <div className="bg-[#f0f3ff] p-4 rounded-2xl border border-[#c7d2fe]">
