@@ -88,14 +88,17 @@ export default function RegisterCard() {
         </div>
 
         {/* Tab Header */}
-        <div className="flex border-b border-slate-100 text-sm font-extrabold select-none">
-          <span className="pb-2.5 px-4 text-violet-600 border-b-2 border-violet-600 cursor-default text-[15px]">
+        <div className="flex border-b border-slate-200/80 text-sm font-bold select-none gap-6 relative">
+          <button
+            type="button"
+            className="pb-2.5 text-[15px] font-extrabold text-indigo-600 border-b-2 border-indigo-600 cursor-default transition-all -mb-[1px]"
+          >
             Register
-          </span>
+          </button>
           <button
             type="button"
             onClick={() => navigate("/login")}
-            className="pb-2.5 px-4 text-slate-400 hover:text-violet-600 transition text-[15px] cursor-pointer"
+            className="pb-2.5 text-[15px] font-semibold text-slate-400 hover:text-slate-700 border-b-2 border-transparent transition-all cursor-pointer -mb-[1px]"
           >
             Login
           </button>
