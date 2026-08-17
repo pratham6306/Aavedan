@@ -98,13 +98,16 @@ class GeminiClient:
             ],
         }
 
-        max_attempts = len(keys)
+        # Allow 2 full passes over all keys strictly using verified gemini-flash-latest model
+        max_attempts = len(keys) * 2
         last_error = None
+        current_model = "gemini-flash-latest"
 
         for attempt in range(max_attempts):
             current_key = keys[self._key_index % len(keys)]
             key_num = (self._key_index % len(keys)) + 1
-            url = f"{_GEMINI_BASE_URL}/{self._model_name}:generateContent"
+
+            url = f"{_GEMINI_BASE_URL}/{current_model}:generateContent"
             headers = {
                 "Content-Type": "application/json",
                 "x-goog-api-key": current_key,
@@ -120,18 +123,23 @@ class GeminiClient:
                         return text
 
                 logger.warning(
-                    f"Gemini API returned status {response.status_code} on Key #{key_num} of {len(keys)}. Rotating to next key..."
+                    f"Gemini API returned status {response.status_code} for model '{current_model}' on Key #{key_num} of {len(keys)} (Attempt {attempt+1}/{max_attempts}). Rotating key..."
                 )
                 last_error = f"Status {response.status_code}: {response.text[:200]}"
                 self._key_index = (self._key_index + 1) % len(keys)
+
+                # Pause briefly (0.4s) on 503/429 so Google's backend cluster queue clears
+                if response.status_code in [503, 429, 502, 504]:
+                    await asyncio.sleep(0.35 + random.uniform(0.05, 0.15))
                 continue
 
             except (httpx.TimeoutException, httpx.HTTPError, Exception) as exc:
-                logger.warning(f"Gemini request error on Key #{key_num} of {len(keys)}: {exc}. Rotating to next key...")
+                logger.warning(f"Gemini request error on Key #{key_num} of {len(keys)} ({current_model}): {exc}. Rotating to next key...")
                 self._key_index = (self._key_index + 1) % len(keys)
                 last_error = exc
+                await asyncio.sleep(0.3)
 
-        raise LLMProviderError(f"All {len(keys)} Gemini API keys failed. Last error: {last_error}")
+        raise LLMProviderError(f"All {len(keys)} Gemini API keys failed after 2 passes ({max_attempts} attempts). Last error: {last_error}")
 
     @staticmethod
     def _extract_text(body: dict) -> str:
