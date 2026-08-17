@@ -98,14 +98,13 @@ class GeminiClient:
             ],
         }
 
-        max_attempts = min(len(keys) * len(models), 12)
+        max_attempts = len(keys)
         last_error = None
 
         for attempt in range(max_attempts):
             current_key = keys[self._key_index % len(keys)]
-            current_model = models[(attempt // len(keys)) % len(models)]
-
-            url = f"{_GEMINI_BASE_URL}/{current_model}:generateContent"
+            key_num = (self._key_index % len(keys)) + 1
+            url = f"{_GEMINI_BASE_URL}/{self._model_name}:generateContent"
             headers = {
                 "Content-Type": "application/json",
                 "x-goog-api-key": current_key,
@@ -116,35 +115,23 @@ class GeminiClient:
                     response = await client.post(url, json=payload, headers=headers)
 
                 if response.status_code == 200:
-                    return self._extract_text(response.json())
+                    text = self._extract_text(response.json())
+                    if text:
+                        return text
 
-                if response.status_code in [429, 503, 502, 504]:
-                    logger.warning(
-                        f"Gemini API returned status {response.status_code} for model {current_model} on Key #{self._key_index % len(keys) + 1}. Rotating to next key..."
-                    )
-                    self._key_index = (self._key_index + 1) % len(keys)
-                    if attempt > 0 and attempt % len(keys) == 0:
-                        await asyncio.sleep(0.5 + random.uniform(0.1, 0.3))
-                    continue
-
-                logger.error(
-                    f"Gemini non-200 response ({response.status_code}): {response.text[:300]}"
+                logger.warning(
+                    f"Gemini API returned status {response.status_code} on Key #{key_num} of {len(keys)}. Rotating to next key..."
                 )
-                raise LLMProviderError(
-                    f"Gemini returned status {response.status_code}",
-                    details={"status_code": response.status_code},
-                )
-
-            except httpx.TimeoutException as exc:
-                logger.warning(f"Gemini timeout on model {current_model}. Rotating key...")
+                last_error = f"Status {response.status_code}: {response.text[:200]}"
                 self._key_index = (self._key_index + 1) % len(keys)
-                last_error = exc
-            except httpx.HTTPError as exc:
-                logger.error(f"Gemini HTTP error: {exc}")
+                continue
+
+            except (httpx.TimeoutException, httpx.HTTPError, Exception) as exc:
+                logger.warning(f"Gemini request error on Key #{key_num} of {len(keys)}: {exc}. Rotating to next key...")
                 self._key_index = (self._key_index + 1) % len(keys)
                 last_error = exc
 
-        raise LLMProviderError(f"All Gemini API keys and fallback models exhausted. Last error: {last_error}")
+        raise LLMProviderError(f"All {len(keys)} Gemini API keys failed. Last error: {last_error}")
 
     @staticmethod
     def _extract_text(body: dict) -> str:
