@@ -438,6 +438,9 @@ class CivicProjectListView(ListAPIView):
                 return ("sanitation", "Garbage Dump & Sanitation Project", 25000.00)
             return ("general", f"{comp.category.name if comp.category else 'Civic'} Infrastructure Project", 100000.00)
 
+        # Purge stale old generic projects that mixed different sub-issues together
+        CivicProject.objects.filter(title__icontains="Electricity Civic Infrastructure Project").delete()
+
         # Auto-cluster complaints by (district, category, sub_issue_key)
         grouped_pending = {}
         active_complaints = Complaint.objects.filter(
@@ -466,12 +469,23 @@ class CivicProjectListView(ListAPIView):
             key = (c.district.id, c.category.id, sub_key)
             grouped_resolved.setdefault(key, []).append(c)
 
-        # Process Pending Clusters
+        # Process Pending Clusters according to strict 3-tier rule matrix
         for (dist_id, cat_id, sub_key), comp_list in grouped_pending.items():
+            num_tickets = len(comp_list)
             total_upvotes = sum(c.supports.count() for c in comp_list)
-            total_interest = len(comp_list) + total_upvotes
+            total_interest = num_tickets + total_upvotes
 
-            if total_interest < 3:
+            # Strict 3-Tier Clustering Rules:
+            # Rule 1: 1 real ticket AND >= 3 upvotes
+            # Rule 2: 2 real tickets AND >= 2 upvotes
+            # Rule 3: >= 3 real tickets (any upvotes)
+            is_eligible = (
+                (num_tickets >= 3) or
+                (num_tickets == 2 and total_upvotes >= 2) or
+                (num_tickets == 1 and total_upvotes >= 3)
+            )
+
+            if not is_eligible:
                 continue
 
             first = comp_list[0]
@@ -493,17 +507,28 @@ class CivicProjectListView(ListAPIView):
                     "status": "PROPOSED"
                 }
             )
+            
+            # Ensure complaint belongs ONLY to this specific sub-issue project
             for c in comp_list:
+                for old_proj in c.civic_projects.all():
+                    if old_proj.id != proj.id:
+                        old_proj.complaints.remove(c)
                 proj.complaints.add(c)
             proj.estimated_cost = calc_cost
             proj.save()
 
         # Process Resolved Clusters into COMPLETED Projects
         for (dist_id, cat_id, sub_key), comp_list in grouped_resolved.items():
+            num_tickets = len(comp_list)
             total_upvotes = sum(c.supports.count() for c in comp_list)
-            total_interest = len(comp_list) + total_upvotes
 
-            if total_interest < 3:
+            is_eligible = (
+                (num_tickets >= 3) or
+                (num_tickets == 2 and total_upvotes >= 2) or
+                (num_tickets == 1 and total_upvotes >= 3)
+            )
+
+            if not is_eligible:
                 continue
 
             first = comp_list[0]
@@ -525,6 +550,9 @@ class CivicProjectListView(ListAPIView):
                 }
             )
             for c in comp_list:
+                for old_proj in c.civic_projects.all():
+                    if old_proj.id != proj.id:
+                        old_proj.complaints.remove(c)
                 proj.complaints.add(c)
             proj.status = "COMPLETED"
             proj.estimated_cost = calc_cost

@@ -143,12 +143,26 @@ class ComplaintAnalyzer:
             except ComplaintType.DoesNotExist:
                 pass
 
+        # Sub-issue priority evaluator
+        text_check = preprocessed_text.lower()
+        sub_prio = None
+        if any(k in text_check for k in ["transformer", "transfomer", "sparking", "high voltage", "wire broken", "hanging wire", "manhole", "contaminated"]):
+            sub_prio = "CRITICAL"
+        elif any(k in text_check for k in ["street light", "streetlight", "pole light", "darkness", "pothole", "pipeline", "pipe", "leakage", "sewer", "overflow"]):
+            sub_prio = "HIGH"
+        elif any(k in text_check for k in ["house", "meter", "no power", "low pressure", "garbage", "trash", "waste"]):
+            sub_prio = "MEDIUM"
+
+        prio_val = session_data.get("priority") or retriever_result.get("priority") or sub_prio or "HIGH"
+        if sub_prio and str(prio_val).lower() == "medium":
+            prio_val = sub_prio
+
         # 3. Default analysis structure
         analysis = {
             "complaint_type": session_data.get("complaint_type") or retriever_result["complaint_type"],
             "category": session_data.get("category") or retriever_result["category"],
             "department": session_data.get("department") or retriever_result["department"],
-            "priority": session_data.get("priority") or retriever_result["priority"] or "medium",
+            "priority": str(prio_val).upper(),
             "estimated_resolution_days": retriever_result["estimated_resolution_days"] or 7,
             "confidence": session_data.get("confidence", 1.0) if session_data.get("complaint_type") else (retriever_result["confidence_score"] if retriever_result["complaint_type"] else 1.0),
             "missing_fields": [],
