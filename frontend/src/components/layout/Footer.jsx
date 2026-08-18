@@ -7,15 +7,10 @@ export default function Footer({ variant = 'brown' }) {
 
   if (variant === 'dashboard') {
     return (
-      <footer className="mt-8 mb-4 w-full">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="rounded-3xl bg-[#FCF0D7]/85 backdrop-blur-xl border border-amber-600/35 shadow-[0_0_22px_rgba(217,119,6,0.22),0_10px_30px_rgba(0,0,0,0.07)] text-slate-800 overflow-hidden transition-all duration-300 hover:shadow-[0_0_28px_rgba(217,119,6,0.30),0_12px_35px_rgba(0,0,0,0.09)]"
-        >
+      <footer className="w-full mt-auto bg-[#FCF0D7] border-t border-amber-600/35 text-slate-800 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
           {/* Main Grid */}
-          <div className="p-6 md:p-8 grid gap-8 sm:grid-cols-2 items-start">
+          <div className="py-6 md:py-8 grid gap-8 sm:grid-cols-2 items-start">
             {/* About Column */}
             <div>
               <div className="flex items-center gap-3 mb-3">
@@ -60,10 +55,10 @@ export default function Footer({ variant = 'brown' }) {
           </div>
 
           {/* Bottom Bar */}
-          <div className="bg-[#F4E3C3]/75 backdrop-blur-md border-t border-amber-600/25 py-3 text-center text-xs font-bold text-slate-600">
+          <div className="bg-[#F4E3C3]/75 border-t border-amber-600/25 py-3 text-center text-xs font-bold text-slate-600">
             &copy; {year} Aavedan-Setu. All rights reserved.
           </div>
-        </motion.div>
+        </div>
       </footer>
     );
   }

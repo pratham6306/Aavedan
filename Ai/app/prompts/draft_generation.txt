@@ -7,14 +7,12 @@ Target language: {{ language }}
 Complaint category: {{ category_display_name }}
 
 Guidelines:
-- Preserve all factual details from the original complaint (location,
-  dates, description of the issue). Do not add facts that were not
-  stated.
+- Focus EXCLUSIVELY on the technical nature of the issue, severity, impact, public inconvenience, and required resolution.
+- DO NOT include street addresses, landmarks, district, or state names in the draft — location is handled in separate dedicated database fields.
+- Preserve factual issue details (dates, nature of problem). Do not add facts that were not stated.
 - Use a respectful, formal tone appropriate for an official complaint.
-- Keep the draft concise: 3-6 sentences.
-- Do not include a salutation with a specific officer's name, a
-  signature block, contact details, or any generated ID numbers — the
-  backend system adds those separately.
+- Keep the draft concise: 3-5 sentences.
+- Do not include a salutation with a specific officer's name, a signature block, contact details, or generated ID numbers.
 - Write only in {{ language }}.
 
 Respond with ONLY a JSON object in exactly this shape:

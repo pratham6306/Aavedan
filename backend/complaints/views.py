@@ -274,25 +274,56 @@ class ComplaintDuplicateCheckView(APIView):
             department_id=department_id
         ).exclude(status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"])
 
+        new_text = (str(request.data.get("title", "")) + " " + str(request.data.get("description", ""))).lower()
+
+        # Keyword signature extractor
+        def get_sub_issue_signature(text):
+            text = text.lower()
+            if any(k in text for k in ["transformer", "transfomer", "sparking", "high voltage"]):
+                return "transformer"
+            if any(k in text for k in ["street light", "streetlight", "pole light", "light pole", "darkness"]):
+                return "street_light"
+            if any(k in text for k in ["house", "meter", "no power", "no electricity", "supply"]):
+                return "household_supply"
+            if any(k in text for k in ["pothole", "pit", "hole", "crater"]):
+                return "pothole"
+            if any(k in text for k in ["pipeline", "water pipe", "tap", "leakage"]):
+                return "water_pipe"
+            if any(k in text for k in ["manhole", "sewer", "drain", "overflow"]):
+                return "drainage"
+            if any(k in text for k in ["garbage", "trash", "waste", "dump"]):
+                return "sanitation"
+            return "general"
+
+        new_sig = get_sub_issue_signature(new_text)
+
         duplicates = []
+
+        # Filter candidate complaints matching the sub-issue signature
+        candidate_qs = []
+        for c in qs:
+            c_text = (c.title + " " + (c.description or "")).lower()
+            c_sig = get_sub_issue_signature(c_text)
+            if new_sig == "general" or c_sig == new_sig:
+                candidate_qs.append(c)
 
         # Coordinate box comparison
         if latitude and longitude:
             try:
                 lat = float(latitude)
                 lon = float(longitude)
-                for c in qs:
+                for c in candidate_qs:
                     if c.latitude and c.longitude:
                         c_lat = float(c.latitude)
                         c_lon = float(c.longitude)
-                        # ~500 meter coordinate bounding box
-                        if abs(c_lat - lat) < 0.005 and abs(c_lon - lon) < 0.005:
+                        # ~300 meter coordinate bounding box
+                        if abs(c_lat - lat) < 0.003 and abs(c_lon - lon) < 0.003:
                             duplicates.append(c)
             except ValueError:
                 pass
         else:
-            # If no coordinates, return top 3 matching general complaints in that district
-            duplicates = list(qs[:3])
+            # If no coordinates, return matching sub-issue complaints
+            duplicates = candidate_qs[:3]
 
         if duplicates:
             return Response({
@@ -385,7 +416,29 @@ class CivicProjectListView(ListAPIView):
     serializer_class = CivicProjectSerializer
 
     def get_queryset(self):
-        # Auto-cluster complaints into municipal micro-projects (minimum 3 complaints threshold)
+        def get_sub_issue_details(comp):
+            text = (comp.title + " " + (comp.description or "")).lower()
+            if any(k in text for k in ["transformer", "transfomer", "sparking", "high voltage"]):
+                return ("transformer", "Transformer Sparking & High Voltage Project", 85000.00)
+            if any(k in text for k in ["street light", "streetlight", "pole light", "light pole", "darkness"]):
+                return ("street_light", "Street Light Repair Infrastructure Project", 25000.00)
+            if any(k in text for k in ["house", "meter", "no power", "no electricity", "supply"]):
+                return ("household_supply", "Household Power Supply Restoration Project", 15000.00)
+            if any(k in text for k in ["wire broken", "hanging wire", "overhead wire"]):
+                return ("overhead_wire", "Overhead Power Line Repair Project", 35000.00)
+            if any(k in text for k in ["pothole", "pit", "hole", "crater"]):
+                return ("pothole", "Pothole Patching & Road Repair Project", 45000.00)
+            if any(k in text for k in ["highway", "tar", "asphalt", "reconstruction"]):
+                return ("highway_reconstruction", "Main Road Reconstruction Project", 250000.00)
+            if any(k in text for k in ["pipeline", "water pipe", "tap", "leakage"]):
+                return ("water_pipe", "Water Pipeline Leakage Repair Project", 35000.00)
+            if any(k in text for k in ["manhole", "sewer", "drain", "overflow"]):
+                return ("drainage", "Drainage & Sewer Clearance Project", 75000.00)
+            if any(k in text for k in ["garbage", "trash", "waste", "dump"]):
+                return ("sanitation", "Garbage Dump & Sanitation Project", 25000.00)
+            return ("general", f"{comp.category.name if comp.category else 'Civic'} Infrastructure Project", 100000.00)
+
+        # Auto-cluster complaints by (district, category, sub_issue_key)
         grouped_pending = {}
         active_complaints = Complaint.objects.filter(
             is_deleted=False
@@ -396,7 +449,8 @@ class CivicProjectListView(ListAPIView):
         for c in active_complaints:
             if not c.district or not c.category:
                 continue
-            key = (c.district.id, c.category.id)
+            sub_key, _, _ = get_sub_issue_details(c)
+            key = (c.district.id, c.category.id, sub_key)
             grouped_pending.setdefault(key, []).append(c)
 
         grouped_resolved = {}
@@ -408,34 +462,23 @@ class CivicProjectListView(ListAPIView):
         for c in resolved_complaints:
             if not c.district or not c.category:
                 continue
-            key = (c.district.id, c.category.id)
+            sub_key, _, _ = get_sub_issue_details(c)
+            key = (c.district.id, c.category.id, sub_key)
             grouped_resolved.setdefault(key, []).append(c)
 
-        CATEGORY_BASE_COSTS = {
-            "road": 150000.00,
-            "infrastructure": 150000.00,
-            "electricity": 85000.00,
-            "water": 60000.00,
-            "drainage": 75000.00,
-            "sanitation": 25000.00,
-        }
-
         # Process Pending Clusters
-        for (dist_id, cat_id), comp_list in grouped_pending.items():
-            if len(comp_list) < 3:
+        for (dist_id, cat_id, sub_key), comp_list in grouped_pending.items():
+            total_upvotes = sum(c.supports.count() for c in comp_list)
+            total_interest = len(comp_list) + total_upvotes
+
+            if total_interest < 3:
                 continue
 
             first = comp_list[0]
-            proj_title = f"{first.district.name} {first.category.name} Civic Infrastructure Project"
-
-            cat_name_lower = (first.category.name or "").lower()
-            base_cost = 100000.00
-            for k, v in CATEGORY_BASE_COSTS.items():
-                if k in cat_name_lower:
-                    base_cost = v
-                    break
-            additional_scale = min(len(comp_list) - 3, 10) * 5000.00
-            calc_cost = base_cost + additional_scale
+            _, sub_title_suffix, sub_base_cost = get_sub_issue_details(first)
+            proj_title = f"{first.district.name} {sub_title_suffix}"
+            additional_scale = min(total_interest - 3, 10) * 5000.00
+            calc_cost = sub_base_cost + additional_scale
 
             proj, created = CivicProject.objects.get_or_create(
                 title=proj_title,
@@ -446,7 +489,7 @@ class CivicProjectListView(ListAPIView):
                     "department": first.department,
                     "ward_name": f"Ward {random.randint(1, 15)}",
                     "estimated_cost": calc_cost,
-                    "allocated_budget": 200000.00,
+                    "allocated_budget": calc_cost + 50000.00,
                     "status": "PROPOSED"
                 }
             )
@@ -456,20 +499,17 @@ class CivicProjectListView(ListAPIView):
             proj.save()
 
         # Process Resolved Clusters into COMPLETED Projects
-        for (dist_id, cat_id), comp_list in grouped_resolved.items():
-            if len(comp_list) < 3:
+        for (dist_id, cat_id, sub_key), comp_list in grouped_resolved.items():
+            total_upvotes = sum(c.supports.count() for c in comp_list)
+            total_interest = len(comp_list) + total_upvotes
+
+            if total_interest < 3:
                 continue
 
             first = comp_list[0]
-            proj_title = f"{first.district.name} {first.category.name} Completed Infrastructure Project"
-
-            cat_name_lower = (first.category.name or "").lower()
-            base_cost = 100000.00
-            for k, v in CATEGORY_BASE_COSTS.items():
-                if k in cat_name_lower:
-                    base_cost = v
-                    break
-            calc_cost = sum(float(c.estimated_cost) for c in comp_list) or base_cost
+            _, sub_title_suffix, sub_base_cost = get_sub_issue_details(first)
+            proj_title = f"{first.district.name} Completed {sub_title_suffix}"
+            calc_cost = sum(float(c.estimated_cost) for c in comp_list) or sub_base_cost
 
             proj, created = CivicProject.objects.get_or_create(
                 title=proj_title,

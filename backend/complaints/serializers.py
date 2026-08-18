@@ -41,6 +41,7 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
             "district",
             "category",
             "department",
+            "priority",
             "latitude",
             "longitude",
             "is_anonymous",

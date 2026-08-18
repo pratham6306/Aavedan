@@ -67,13 +67,13 @@ function DashboardLayout() {
       <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex flex-1 relative min-h-0">
         <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto flex flex-col justify-between">
+        <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto flex flex-col">
           <div className="flex-1">
             <ProtectedRoute />
           </div>
-          <Footer variant="dashboard" />
         </main>
       </div>
+      <Footer variant="dashboard" />
       <FloatingAIAssistant />
     </div>
   );
