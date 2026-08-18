@@ -25,69 +25,6 @@ class KnowledgeRetriever:
             "confidence_score": 0.0
         }
 
-        if not preprocessed_text:
-            return default_result
-
-        # Handle common typos and variations for robust offline matching
-        norm_text = preprocessed_text.lower()
-        
-        # 1. Map Devanagari Hindi & Indic keywords to English concepts for fallback matching
-        hindi_map = {
-            r"ट्रांसफार्मर": "transformer electricity power",
-            r"बिजली": "electricity power light",
-            r"कचरा": "garbage waste sanitation",
-            r"पानी": "water supply pipe leakage",
-            r"सड़क": "road pothole street",
-            r"नाली": "drainage sewer blockage",
-            r"लाइट": "street light electricity",
-            r"गंदगी": "garbage cleanliness sanitation",
-            r"गड्ढा": "pothole road damage",
-            r"कटौती": "power outage electricity",
-            r"जल": "water supply",
-            r"सीवर": "sewage drain",
-        }
-        for pattern, replacement in hindi_map.items():
-            norm_text = re.sub(pattern, replacement, norm_text)
-
-        # 2. Match granular sub-issues across municipal sectors
-        sub_issue_rules = [
-            (r"transformer|transfomer|sparking|high voltage", "Transformer Sparking & High Voltage Hazard", "Electricity", "Electricity Distribution Department", "CRITICAL", 85000.00),
-            (r"street light|streetlights|streetlight|pole light|darkness|street lamp", "Faulty Street Lights & Night Darkness", "Electricity", "Electricity Distribution Department", "HIGH", 25000.00),
-            (r"house|meter|no power|no electricity|supply|power outage|cut", "Household Power Supply Outage", "Electricity", "Electricity Distribution Department", "HIGH", 15000.00),
-            (r"wire broken|hanging wire|overhead wire", "Overhead Power Wire Broken", "Electricity", "Electricity Distribution Department", "CRITICAL", 35000.00),
-            (r"pothole|pit|hole|crater", "Pothole & Severe Road Surface Damage", "Road & Infrastructure", "Public Works Department (PWD)", "HIGH", 45000.00),
-            (r"highway|tar|asphalt|reconstruction|resurfacing", "Main Road Reconstruction Required", "Road & Infrastructure", "Public Works Department (PWD)", "HIGH", 250000.00),
-            (r"footpath|sidewalk|pavement", "Damaged Footpath & Pedestrian Path", "Road & Infrastructure", "Public Works Department (PWD)", "MEDIUM", 30000.00),
-            (r"leak|leaking|pipe|pipeline", "Water Pipeline Leakage & Burst", "Water Supply", "Water Supply & Sewerage Board", "HIGH", 35000.00),
-            (r"contaminated|dirty water|smell|impure", "Contaminated & Dirty Water Supply", "Water Supply", "Water Supply & Sewerage Board", "CRITICAL", 50000.00),
-            (r"no water|water not coming|low pressure", "Low Water Pressure & Supply Interruption", "Water Supply", "Water Supply & Sewerage Board", "HIGH", 25000.00),
-            (r"manhole|open drain|gutter cover", "Open Uncovered Manhole Hazard", "Drainage & Sewerage", "Drainage & Sewerage Board", "CRITICAL", 40000.00),
-            (r"sewage|sewer|overflow|blocked drain", "Overflowing Drainage & Sewerage Blockage", "Drainage & Sewerage", "Drainage & Sewerage Board", "HIGH", 75000.00),
-            (r"garbage|trash|dump|waste|dustbin", "Uncleared Waste Dump & Garbage Accumulation", "Sanitation & Waste", "Public Health & Sanitation Department", "MEDIUM", 25000.00),
-        ]
-
-        matched_sub = None
-        for pattern, title, cat, dept, prio, cost in sub_issue_rules:
-            if re.search(pattern, norm_text, re.IGNORECASE):
-                matched_sub = (title, cat, dept, prio, cost)
-                break
-
-        typo_map = {
-            r"\brod\b": "road",
-            r"\bblock\b": "blocked",
-            r"\bhavy\b": "heavy",
-            r"\bcreting\b": "creating",
-            r"\bsttudy\b": "study",
-            r"\bschlorshipp\b": "scholarship",
-        }
-        for pattern, replacement in typo_map.items():
-            norm_text = re.sub(pattern, replacement, norm_text)
-
-        # Fetch all active ComplaintTypes and prefetch related keywords and required fields
-        complaint_types = ComplaintType.objects.filter(is_active=True).prefetch_related(
-            'keywords',
-            'required_fields'
-        )
 
         best_match = None
         best_score = 0.0

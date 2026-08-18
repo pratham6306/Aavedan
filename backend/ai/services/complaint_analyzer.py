@@ -143,14 +143,14 @@ class ComplaintAnalyzer:
             except ComplaintType.DoesNotExist:
                 pass
 
-        # Sub-issue priority evaluator
+        # Sub-issue priority evaluator across all 10 municipal sectors
         text_check = preprocessed_text.lower()
         sub_prio = None
-        if any(k in text_check for k in ["transformer", "transfomer", "sparking", "high voltage", "wire broken", "hanging wire", "manhole", "contaminated"]):
+        if any(k in text_check for k in ["transformer", "transfomer", "sparking", "high voltage", "wire broken", "hanging wire", "manhole", "contaminated", "fallen pole", "sinkhole"]):
             sub_prio = "CRITICAL"
-        elif any(k in text_check for k in ["street light", "streetlight", "pole light", "darkness", "pothole", "pipeline", "pipe", "leakage", "sewer", "overflow"]):
+        elif any(k in text_check for k in ["street light", "streetlight", "pole light", "darkness", "pothole", "pipeline", "pipe", "leakage", "sewer", "overflow", "waterlogging", "traffic signal", "dead animal", "cctv"]):
             sub_prio = "HIGH"
-        elif any(k in text_check for k in ["house", "meter", "no power", "low pressure", "garbage", "trash", "waste"]):
+        else:
             sub_prio = "MEDIUM"
 
         prio_val = session_data.get("priority") or retriever_result.get("priority") or sub_prio or "HIGH"
