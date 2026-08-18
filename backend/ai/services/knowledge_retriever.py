@@ -179,7 +179,7 @@ class KnowledgeRetriever:
                 "Missing Road Sign",
                 "Road & Infrastructure",
                 "Public Works Department (PWD)",
-                "MEDIUM",
+                "LOW",
                 20000.00
             ),
             (
@@ -187,7 +187,7 @@ class KnowledgeRetriever:
                 "Faded Road Markings",
                 "Road & Infrastructure",
                 "Public Works Department (PWD)",
-                "MEDIUM",
+                "LOW",
                 20000.00
             ),
             (
@@ -419,7 +419,7 @@ class KnowledgeRetriever:
                 "Broken Benches",
                 "Public Safety",
                 "Municipal Corporation",
-                "MEDIUM",
+                "LOW",
                 15000.00
             ),
             (
@@ -469,7 +469,7 @@ class KnowledgeRetriever:
                 "Missing Street Sign",
                 "Public Safety",
                 "Traffic Department",
-                "MEDIUM",
+                "LOW",
                 15000.00
             ),
             (
@@ -543,7 +543,7 @@ class KnowledgeRetriever:
                 "Damaged Public Transport Sign",
                 "Public Infrastructure",
                 "Transport Department",
-                "MEDIUM",
+                "LOW",
                 15000.00
             ),
             (
@@ -619,7 +619,7 @@ class KnowledgeRetriever:
                 "Excessive Dust from Construction",
                 "Public Safety",
                 "Pollution Control Board",
-                "MEDIUM",
+                "LOW",
                 20000.00
             ),
             (
