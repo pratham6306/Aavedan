@@ -11,6 +11,9 @@ from .filters import ComplaintFilter
 
 
 from .permissions import IsComplaintOwner
+from ai.services.knowledge_retriever import KnowledgeRetriever
+
+_kr = KnowledgeRetriever()
 
 from .models import Complaint
 from .serializers import (
@@ -276,24 +279,10 @@ class ComplaintDuplicateCheckView(APIView):
 
         new_text = (str(request.data.get("title", "")) + " " + str(request.data.get("description", ""))).lower()
 
-        # Keyword signature extractor
+        # Keyword signature extractor via Single Source of Truth KnowledgeRetriever
         def get_sub_issue_signature(text):
-            text = text.lower()
-            if any(k in text for k in ["transformer", "transfomer", "sparking", "high voltage"]):
-                return "transformer"
-            if any(k in text for k in ["street light", "streetlight", "pole light", "light pole", "darkness"]):
-                return "street_light"
-            if any(k in text for k in ["house", "meter", "no power", "no electricity", "supply"]):
-                return "household_supply"
-            if any(k in text for k in ["pothole", "pit", "hole", "crater"]):
-                return "pothole"
-            if any(k in text for k in ["pipeline", "water pipe", "tap", "leakage"]):
-                return "water_pipe"
-            if any(k in text for k in ["manhole", "sewer", "drain", "overflow"]):
-                return "drainage"
-            if any(k in text for k in ["garbage", "trash", "waste", "dump"]):
-                return "sanitation"
-            return "general"
+            res = _kr.retrieve(text)
+            return res.get("complaint_type") or "general"
 
         new_sig = get_sub_issue_signature(new_text)
 
@@ -417,81 +406,12 @@ class CivicProjectListView(ListAPIView):
 
     def get_queryset(self):
         def get_sub_issue_details(comp):
-            text = (comp.title + " " + (comp.description or "")).lower()
-            
-            # ⚡ Electricity
-            if any(k in text for k in ["transformer", "transfomer", "sparking", "high voltage", "overload", "overloading"]):
-                return ("transformer_sparking", "Transformer Sparking & High Voltage Project", 85000.00)
-            if any(k in text for k in ["street light", "streetlights", "streetlight", "pole light", "darkness", "street lamp"]):
-                return ("street_light", "Faulty Street Lights & Night Darkness Project", 25000.00)
-            if any(k in text for k in ["house", "meter", "no power", "no electricity", "supply", "power cut"]):
-                return ("household_supply", "Household Power Supply Outage Project", 15000.00)
-            if any(k in text for k in ["wire broken", "hanging wire", "overhead wire", "live wire", "exposed wire"]):
-                return ("overhead_wire", "Overhead Power Wire & Live Wire Repair Project", 35000.00)
-            if any(k in text for k in ["fallen pole", "leaning pole", "damaged pole", "electric pole"]):
-                return ("electric_pole", "Damaged & Fallen Electric Pole Restoration Project", 45000.00)
-            if any(k in text for k in ["illegal connection", "unsafe connection"]):
-                return ("illegal_elec_conn", "Illegal Electrical Connection Removal Project", 20000.00)
-
-            # 🛣️ Roads & Infrastructure
-            if any(k in text for k in ["pothole", "pit", "hole", "crater", "road crack", "surface crack"]):
-                return ("pothole", "Pothole Patching & Road Surface Repair Project", 45000.00)
-            if any(k in text for k in ["highway", "tar", "asphalt", "reconstruction", "cave-in", "sinkhole"]):
-                return ("highway_reconstruction", "Main Road & Sinkhole Reconstruction Project", 250000.00)
-            if any(k in text for k in ["footpath", "sidewalk", "pavement", "divider", "road divider"]):
-                return ("footpath_divider", "Footpath & Road Divider Repair Project", 30000.00)
-            if any(k in text for k in ["road sign", "missing sign", "faded marking", "zebra crossing", "speed breaker"]):
-                return ("road_sign_marking", "Road Markings, Signages & Speed Breaker Project", 20000.00)
-            if any(k in text for k in ["traffic signal", "signal not working"]):
-                return ("traffic_signal", "Traffic Signal Repair & Synchronization Project", 40000.00)
-
-            # 💧 Water Supply
-            if any(k in text for k in ["pipe leakage", "water pipe", "pipeline burst", "broken pipeline"]):
-                return ("water_pipe_leak", "Water Pipeline Leakage & Burst Repair Project", 35000.00)
-            if any(k in text for k in ["contaminated", "dirty water", "smell", "impure water"]):
-                return ("contaminated_water", "Contaminated & Dirty Water Supply Treatment Project", 50000.00)
-            if any(k in text for k in ["no water", "water not coming", "low pressure", "water tanker"]):
-                return ("water_supply_shortage", "Water Supply Shortage & Pressure Restoration Project", 25000.00)
-            if any(k in text for k in ["water tank", "public tap", "tap not working"]):
-                return ("public_tap_tank", "Public Tap & Water Tank Repair Project", 20000.00)
-
-            # 🌊 Drainage & Sewerage
-            if any(k in text for k in ["manhole", "uncovered manhole", "gutter cover", "drain cover"]):
-                return ("open_manhole", "Open Uncovered Manhole Hazard Prevention Project", 40000.00)
-            if any(k in text for k in ["sewage", "sewer", "overflow", "sewerage", "blocked drain", "stormwater"]):
-                return ("sewerage_overflow", "Overflowing Sewerage & Stormwater Drainage Project", 75000.00)
-            if any(k in text for k in ["waterlogging", "water logging", "rain waterlog"]):
-                return ("waterlogging", "Rainwater Waterlogging Clearance Project", 60000.00)
-
-            # 🗑️ Sanitation & Waste
-            if any(k in text for k in ["dead animal", "carcass"]):
-                return ("dead_animal", "Dead Animal Removal & Sanitization Project", 15000.00)
-            if any(k in text for k in ["public toilet", "urinal"]):
-                return ("public_toilet", "Public Toilet Sanitation & Maintenance Project", 30000.00)
-            if any(k in text for k in ["garbage", "trash", "waste", "dump", "dustbin", "construction waste"]):
-                return ("garbage_dump", "Garbage Dump Clearance & Waste Management Project", 25000.00)
-
-            # 🌳 Parks & Public Spaces
-            if any(k in text for k in ["park", "garden", "bench", "tree", "fallen tree", "walking track"]):
-                return ("park_maintenance", "Park Maintenance & Fallen Tree Clearance Project", 25000.00)
-
-            # 🚦 Traffic & Public Safety
-            if any(k in text for k in ["cctv", "camera", "barricade", "illegal parking", "dangerous junction"]):
-                return ("public_safety", "Public Safety, CCTV & Traffic Control Project", 35000.00)
-
-            # 🚌 Public Transport
-            if any(k in text for k in ["bus stop", "bus shelter", "transport sign"]):
-                return ("bus_stop", "Bus Stop & Public Transport Shelter Repair Project", 30000.00)
-
-            # 🏗️ Public Infrastructure
-            if any(k in text for k in ["staircase", "community hall", "handrail", "ramp", "government building"]):
-                return ("public_infra", "Public Building & Ramp Accessibility Repair Project", 50000.00)
-
-            # 🌫️ Environment
-            if any(k in text for k in ["air pollution", "dust", "noise", "burning garbage", "illegal tree cutting"]):
-                return ("environmental", "Environmental Protection & Noise Control Project", 20000.00)
-
-            return ("general", f"{comp.category.name if comp.category else 'Civic'} Infrastructure Project", 100000.00)
+            text = comp.title + " " + (comp.description or "")
+            res = _kr.retrieve(text)
+            sub_title = res.get("complaint_type") or f"{comp.category.name if comp.category else 'Civic'} Infrastructure Project"
+            sub_cost = float(res.get("estimated_cost", 100000.00))
+            sub_key = sub_title.lower().replace(" ", "_")
+            return (sub_key, sub_title, sub_cost)
 
         # Purge stale old generic projects that mixed different sub-issues together
         CivicProject.objects.filter(title__icontains="Electricity Civic Infrastructure Project").delete()
