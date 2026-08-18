@@ -229,6 +229,54 @@ class DepartmentBudgetSerializer(serializers.ModelSerializer):
         )
 
 
+class CivicProjectResolutionProofSerializer(serializers.ModelSerializer):
+    verified_count = serializers.SerializerMethodField()
+    rejected_count = serializers.SerializerMethodField()
+    verified_by_user = serializers.SerializerMethodField()
+    rejected_by_user = serializers.SerializerMethodField()
+    complaint_title = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import CivicProjectResolutionProof
+        model = CivicProjectResolutionProof
+        fields = (
+            "id",
+            "project",
+            "complaint",
+            "complaint_title",
+            "image",
+            "remarks",
+            "verified_count",
+            "rejected_count",
+            "verified_by_user",
+            "rejected_by_user",
+            "is_rejected",
+            "rejection_reason",
+            "created_at",
+        )
+
+    def get_verified_count(self, obj):
+        return obj.verified_by.count()
+
+    def get_rejected_count(self, obj):
+        return obj.rejected_by.count()
+
+    def get_verified_by_user(self, obj):
+        user = self.context.get('request') and self.context['request'].user
+        if user and user.is_authenticated:
+            return obj.verified_by.filter(id=user.id).exists()
+        return False
+
+    def get_rejected_by_user(self, obj):
+        user = self.context.get('request') and self.context['request'].user
+        if user and user.is_authenticated:
+            return obj.rejected_by.filter(id=user.id).exists()
+        return False
+
+    def get_complaint_title(self, obj):
+        return obj.complaint.title if obj.complaint else None
+
+
 class CivicProjectSerializer(serializers.ModelSerializer):
     category = serializers.StringRelatedField()
     department = serializers.StringRelatedField()
@@ -242,6 +290,7 @@ class CivicProjectSerializer(serializers.ModelSerializer):
     verified_by_user = serializers.SerializerMethodField()
     rejections_count = serializers.SerializerMethodField()
     rejected_by_user = serializers.SerializerMethodField()
+    resolution_proofs = CivicProjectResolutionProofSerializer(many=True, read_only=True)
 
     class Meta:
         from .models import CivicProject
@@ -270,6 +319,7 @@ class CivicProjectSerializer(serializers.ModelSerializer):
             "verified_by_user",
             "rejections_count",
             "rejected_by_user",
+            "resolution_proofs",
             "created_at",
         )
 

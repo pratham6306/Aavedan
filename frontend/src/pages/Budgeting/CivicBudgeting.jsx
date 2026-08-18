@@ -214,6 +214,24 @@ export default function CivicBudgeting() {
     }
   };
 
+  /* ── Individual Photo Proof Verification Handler ── */
+  const handleProofVerify = async (proofId, action, reason = '') => {
+    setIsVerifying(true);
+    try {
+      const res = await api.post(`/complaints/projects/proofs/${proofId}/verify/`, { action, reason });
+      if (res.status === 200) {
+        toast.success(res.data.message);
+        if (selectedProject) {
+          handleOpenDetailModal(selectedProject.id);
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to verify photo proof.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const clearFilters = () => {
     setSearch('');
     setSelectedState('');
@@ -638,8 +656,74 @@ export default function CivicBudgeting() {
                       </div>
                     )}
 
-                    {/* Resolution Proof & Citizen Verification Ledger */}
-                    {selectedProject.after_image && (
+                    {/* Multi-Photo Resolution Proof Ledger (Separate Photos per Issue) */}
+                    {selectedProject.resolution_proofs && selectedProject.resolution_proofs.length > 0 ? (
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <HiOutlineShieldCheck className="w-5 h-5 text-emerald-600" />
+                          Issue Resolution Proof Photos ({selectedProject.resolution_proofs.length} Photos Uploaded)
+                        </h4>
+                        <div className="space-y-3">
+                          {selectedProject.resolution_proofs.map((proof, idx) => (
+                            <div key={proof.id || idx} className="p-4 bg-emerald-50 rounded-2xl border border-emerald-300 space-y-3">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <span className="text-xs font-bold text-emerald-900 font-mono">
+                                  Photo #{idx + 1} {proof.complaint_title ? `• ${proof.complaint_title}` : ''}
+                                </span>
+                                <div className="flex items-center gap-2 text-xs font-bold font-mono">
+                                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                    <HiCheck className="w-3.5 h-3.5" /> {proof.verified_count || 0} Approvals
+                                  </span>
+                                  <span className="text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200 flex items-center gap-1">
+                                    <HiXMark className="w-3.5 h-3.5" /> {proof.rejected_count || 0} Rejections
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                <img
+                                  src={resolveImageUrl(proof.image)}
+                                  alt={`Proof ${idx + 1}`}
+                                  className="w-full sm:w-44 h-32 object-cover rounded-xl border border-emerald-300 shadow-sm"
+                                  onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=400'; }}
+                                />
+                                <div className="space-y-1.5 text-xs text-emerald-950 flex-1">
+                                  <p><strong>Photo Description / Remarks:</strong> {proof.remarks || 'Geotagged site completion proof.'}</p>
+                                  {proof.is_rejected && (
+                                    <p className="text-rose-700 font-bold bg-rose-100 p-1.5 rounded border border-rose-200">
+                                      ⚠️ Rejected: {proof.rejection_reason || 'Citizen requested re-inspection.'}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Per-Photo Action Buttons */}
+                              <div className="flex items-center gap-3 pt-1">
+                                <button
+                                  onClick={() => handleProofVerify(proof.id, 'approve')}
+                                  disabled={isVerifying || proof.verified_by_user}
+                                  className="btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-1.5 px-3 rounded-xl font-bold flex-1 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                >
+                                  <HiCheck className="w-4 h-4" />
+                                  {proof.verified_by_user ? 'Approved Photo' : `Approve Photo (${proof.verified_count || 0})`}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const reason = prompt('Enter rejection reason for this specific photo:');
+                                    if (reason) handleProofVerify(proof.id, 'reject', reason);
+                                  }}
+                                  disabled={isVerifying || proof.rejected_by_user}
+                                  className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs py-1.5 px-3 rounded-xl font-bold flex-1 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                >
+                                  <HiXMark className="w-4 h-4" />
+                                  {proof.rejected_by_user ? 'Rejected Photo' : `Reject Photo (${proof.rejected_count || 0})`}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : selectedProject.after_image && (
                       <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-300 space-y-4">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <h4 className="text-xs font-black text-emerald-900 uppercase flex items-center gap-1.5">

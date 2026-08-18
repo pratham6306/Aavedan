@@ -339,18 +339,18 @@ class BudgetAnalyticsView(APIView):
         raw_allocated = budget_qs.aggregate(s=Sum("allocated_budget"))["s"]
         if raw_allocated is not None and float(raw_allocated) > 0:
             total_allocated = float(raw_allocated)
-            db_spent = float(budget_qs.aggregate(s=Sum("spent_budget"))["s"] or 0.0)
-            total_spent = max(db_spent, real_spent)
+            total_spent = real_spent
         elif district_id:
             d_id = int(district_id) if str(district_id).isdigit() else 1
             # District Municipal Base Pool: ₹3.0 Cr base + proportional scaling
             total_allocated = float(30000000.00 + (d_id * 2500000.00))
-            total_spent = float(real_spent) if real_spent > 0 else 0.0
+            total_spent = real_spent
         else:
             total_allocated = 50000000.00
-            total_spent = float(real_spent) if real_spent > 0 else 14500000.00
+            total_spent = real_spent
 
-        total_backlog_cost = complaint_qs.filter(status__name__in=["Pending", "In Progress", "pending", "review"]).aggregate(s=Sum("estimated_cost"))["s"] or 650000.00
+        raw_backlog = complaint_qs.filter(status__name__in=["Pending", "In Progress", "pending", "review"]).aggregate(s=Sum("estimated_cost"))["s"]
+        total_backlog_cost = float(raw_backlog) if raw_backlog is not None else 0.0
         
         total_count = complaint_qs.count()
         verified_count = complaint_qs.filter(is_verified_resolved=True).count()
@@ -385,11 +385,10 @@ class CivicProjectListView(ListAPIView):
     serializer_class = CivicProjectSerializer
 
     def get_queryset(self):
-        # Auto-cluster active, pending complaints into municipal micro-projects (minimum 3 complaints threshold)
-        grouped = {}
+        # Auto-cluster complaints into municipal micro-projects (minimum 3 complaints threshold)
+        grouped_pending = {}
         active_complaints = Complaint.objects.filter(
-            is_deleted=False,
-            is_verified_resolved=False
+            is_deleted=False
         ).exclude(
             status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"]
         ).select_related("district", "category", "department", "state").all()
@@ -398,7 +397,19 @@ class CivicProjectListView(ListAPIView):
             if not c.district or not c.category:
                 continue
             key = (c.district.id, c.category.id)
-            grouped.setdefault(key, []).append(c)
+            grouped_pending.setdefault(key, []).append(c)
+
+        grouped_resolved = {}
+        resolved_complaints = Complaint.objects.filter(
+            is_deleted=False,
+            status__name__iexact="resolved"
+        ).select_related("district", "category", "department", "state").all()
+
+        for c in resolved_complaints:
+            if not c.district or not c.category:
+                continue
+            key = (c.district.id, c.category.id)
+            grouped_resolved.setdefault(key, []).append(c)
 
         CATEGORY_BASE_COSTS = {
             "road": 150000.00,
@@ -409,15 +420,14 @@ class CivicProjectListView(ListAPIView):
             "sanitation": 25000.00,
         }
 
-        for (dist_id, cat_id), comp_list in grouped.items():
-            # ONLY group into a Civic Infrastructure Project if there are >= 3 complaints!
+        # Process Pending Clusters
+        for (dist_id, cat_id), comp_list in grouped_pending.items():
             if len(comp_list) < 3:
                 continue
 
             first = comp_list[0]
             proj_title = f"{first.district.name} {first.category.name} Civic Infrastructure Project"
 
-            # Calculate realistic municipal cost: Base cost + scaling per extra complaint
             cat_name_lower = (first.category.name or "").lower()
             base_cost = 100000.00
             for k, v in CATEGORY_BASE_COSTS.items():
@@ -442,6 +452,41 @@ class CivicProjectListView(ListAPIView):
             )
             for c in comp_list:
                 proj.complaints.add(c)
+            proj.estimated_cost = calc_cost
+            proj.save()
+
+        # Process Resolved Clusters into COMPLETED Projects
+        for (dist_id, cat_id), comp_list in grouped_resolved.items():
+            if len(comp_list) < 3:
+                continue
+
+            first = comp_list[0]
+            proj_title = f"{first.district.name} {first.category.name} Completed Infrastructure Project"
+
+            cat_name_lower = (first.category.name or "").lower()
+            base_cost = 100000.00
+            for k, v in CATEGORY_BASE_COSTS.items():
+                if k in cat_name_lower:
+                    base_cost = v
+                    break
+            calc_cost = sum(float(c.estimated_cost) for c in comp_list) or base_cost
+
+            proj, created = CivicProject.objects.get_or_create(
+                title=proj_title,
+                district=first.district,
+                category=first.category,
+                defaults={
+                    "state": first.state,
+                    "department": first.department,
+                    "ward_name": f"Ward {random.randint(1, 15)}",
+                    "estimated_cost": calc_cost,
+                    "allocated_budget": calc_cost,
+                    "status": "COMPLETED"
+                }
+            )
+            for c in comp_list:
+                proj.complaints.add(c)
+            proj.status = "COMPLETED"
             proj.estimated_cost = calc_cost
             proj.save()
 
@@ -478,6 +523,9 @@ class GroupProjectResolveView(APIView):
         after_image = request.FILES.get("after_image") or request.FILES.get("image")
         remarks = request.data.get("remarks", "Group infrastructure repair completed by department.")
 
+        after_image = request.FILES.get("after_image") or request.FILES.get("image")
+        remarks = request.data.get("remarks", "Group infrastructure repair completed by department.")
+
         if after_image:
             project.after_image = after_image
         elif not project.after_image:
@@ -488,6 +536,25 @@ class GroupProjectResolveView(APIView):
         project.is_rejected = False
         project.status = "IN_EXECUTION"
         project.save()
+
+        # Handle Multi-Photo Proof Uploads
+        from .models import CivicProjectResolutionProof
+        images = request.FILES.getlist("images") if "images" in request.FILES else ([after_image] if after_image else [])
+        remarks_list = request.data.getlist("remarks_list") if hasattr(request.data, "getlist") and "remarks_list" in request.data else [remarks]
+        complaint_ids = request.data.getlist("complaint_ids") if hasattr(request.data, "getlist") and "complaint_ids" in request.data else []
+
+        if images:
+            for idx, img in enumerate(images):
+                r_text = remarks_list[idx] if idx < len(remarks_list) else remarks
+                c_id = complaint_ids[idx] if idx < len(complaint_ids) else None
+                c_obj = Complaint.objects.filter(id=c_id).first() if c_id else None
+                CivicProjectResolutionProof.objects.create(
+                    project=project,
+                    complaint=c_obj,
+                    image=img,
+                    remarks=r_text,
+                    uploaded_by=request.user
+                )
 
         # Cascade resolution proof to ALL associated citizen complaints automatically!
         review_status = get_status_by_name("review")
@@ -502,6 +569,40 @@ class GroupProjectResolveView(APIView):
         return Response({
             "message": f"Group resolution proof submitted! All {project.complaints.count()} associated complaints updated to Under Review.",
             "data": CivicProjectDetailSerializer(project, context={"request": request}).data
+        }, status=status.HTTP_200_OK)
+
+
+class GroupProjectProofVerifyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, proof_id):
+        from .models import CivicProjectResolutionProof
+        proof = get_object_or_404(CivicProjectResolutionProof, pk=proof_id)
+        action = request.data.get("action")
+        reason = request.data.get("reason", "")
+
+        if action == "approve":
+            proof.verified_by.add(request.user)
+            if proof.rejected_by.filter(id=request.user.id).exists():
+                proof.rejected_by.remove(request.user)
+            proof.is_rejected = False
+            proof.save()
+            msg = "Photo resolution proof approved."
+        elif action == "reject":
+            proof.rejected_by.add(request.user)
+            if proof.verified_by.filter(id=request.user.id).exists():
+                proof.verified_by.remove(request.user)
+            proof.is_rejected = True
+            proof.rejection_reason = reason
+            proof.save()
+            msg = f"Photo proof rejected: {reason}"
+        else:
+            return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .serializers import CivicProjectResolutionProofSerializer
+        return Response({
+            "message": msg,
+            "proof": CivicProjectResolutionProofSerializer(proof, context={"request": request}).data
         }, status=status.HTTP_200_OK)
 
 

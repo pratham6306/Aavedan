@@ -472,4 +472,28 @@ class CivicProjectVote(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.user.email} voted for {self.project.title}"
+        return f"{self.user.email} voted for {self.project.title}"
+
+
+class CivicProjectResolutionProof(BaseModel):
+    """
+    Multi-photo resolution proof model for grouped civic projects.
+    Allows officers to upload separate photos with individual descriptions for each issue,
+    and enables citizens to verify or reject each photo independently.
+    """
+    project = models.ForeignKey(CivicProject, on_delete=models.CASCADE, related_name="resolution_proofs")
+    complaint = models.ForeignKey(Complaint, on_delete=models.SET_NULL, null=True, blank=True, related_name="resolution_proofs")
+    image = models.ImageField(upload_to="projects/resolutions/")
+    remarks = models.TextField(blank=True, default="")
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    verified_by = models.ManyToManyField(User, related_name="verified_proof_photos", blank=True)
+    rejected_by = models.ManyToManyField(User, related_name="rejected_proof_photos", blank=True)
+    is_rejected = models.BooleanField(default=False)
+    rejection_reason = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Resolution Proof for {self.project.title} ({self.remarks[:30]})"

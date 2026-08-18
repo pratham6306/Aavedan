@@ -18,6 +18,7 @@ from .views import (
     CivicProjectVoteView,
     GroupProjectResolveView,
     GroupProjectVerifyView,
+    GroupProjectProofVerifyView,
     OfficerResolveView,
     CitizenVerifyView,
 )
@@ -123,6 +124,12 @@ urlpatterns = [
         "projects/<int:pk>/verify/",
         GroupProjectVerifyView.as_view(),
         name="civic-project-verify",
+    ),
+
+    path(
+        "projects/proofs/<int:proof_id>/verify/",
+        GroupProjectProofVerifyView.as_view(),
+        name="civic-project-proof-verify",
     ),
 
     path(
