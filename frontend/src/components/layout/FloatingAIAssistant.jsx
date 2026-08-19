@@ -756,21 +756,97 @@ Landmark: ${data.landmark || ''}`;
 }
 
 function ChatLocationWidget({ onConfirmLocation }) {
+  const [statesList, setStatesList] = useState([]);
+  const [districtsList, setDistrictsList] = useState([]);
   const [selectedState, setSelectedState] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectedAddress, setDetectedAddress] = useState('');
 
-  const districtData = {
-    "Odisha": ["Khordha", "Cuttack", "Puri", "Ganjam", "Sambalpur", "Koraput", "Mayurbhanj", "Balasore", "Bhadrak", "Kendrapara"],
-    "Bihar": ["Madhepura", "Purnia", "Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Darbhanga", "Saharsa", "Katihar", "Araria"],
-    "Uttar Pradesh": ["Lucknow", "Kanpur", "Varanasi", "Agra", "Prayagraj", "Alwar", "Noida", "Ghaziabad", "Gorakhpur", "Bareilly"],
-    "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Nashik", "Thane", "Aurangabad", "Solapur"],
-    "Delhi": ["Central Delhi", "New Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi"],
-    "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Ajmer", "Bikaner", "Alwar"]
+  const fallbackDistrictData = {
+    "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Tirupati", "Kakinada", "Anantapur", "Kadapa"],
+    "Arunachal Pradesh": ["Itanagar", "Tawang", "Pasighat", "Ziro", "Bomdila"],
+    "Assam": ["Guwahati", "Silchar", "Dibrugarh", "Jorhat", "Nagaon", "Tinsukia", "Tezpur"],
+    "Bihar": ["Madhepura", "Purnia", "Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Darbhanga", "Saharsa", "Katihar", "Araria", "Begusarai", "Rohtas"],
+    "Chhattisgarh": ["Raipur", "Bhilai", "Bilaspur", "Korba", "Rajnandgaon", "Durg"],
+    "Goa": ["North Goa", "South Goa", "Panaji", "Margao", "Vasco da Gama"],
+    "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", "Jamnagar", "Gandhinagar"],
+    "Haryana": ["Gurugram", "Faridabad", "Panipat", "Ambala", "Karnal", "Hisar", "Rohtak"],
+    "Himachal Pradesh": ["Shimla", "Dharamshala", "Mandi", "Solan", "Kullu", "Chamba"],
+    "Jharkhand": ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro", "Hazaribagh", "Deoghar"],
+    "Karnataka": ["Bengaluru", "Mysuru", "Hubballi", "Mangaluru", "Belagavi", "Davangere", "Ballari"],
+    "Kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur", "Kollam", "Kannur"],
+    "Madhya Pradesh": ["Bhopal", "Indore", "Gwalior", "Jabalpur", "Ujjain", "Sagar"],
+    "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Nashik", "Thane", "Aurangabad", "Solapur", "Kolhapur", "Amravati"],
+    "Manipur": ["Imphal", "Churachandpur", "Thoubal"],
+    "Meghalaya": ["Shillong", "Tura", "Jowai"],
+    "Mizoram": ["Aizawl", "Lunglei"],
+    "Nagaland": ["Kohima", "Dimapur"],
+    "Odisha": ["Khordha", "Cuttack", "Puri", "Ganjam", "Sambalpur", "Koraput", "Mayurbhanj", "Balasore", "Bhadrak", "Kendrapara", "Rayagada", "Angul"],
+    "Punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda", "Mohali"],
+    "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Ajmer", "Bikaner", "Alwar", "Bhilwara"],
+    "Sikkim": ["Gangtok", "Namchi", "Gyalshing"],
+    "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Tirunelveli", "Vellore"],
+    "Telangana": ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Khammam"],
+    "Tripura": ["Agartala", "Udaipur", "Dharmanagar"],
+    "Uttar Pradesh": ["Lucknow", "Kanpur", "Varanasi", "Agra", "Prayagraj", "Noida", "Ghaziabad", "Gorakhpur", "Bareilly", "Meerut", "Aligarh", "Mathura"],
+    "Uttarakhand": ["Dehradun", "Haridwar", "Roorkee", "Haldwani", "Nainital", "Rishikesh"],
+    "West Bengal": ["Kolkata", "Howrah", "Durgapur", "Siliguri", "Asansol", "Kharagpur"],
+    "Andaman and Nicobar Islands": ["Port Blair", "North and Middle Andaman", "South Andaman"],
+    "Chandigarh": ["Chandigarh"],
+    "Dadra and Nagar Haveli and Daman and Diu": ["Daman", "Diu", "Silvassa"],
+    "Delhi": ["Central Delhi", "New Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi", "North West Delhi", "South West Delhi"],
+    "Jammu and Kashmir": ["Srinagar", "Jammu", "Anantnag", "Baramulla", "Udhampur"],
+    "Ladakh": ["Leh", "Kargil"],
+    "Lakshadweep": ["Kavaratti"],
+    "Puducherry": ["Puducherry", "Karaikal", "Mahe", "Yanam"]
   };
 
-  const states = Object.keys(districtData);
+  // 1. Load States combining Backend API + Complete 36 States & UTs List
+  useEffect(() => {
+    async function loadStates() {
+      const fullList = Object.keys(fallbackDistrictData);
+      try {
+        const res = await fetch('/api/locations/states/');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const merged = Array.from(new Set([...data.map(s => s.name), ...fullList])).sort();
+            setStatesList(merged);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch states from backend API, using comprehensive offline list:", e);
+      }
+      setStatesList(fullList.sort());
+    }
+    loadStates();
+  }, []);
+
+  // 2. Load Districts dynamically when State changes
+  useEffect(() => {
+    if (!selectedState) {
+      setDistrictsList([]);
+      return;
+    }
+    async function loadDistricts() {
+      try {
+        const res = await fetch(`/api/locations/districts/?state=${encodeURIComponent(selectedState)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setDistrictsList(data.map(d => d.name));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch districts from backend API, using offline list:", e);
+      }
+      setDistrictsList(fallbackDistrictData[selectedState] || []);
+    }
+    loadDistricts();
+  }, [selectedState]);
 
   const handleGpsDetect = () => {
     if (!navigator.geolocation) {
@@ -790,10 +866,10 @@ function ChatLocationWidget({ onConfirmLocation }) {
             const stateFound = addr.state || "";
             const distFound = addr.state_district || addr.county || addr.city || addr.district || "";
 
-            const matchedSt = states.find(s => s.toLowerCase() === stateFound.toLowerCase()) || "Odisha";
+            const matchedSt = statesList.find(s => s.toLowerCase() === stateFound.toLowerCase()) || "Odisha";
             setSelectedState(matchedSt);
 
-            const matchedDistList = districtData[matchedSt] || [];
+            const matchedDistList = fallbackDistrictData[matchedSt] || districtsList;
             const matchedDist = matchedDistList.find(d => distFound.toLowerCase().includes(d.toLowerCase())) || matchedDistList[0] || "Khordha";
             setSelectedDistrict(matchedDist);
 
@@ -871,7 +947,7 @@ function ChatLocationWidget({ onConfirmLocation }) {
             className="w-full bg-white border border-[#F472B6]/50 rounded-lg px-2 py-1 text-[11px] text-[#4C0519] font-medium focus:outline-none focus:ring-1 focus:ring-[#EC4899]"
           >
             <option value="">-- Choose State --</option>
-            {states.map((s) => (
+            {statesList.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
@@ -886,7 +962,7 @@ function ChatLocationWidget({ onConfirmLocation }) {
             className="w-full bg-white border border-[#F472B6]/50 rounded-lg px-2 py-1 text-[11px] text-[#4C0519] font-medium focus:outline-none focus:ring-1 focus:ring-[#EC4899] disabled:opacity-50"
           >
             <option value="">-- Choose District --</option>
-            {(districtData[selectedState] || []).map((d) => (
+            {districtsList.map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
