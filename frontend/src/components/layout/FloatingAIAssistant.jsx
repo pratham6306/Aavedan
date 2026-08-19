@@ -767,13 +767,25 @@ function ChatLocationWidget({ onConfirmLocation }) {
     "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Tirupati", "Kakinada", "Anantapur", "Kadapa"],
     "Arunachal Pradesh": ["Itanagar", "Tawang", "Pasighat", "Ziro", "Bomdila"],
     "Assam": ["Guwahati", "Silchar", "Dibrugarh", "Jorhat", "Nagaon", "Tinsukia", "Tezpur"],
-    "Bihar": ["Madhepura", "Purnia", "Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Darbhanga", "Saharsa", "Katihar", "Araria", "Begusarai", "Rohtas"],
+    "Bihar": [
+      "Araria", "Arwal", "Aurangabad", "Banka", "Begusarai", "Bhagalpur", "Bhojpur", "Buxar",
+      "Darbhanga", "East Champaran (Motihari)", "Gaya", "Gopalganj", "Jamui", "Jehanabad",
+      "Kaimur (Bhabua)", "Katihar", "Khagaria", "Kishanganj", "Lakhisarai", "Madhepura",
+      "Madhubani", "Munger", "Muzaffarpur", "Nalanda", "Nawada", "Patna", "Purnia", "Rohtas",
+      "Saharsa", "Samastipur", "Saran (Chhapra)", "Sheikhpura", "Sheohar", "Sitamarhi",
+      "Siwan", "Supaul", "Vaishali (Hajipur)", "West Champaran (Bettiah)"
+    ],
     "Chhattisgarh": ["Raipur", "Bhilai", "Bilaspur", "Korba", "Rajnandgaon", "Durg"],
     "Goa": ["North Goa", "South Goa", "Panaji", "Margao", "Vasco da Gama"],
     "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", "Jamnagar", "Gandhinagar"],
     "Haryana": ["Gurugram", "Faridabad", "Panipat", "Ambala", "Karnal", "Hisar", "Rohtak"],
     "Himachal Pradesh": ["Shimla", "Dharamshala", "Mandi", "Solan", "Kullu", "Chamba"],
-    "Jharkhand": ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro", "Hazaribagh", "Deoghar"],
+    "Jharkhand": [
+      "Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum (Jamshedpur)", "Garhwa",
+      "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara", "Khunti", "Koderma", "Latehar",
+      "Lohardaga", "Pakur", "Palamu", "Ramgarh", "Ranchi", "Sahibganj", "Seraikela Kharsawan",
+      "Simdega", "West Singhbhum (Chaibasa)"
+    ],
     "Karnataka": ["Bengaluru", "Mysuru", "Hubballi", "Mangaluru", "Belagavi", "Davangere", "Ballari"],
     "Kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur", "Kollam", "Kannur"],
     "Madhya Pradesh": ["Bhopal", "Indore", "Gwalior", "Jabalpur", "Ujjain", "Sagar"],
@@ -782,7 +794,13 @@ function ChatLocationWidget({ onConfirmLocation }) {
     "Meghalaya": ["Shillong", "Tura", "Jowai"],
     "Mizoram": ["Aizawl", "Lunglei"],
     "Nagaland": ["Kohima", "Dimapur"],
-    "Odisha": ["Khordha", "Cuttack", "Puri", "Ganjam", "Sambalpur", "Koraput", "Mayurbhanj", "Balasore", "Bhadrak", "Kendrapara", "Rayagada", "Angul"],
+    "Odisha": [
+      "Angul", "Balangir", "Balasore (Baleswar)", "Bargarh", "Bhadrak", "Boudh", "Cuttack",
+      "Deogarh", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghpur", "Jajpur", "Jharsuguda",
+      "Kalahandi", "Kandhamal", "Kendrapara", "Keonjhar (Kendujhar)", "Khordha", "Koraput",
+      "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada", "Puri", "Rayagada",
+      "Sambalpur", "Subarnapur (Sonepur)", "Sundargarh"
+    ],
     "Punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda", "Mohali"],
     "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Ajmer", "Bikaner", "Alwar", "Bhilwara"],
     "Sikkim": ["Gangtok", "Namchi", "Gyalshing"],
@@ -824,26 +842,28 @@ function ChatLocationWidget({ onConfirmLocation }) {
     loadStates();
   }, []);
 
-  // 2. Load Districts dynamically when State changes
+  // 2. Load Districts dynamically when State changes combining API + Full Offline List
   useEffect(() => {
     if (!selectedState) {
       setDistrictsList([]);
       return;
     }
     async function loadDistricts() {
+      const fallbackDist = fallbackDistrictData[selectedState] || [];
       try {
         const res = await fetch(`/api/locations/districts/?state=${encodeURIComponent(selectedState)}`);
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            setDistrictsList(data.map(d => d.name));
+            const mergedDist = Array.from(new Set([...data.map(d => d.name), ...fallbackDist])).sort();
+            setDistrictsList(mergedDist);
             return;
           }
         }
       } catch (e) {
         console.warn("Could not fetch districts from backend API, using offline list:", e);
       }
-      setDistrictsList(fallbackDistrictData[selectedState] || []);
+      setDistrictsList(fallbackDist.sort());
     }
     loadDistricts();
   }, [selectedState]);
