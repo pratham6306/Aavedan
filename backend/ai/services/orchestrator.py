@@ -37,6 +37,11 @@ class AIOrchestrator:
         # 2. Preprocess message
         clean_msg = self.preprocessor.preprocess(message)
 
+        # Extract location entities (State, District, Landmark) from user input FIRST
+        general_locations = self.location_extractor.extract(message, clean_msg)
+        self.memory.update_session(session_id, entities=general_locations)
+        session = self.memory.get_session(session_id)
+
         # 3. Detect intent
         intent = self.intent_detector.detect(clean_msg)
 
@@ -86,8 +91,25 @@ class AIOrchestrator:
         prev_action = session.get("next_action")
         active_complaint = session.get("complaint_type")
 
+        # Process contextual responses to active questions (State, District, Address, Landmark)
+        if active_complaint and prev_action:
+            if prev_action in [NextAction.ASK_STATE.value, NextAction.ASK_DISTRICT.value, 
+                              NextAction.ASK_ADDRESS.value, NextAction.ASK_LANDMARK.value]:
+                awaiting_field = prev_action.replace("ASK_", "")
+                extracted = self.location_extractor.extract(message, clean_msg, awaiting_field=awaiting_field)
+                self.memory.update_session(session_id, entities=extracted)
+            
+            elif prev_action in [NextAction.ASK_REQUIRED_FIELDS.value, NextAction.ASK_PHOTO.value]:
+                missing = session.get("missing_fields", [])
+                if missing:
+                    missing_field = missing[0]
+                    self.memory.update_session(session_id, entities={missing_field: message.strip()})
+
+            elif prev_action == NextAction.CONFIRM_AND_FILE.value:
+                if intent == Intent.CONFIRM:
+                    self.memory.update_session(session_id, confirmed=True)
+
         # Save initial description if a complaint flow is triggered
-        # (Do NOT overwrite description when user is merely answering location/address questions)
         is_answering_location = prev_action in [
             NextAction.ASK_STATE.value, NextAction.ASK_DISTRICT.value, 
             NextAction.ASK_ADDRESS.value, NextAction.ASK_LANDMARK.value, NextAction.ASK_PHOTO.value
@@ -97,37 +119,13 @@ class AIOrchestrator:
             if desc_text and not is_answering_location:
                 self.memory.update_session(session_id, description=desc_text)
 
-        # If user is responding to a question in a complaint flow
-        if active_complaint and prev_action:
-            if prev_action in [NextAction.ASK_STATE.value, NextAction.ASK_DISTRICT.value, 
-                              NextAction.ASK_ADDRESS.value, NextAction.ASK_LANDMARK.value]:
-                # Extract locations contextually
-                awaiting_field = prev_action.replace("ASK_", "")
-                extracted = self.location_extractor.extract(message, clean_msg, awaiting_field=awaiting_field)
-                self.memory.update_session(session_id, entities=extracted)
-            
-            elif prev_action in [NextAction.ASK_REQUIRED_FIELDS.value, NextAction.ASK_PHOTO.value]:
-                missing = session.get("missing_fields", [])
-                if missing:
-                    missing_field = missing[0]
-                    # Update entities dict with user response
-                    self.memory.update_session(session_id, entities={missing_field: message.strip()})
-
-            elif prev_action == NextAction.CONFIRM_AND_FILE.value:
-                if intent == Intent.CONFIRM:
-                    self.memory.update_session(session_id, confirmed=True)
-
-        # 5. Extract general location parameters if we are lodging a new complaint
-        if intent == Intent.FILE_COMPLAINT:
-            general_locations = self.location_extractor.extract(message, clean_msg)
-            self.memory.update_session(session_id, entities=general_locations)
-
-        # Refresh session reference
-        session = self.memory.get_session(session_id)
-
-        # 6. Analyze complaint parameters (only if we have matched or are matching a complaint)
-        if intent == Intent.FILE_COMPLAINT or session.get("complaint_type"):
-            analysis = self.complaint_analyzer.analyze(clean_msg, session, image_base64=image_base64)
+        # Perform LLM classification & complaint analysis with fresh, updated session entities
+        analysis = None
+        if intent not in [Intent.GREETING, Intent.GOODBYE, Intent.TRACK_COMPLAINT, Intent.CONFIRM]:
+            session = self.memory.get_session(session_id)
+            analysis = self.complaint_analyzer.analyze(message.strip(), session, image_base64=image_base64)
+            if analysis.get("category") or analysis.get("complaint_type"):
+                intent = Intent.FILE_COMPLAINT
             
             # If a new complaint type was resolved or previous session was confirmed, use new values
             if analysis.get("complaint_type") or session.get("confirmed"):

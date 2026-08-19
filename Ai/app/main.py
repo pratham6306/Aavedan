@@ -19,6 +19,9 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 from fastapi import FastAPI
 
 from app.api.error_handlers import register_exception_handlers

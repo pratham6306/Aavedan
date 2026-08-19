@@ -41,6 +41,13 @@ class AppSettings(BaseSettings):
     )
 
 
+class GroqSettings(BaseSettings):
+    """Configuration for Groq Cloud API provider."""
+    model_config = SettingsConfigDict(env_prefix="GROQ_", env_file=".env", extra="ignore")
+    api_key: SecretStr = Field(default=SecretStr(""))
+    model_name: str = Field(default="qwen/qwen3.6-27b")
+
+
 class GeminiSettings(BaseSettings):
     """Configuration for the Gemini LLM provider.
 
@@ -125,6 +132,7 @@ class Settings(BaseSettings):
 
     app: AppSettings = Field(default_factory=AppSettings)
     gemini: GeminiSettings = Field(default_factory=GeminiSettings)
+    groq: GroqSettings = Field(default_factory=GroqSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
 
 

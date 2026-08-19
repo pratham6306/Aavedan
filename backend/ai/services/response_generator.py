@@ -26,13 +26,13 @@ class ResponseGenerator:
 
         # Default NL Replies based on NextAction state
         if next_action_str == NextAction.ASK_COMPLAINT_DETAILS.value:
-            reply = "Please describe the public issue you are facing in detail. For example: 'There is a pothole near KIIT Square' or 'The street light is not working'."
+            reply = "We could not clearly understand the details of your complaint. Could you please describe the civic issue you are experiencing in a bit more detail so we can accurately route it to the correct department?"
         
         elif next_action_str == NextAction.ASK_STATE.value:
-            reply = "Understood. Which state is this issue located in? (e.g., Odisha, Bihar)"
+            reply = "Understood. Which state is this issue located in? You can type your State or select from the quick options below."
         
         elif next_action_str == NextAction.ASK_DISTRICT.value:
-            reply = "To route this correctly, please specify your district."
+            reply = "To route this correctly, please specify your District. You can type your District or select from the quick options below."
         
         elif next_action_str == NextAction.ASK_ADDRESS.value:
             reply = "Please enter the street name, block, or specific address details for this issue."

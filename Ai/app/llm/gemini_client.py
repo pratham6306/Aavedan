@@ -70,7 +70,48 @@ class GeminiClient:
         return keys if keys else ["dev_key"]
 
     async def generate(self, prompt: str, image_data: dict | None = None) -> str:
-        """Send `prompt` to Gemini with automatic multi-key rotation and 429/503 resilience."""
+        """Send `prompt` to Groq Cloud API (Primary) with fallback to Gemini."""
+        import os
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(override=True)
+        except ImportError:
+            pass
+
+        groq_key = os.getenv("GROQ_API_KEY") or ""
+        if groq_key and groq_key.startswith("gsk_"):
+            groq_url = "https://api.groq.com/openai/v1/chat/completions"
+            groq_headers = {
+                "Authorization": f"Bearer {groq_key}",
+                "Content-Type": "application/json"
+            }
+            groq_model = os.getenv("GROQ_MODEL", "groq/compound-mini")
+            groq_payload = {
+                "model": groq_model,
+                "messages": [
+                    {"role": "system", "content": "You are Aavedan-Setu AI assistant. Respond strictly in valid JSON format."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.1
+            }
+            try:
+                async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+                    resp = await client.post(groq_url, json=groq_payload, headers=groq_headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        if content:
+                            # Strip out <think>...</think> tags if present from reasoning models
+                            import re
+                            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                            logger.info(f"Successfully generated response via Groq Cloud API ({groq_model})")
+                            return content
+                    logger.warning(f"Groq API returned status {resp.status_code}: {resp.text[:200]}")
+                    raise LLMProviderError(f"Groq API failed with status {resp.status_code}. Falling back to offline KnowledgeEngine.")
+            except Exception as exc:
+                logger.warning(f"Groq API call error: {exc}. Falling back to offline KnowledgeEngine.")
+                raise LLMProviderError(f"Groq API call failed: {exc}. Falling back to offline KnowledgeEngine.")
+
         keys = self._get_active_keys()
         # Strictly use verified active model aliases
         models = [self._model_name, "gemini-flash-latest"]

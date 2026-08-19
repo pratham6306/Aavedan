@@ -27,25 +27,50 @@ class LocationExtractor:
         # 1. Context-Aware Extraction
         # ----------------------------
         if awaiting_field:
+            # First check if structured 'State: X, District: Y' text was sent
+            if "state:" in text.lower() or "district:" in text.lower():
+                self._extract_db_locations(preprocessed_text, entities)
+                for part in text.split(","):
+                    if "state:" in part.lower():
+                        st_val = part.split(":")[1].strip()
+                        st_obj = State.objects.filter(name__iexact=st_val).first() or State.objects.filter(name__icontains=st_val).first()
+                        if st_obj:
+                            entities["state"] = st_obj.name
+                    elif "district:" in part.lower():
+                        dt_val = part.split(":")[1].strip()
+                        dt_obj = District.objects.filter(name__iexact=dt_val).first() or District.objects.filter(name__icontains=dt_val).first()
+                        if dt_obj:
+                            entities["district"] = dt_obj.name
+                            if not entities.get("state"):
+                                entities["state"] = dt_obj.state.name
+                if entities.get("state") or entities.get("district"):
+                    return entities
+
             field = awaiting_field.lower().strip()
             if field == "state":
-                # Check if it matches a state in the DB
+                # Check if it matches a state in the DB or known Indian states
                 state_obj = State.objects.filter(name__iexact=text.strip()).first()
+                if not state_obj:
+                    # Case insensitive search on partial match
+                    state_obj = State.objects.filter(name__icontains=text.strip()).first()
                 if state_obj:
                     entities["state"] = state_obj.name
                 else:
-                    # Fallback to the raw string if reasonable
-                    entities["state"] = text.strip()
+                    # Do NOT accept random invalid text like "hello" as state
+                    entities["state"] = None
                 return entities
             
             elif field == "district":
                 # Check if it matches a district in the DB
                 dist_obj = District.objects.filter(name__iexact=text.strip()).first()
+                if not dist_obj:
+                    dist_obj = District.objects.filter(name__icontains=text.strip()).first()
                 if dist_obj:
                     entities["district"] = dist_obj.name
                     entities["state"] = dist_obj.state.name
                 else:
-                    entities["district"] = text.strip()
+                    # Do NOT accept random invalid text like "hello" as district
+                    entities["district"] = None
                 return entities
             
             elif field == "address":
@@ -106,11 +131,26 @@ class LocationExtractor:
                 entities["state"] = state.name
                 break
 
-        # Query districts
-        districts = District.objects.all()
+        # Query districts with exact match first
+        districts = District.objects.select_related("state").all()
         for dist in districts:
             pattern = r"\b" + re.escape(dist.name.lower()) + r"\b"
             if re.search(pattern, preprocessed_text):
                 entities["district"] = dist.name
                 entities["state"] = dist.state.name
                 break
+
+        # Fuzzy matching for spelling typos in District names (e.g. madhepurii -> Madhepura, purniya -> Purnia)
+        if not entities["district"]:
+            import difflib
+            stop_words = {"water", "issue", "problem", "complaint", "street", "light", "drain", "road", "help", "near", "behind", "area", "lane", "block", "house", "more", "ghare", "pani", "nhi", "nahi"}
+            words = [w for w in preprocessed_text.split() if len(w) >= 4 and w not in stop_words]
+            dist_map = {d.name.lower(): d for d in districts}
+            dist_names_lower = list(dist_map.keys())
+            for word in words:
+                close = difflib.get_close_matches(word, dist_names_lower, n=1, cutoff=0.70)
+                if close:
+                    matched_dist = dist_map[close[0]]
+                    entities["district"] = matched_dist.name
+                    entities["state"] = matched_dist.state.name
+                    break

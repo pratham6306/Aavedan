@@ -29,10 +29,10 @@ rules:
 # Fallback priority per category when no rule above matches.
 category_default_priority:
   ROAD_DAMAGE: medium
-  STREETLIGHT: low
+  STREETLIGHT: high
   WATER_SUPPLY: medium
   GARBAGE_COLLECTION: low
-  ELECTRICITY: medium
+  ELECTRICITY: high
   DRAINAGE: medium
   PUBLIC_SAFETY: high
   OTHER: low

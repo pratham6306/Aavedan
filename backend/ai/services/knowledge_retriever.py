@@ -61,7 +61,7 @@ class KnowledgeRetriever:
                 85000.00
             ),
             (
-                r"\b(street light|streetlight|streetlights|street lamp|pole light|road light)\b|\b(dark|darkness)\b.*\b(road|street|lane|area)\b",
+                r"\b(street light|streetlight|streetlights|streeth light|streethlight|street lamp|pole light|road light)\b|\b(dark|darkness)\b.*\b(road|street|lane|area)\b",
                 "Faulty Street Lights & Night Darkness",
                 "Electricity",
                 "Electricity Distribution Department",
@@ -175,11 +175,19 @@ class KnowledgeRetriever:
                 250000.00
             ),
             (
-                r"\b(missing road sign|road sign missing|no road sign|signboard missing|missing traffic sign)\b",
+                r"\b(missing road sign|road sign missing|no road sign|signboard missing|missing signboard|missing sign board|no signboard|damaged signboard|missing traffic sign)\b",
                 "Missing Road Sign",
                 "Road & Infrastructure",
                 "Public Works Department (PWD)",
                 "LOW",
+                20000.00
+            ),
+            (
+                r"\b(zebra crossing|zebracrossing|missing zebra crossing|faded zebra crossing|pedestrian crossing|missing pedestrian crossing|no zebra crossing)\b",
+                "Missing / Faded Zebra Crossing",
+                "Road & Infrastructure",
+                "Public Works Department (PWD)",
+                "MEDIUM",
                 20000.00
             ),
             (
@@ -379,6 +387,14 @@ class KnowledgeRetriever:
                 "Public Health & Sanitation Department",
                 "HIGH",
                 15000.00
+            ),
+            (
+                r"\b(street dog|street dogs|stray dog|stray dogs|dog menace|stray animal|stray animals|dog bite|dog biting|rabid dog|stray dog nuisance|dogs barking|kutte)\b",
+                "Stray Dog Menace & Animal Nuisance",
+                "Sanitation & Waste",
+                "Public Health & Sanitation Department",
+                "HIGH",
+                20000.00
             ),
             (
                 r"\b(public toilet|public urinal)\b.*\b(dirty|filthy|broken|unclean|not maintained|maintenance|bad condition)\b|\b(dirty|filthy|broken|unclean)\b.*\b(public toilet|public urinal)\b",

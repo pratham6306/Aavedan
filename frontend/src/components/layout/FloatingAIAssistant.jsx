@@ -419,6 +419,11 @@ Landmark: ${data.landmark || ''}`;
                       </span>
                     </div>
 
+                    {/* Render Interactive Location Widget for ASK_STATE or ASK_DISTRICT */}
+                    {msg.sender === 'bot' && (msg.next_action === 'ASK_STATE' || msg.next_action === 'ASK_DISTRICT') && (
+                      <ChatLocationWidget onConfirmLocation={handleSendMessage} />
+                    )}
+
                     {/* Render preview button trigger */}
                     {msg.sender === 'bot' && msg.next_action === 'CONFIRM_AND_FILE' && (
                       <div className="flex flex-col gap-2 mt-2">
@@ -746,6 +751,155 @@ Landmark: ${data.landmark || ''}`;
       >
         {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
       </motion.button>
+    </div>
+  );
+}
+
+function ChatLocationWidget({ onConfirmLocation }) {
+  const [selectedState, setSelectedState] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectedAddress, setDetectedAddress] = useState('');
+
+  const districtData = {
+    "Odisha": ["Khordha", "Cuttack", "Puri", "Ganjam", "Sambalpur", "Koraput", "Mayurbhanj", "Balasore", "Bhadrak", "Kendrapara"],
+    "Bihar": ["Madhepura", "Purnia", "Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Darbhanga", "Saharsa", "Katihar", "Araria"],
+    "Uttar Pradesh": ["Lucknow", "Kanpur", "Varanasi", "Agra", "Prayagraj", "Alwar", "Noida", "Ghaziabad", "Gorakhpur", "Bareilly"],
+    "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Nashik", "Thane", "Aurangabad", "Solapur"],
+    "Delhi": ["Central Delhi", "New Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi"],
+    "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Ajmer", "Bikaner", "Alwar"]
+  };
+
+  const states = Object.keys(districtData);
+
+  const handleGpsDetect = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setIsDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const stateFound = addr.state || "";
+            const distFound = addr.state_district || addr.county || addr.city || addr.district || "";
+
+            const matchedSt = states.find(s => s.toLowerCase() === stateFound.toLowerCase()) || "Odisha";
+            setSelectedState(matchedSt);
+
+            const matchedDistList = districtData[matchedSt] || [];
+            const matchedDist = matchedDistList.find(d => distFound.toLowerCase().includes(d.toLowerCase())) || matchedDistList[0] || "Khordha";
+            setSelectedDistrict(matchedDist);
+
+            setDetectedAddress(`${matchedDist}, ${matchedSt}`);
+            toast.success(`📍 GPS Located: ${matchedDist}, ${matchedSt}`);
+          } else {
+            setSelectedState("Odisha");
+            setSelectedDistrict("Khordha");
+          }
+        } catch (e) {
+          console.error("GPS Reverse Geocode Error:", e);
+          setSelectedState("Odisha");
+          setSelectedDistrict("Khordha");
+        } finally {
+          setIsDetecting(false);
+        }
+      },
+      (error) => {
+        console.error("GPS Error:", error);
+        setIsDetecting(false);
+        toast.warning("Could not access GPS. Please select State & District manually.");
+      },
+      { timeout: 8000 }
+    );
+  };
+
+  const handleStateChange = (st) => {
+    setSelectedState(st);
+    setSelectedDistrict('');
+  };
+
+  const handleSubmit = () => {
+    if (!selectedState || !selectedDistrict) {
+      toast.warning("Please select both State and District.");
+      return;
+    }
+    onConfirmLocation(`State: ${selectedState}, District: ${selectedDistrict}`);
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-[#FFF5F7] to-[#FCE7F3] p-3 rounded-2xl border border-[#F472B6]/40 shadow-sm mt-2 flex flex-col gap-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-bold text-[#831843] flex items-center gap-1">
+          📍 Select Complaint Location
+        </span>
+        <button
+          type="button"
+          onClick={handleGpsDetect}
+          disabled={isDetecting}
+          className="bg-[#BE185D] hover:bg-[#9F1239] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+        >
+          {isDetecting ? (
+            <>
+              <span className="w-2.5 h-2.5 border border-white/40 border-t-white rounded-full animate-spin" />
+              Detecting...
+            </>
+          ) : (
+            <>🎯 Auto-Detect GPS</>
+          )}
+        </button>
+      </div>
+
+      {detectedAddress && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold px-2 py-1 rounded-md">
+          ✅ Detected: {detectedAddress}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[9px] font-bold text-[#9F1239] mb-0.5">State:</label>
+          <select
+            value={selectedState}
+            onChange={(e) => handleStateChange(e.target.value)}
+            className="w-full bg-white border border-[#F472B6]/50 rounded-lg px-2 py-1 text-[11px] text-[#4C0519] font-medium focus:outline-none focus:ring-1 focus:ring-[#EC4899]"
+          >
+            <option value="">-- Choose State --</option>
+            {states.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[9px] font-bold text-[#9F1239] mb-0.5">District:</label>
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            disabled={!selectedState}
+            className="w-full bg-white border border-[#F472B6]/50 rounded-lg px-2 py-1 text-[11px] text-[#4C0519] font-medium focus:outline-none focus:ring-1 focus:ring-[#EC4899] disabled:opacity-50"
+          >
+            <option value="">-- Choose District --</option>
+            {(districtData[selectedState] || []).map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleSubmit}
+        className="w-full bg-gradient-to-r from-[#EC4899] to-[#D946EF] hover:from-[#DB2777] hover:to-[#C084FC] text-white font-bold py-1.5 px-3 rounded-xl text-center text-[11px] shadow-sm transition cursor-pointer"
+      >
+        🚀 Confirm Location
+      </button>
     </div>
   );
 }

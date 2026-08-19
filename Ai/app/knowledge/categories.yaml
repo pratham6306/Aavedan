@@ -12,7 +12,7 @@ categories:
       en: "Road Damage"
       hi: "सड़क क्षति"
       or: "ରାସ୍ତା କ୍ଷତି"
-    description: "Potholes, broken roads, damaged footpaths."
+    description: "Potholes, broken roads, damaged footpaths, missing zebra crossings, faded road markings, missing signboards."
 
   - code: STREETLIGHT
     default_department_code: MUNICIPAL_CORP
@@ -62,10 +62,18 @@ categories:
       or: "ସାର୍ବଜନୀନ ସୁରକ୍ଷା"
     description: "Unsafe public spaces, missing signage, safety hazards."
 
+  - code: ANIMAL_CONTROL
+    default_department_code: MUNICIPAL_CORP
+    display_name:
+      en: "Stray Animal & Dog Control"
+      hi: "आवारा पशु एवं कुत्ता नियंत्रण"
+      or: "ବୁଲା କୁକୁର ଏବଂ ପଶୁ ନିୟନ୍ତ୍ରଣ"
+    description: "Stray dogs menace, dog biting, rabid animals, stray cattle."
+
   - code: OTHER
     default_department_code: GENERAL_ADMIN
     display_name:
       en: "Other"
       hi: "अन्य"
       or: "ଅନ୍ୟାନ୍ୟ"
-    description: "Complaints that do not fit another category."
+    description: "General grievances not covered by other categories."

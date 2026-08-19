@@ -469,6 +469,16 @@ class CivicProjectListView(ListAPIView):
             additional_scale = min(total_interest - 3, 10) * 5000.00
             calc_cost = sub_base_cost + additional_scale
 
+            # Extract Ward deterministically from complaint landmark/address text
+            import re
+            ward_label = "Central Ward"
+            for c in comp_list:
+                loc_str = f"{c.landmark or ''} {c.address or ''} {c.description or ''}"
+                match = re.search(r"\bward\s*(\d+)\b", loc_str, re.IGNORECASE)
+                if match:
+                    ward_label = f"Ward {match.group(1)}"
+                    break
+
             proj, created = CivicProject.objects.get_or_create(
                 title=proj_title,
                 district=first.district,
@@ -476,18 +486,15 @@ class CivicProjectListView(ListAPIView):
                 defaults={
                     "state": first.state,
                     "department": first.department,
-                    "ward_name": f"Ward {random.randint(1, 15)}",
+                    "ward_name": ward_label,
                     "estimated_cost": calc_cost,
                     "allocated_budget": calc_cost + 50000.00,
                     "status": "PROPOSED"
                 }
             )
             
-            # Ensure complaint belongs ONLY to this specific sub-issue project
+            # Ensure complaints are attached to this project
             for c in comp_list:
-                for old_proj in c.civic_projects.all():
-                    if old_proj.id != proj.id:
-                        old_proj.complaints.remove(c)
                 proj.complaints.add(c)
             proj.estimated_cost = calc_cost
             proj.save()
@@ -533,7 +540,8 @@ class CivicProjectListView(ListAPIView):
             proj.estimated_cost = calc_cost
             proj.save()
 
-        qs = CivicProject.objects.all()
+        from django.db.models import Count
+        qs = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0)
         district_id = self.request.query_params.get("district_id")
         state_id = self.request.query_params.get("state_id")
         if district_id:

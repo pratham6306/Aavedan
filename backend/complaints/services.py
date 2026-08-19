@@ -1,23 +1,17 @@
 from .models import Complaint, ComplaintImage, ComplaintStatus
+from ai.services.knowledge_retriever import KnowledgeRetriever
+
+_kr = KnowledgeRetriever()
 
 class ComplaintService:
 
     @staticmethod
     def calculate_estimated_cost(title="", description="", category=None):
-        text = (f"{title} {description}").lower()
-        if any(w in text for w in ["bridge", "flyover", "highway", "overhaul", "stormwater"]):
-            return 450000.00
-        elif any(w in text for w in ["road", "pothole", "broken", "sadak", "gadda", "street", "blockage"]):
-            return 125000.00
-        elif any(w in text for w in ["transformer", "electricity", "power", "bijli", "voltage"]):
-            return 85000.00
-        elif any(w in text for w in ["water", "pipeline", "paani", "sewage", "naali", "leakage"]):
-            return 55000.00
-        elif any(w in text for w in ["garbage", "kachra", "sanitation", "cleanliness"]):
-            return 22000.00
-        elif any(w in text for w in ["light", "streetlight", "lamp"]):
-            return 15000.00
-        return 35000.00
+        text = f"{title} {description}"
+        kr_res = _kr.retrieve(text)
+        if kr_res and kr_res.get("estimated_cost"):
+            return kr_res["estimated_cost"]
+        return 25000.00
 
     @staticmethod
     def create_complaint(*, user, validated_data):
@@ -29,12 +23,17 @@ class ComplaintService:
 
         title = validated_data.get("title", "")
         desc = validated_data.get("description", "")
-        cost = ComplaintService.calculate_estimated_cost(title, desc)
+        kr_res = _kr.retrieve(f"{title} {desc}")
+
+        if "estimated_cost" not in validated_data or not validated_data.get("estimated_cost"):
+            validated_data["estimated_cost"] = kr_res.get("estimated_cost", 25000.00)
+
+        if "priority" not in validated_data or not validated_data.get("priority"):
+            validated_data["priority"] = kr_res.get("priority", "HIGH").upper()
 
         complaint = Complaint.objects.create(
             user=user,
             status=status,
-            estimated_cost=cost,
             **validated_data,
         )
 

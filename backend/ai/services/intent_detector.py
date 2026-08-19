@@ -58,10 +58,13 @@ class IntentDetector:
         # Devanagari Hindi
         r"शिकायत", r"समस्या", r"बिजली", r"कचरा", r"पानी", r"सड़क", r"नाली",
         r"लाइट", r"गंदगी", r"गड्ढा", r"कटौती", r"परेशानी", r"खराब", r"बंद",
-        # Hinglish
+        # Hinglish & Devanagari trouble verbs, indicators, and common issue words
         r"\bbijli\b", r"\bkachra\b", r"\bpaani\b", r"\bsadak\b", r"\bnaali\b",
         r"\blight\b", r"\bgandagi\b", r"\bgadda\b", r"\bpareshani\b", r"\bsamasya\b",
-        r"\bshikayat\b", r"\bkharab\b", r"\bband\b"
+        r"\bshikayat\b", r"\bkharab\b", r"\bband\b", r"\bdikkat\b", r"\bhatao\b",
+        r"\bkutte\b", r"\bkutta\b", r"\bdogs\b", r"\bdog\b", r"\bjal\b", r"\braha\b",
+        r"\brahi\b", r"\brha\b", r"\brhi\b", r"\bnahi\b", r"\bnhi\b", r"\bkam\b",
+        r"\bchori\b", r"\bgali\b", r"\bmohalla\b", r"\bjaam\b", r"\bsewer\b"
     ]
 
     def detect(self, message: str) -> Intent:

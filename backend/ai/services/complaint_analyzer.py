@@ -16,6 +16,8 @@ class ComplaintAnalyzer:
         FastAPI AI microservice, with a robust fallback to database keyword matching.
         """
         import requests
+        import logging
+        logger = logging.getLogger(__name__)
         from django.conf import settings
 
         retriever_result = {
@@ -35,6 +37,13 @@ class ComplaintAnalyzer:
             # Avoid calling the live API and eating up quota during test runs
             retriever_result = self.knowledge_retriever.retrieve(preprocessed_text)
             response = None
+        # 1. Query KnowledgeRetriever directly for rule-based match across 73 sub-issues
+        kr_result = self.knowledge_retriever.retrieve(preprocessed_text)
+
+        # 2. Try calling the external AI microservice (if available and not unit test mode)
+        import sys
+        if len(sys.argv) > 1 and sys.argv[1] == 'test':
+            retriever_result = kr_result
         else:
             ai_url = getattr(settings, "AI_SERVICE_URL", "http://localhost:8010")
             try:
@@ -46,49 +55,24 @@ class ComplaintAnalyzer:
                 if response.status_code == 200:
                     data = response.json()
                     
-                    # Fetch categories and required fields from database to match the resolved category
+                    # Merge LLM output with KnowledgeRetriever single source of truth
                     from categories.models import ComplaintCategory
                     from knowledge.models import ComplaintType
                     
                     category_code = data.get("category_code")
-                    category_mapping = {
-                        "ROAD_DAMAGE": "Road & Infrastructure",
-                        "WATER_SUPPLY": "Water Supply",
-                        "ELECTRICITY": "Electricity",
-                        "GARBAGE_COLLECTION": "Sanitation & Waste",
-                        "DRAINAGE": "Drainage & Sewerage",
-                        "PUBLIC_SAFETY": "Public Safety",
-                    }
-                    db_category_name = category_mapping.get(category_code, "Road & Infrastructure")
+
+                    # Prioritize KnowledgeRetriever sub-issue rule match for exact title/dept/cost, 
+                    # fallback to LLM category and department when KnowledgeRetriever has no rule.
+                    resolved_category_name = kr_result.get("category") or data.get("category_display_name")
+                    resolved_type_name = kr_result.get("complaint_type") or data.get("sub_issue_code") or data.get("category_display_name")
+                    resolved_dept_name = kr_result.get("department") or data.get("department_name")
+                    resolved_priority = (kr_result.get("priority") or data.get("priority") or "MEDIUM").upper()
                     
-                    # Fetch category from DB to ensure correct casing
-                    from categories.models import ComplaintCategory
-                    from knowledge.models import ComplaintType
-                    db_cat = ComplaintCategory.objects.filter(name__iexact=db_category_name).first()
-                    resolved_category_name = db_cat.name if db_cat else db_category_name
-                    
-                    ct = None
-                    entities = data.get("entities", {})
-                    issue_type = entities.get("issue_type") if isinstance(entities, dict) else None
-                    if issue_type:
-                        # Try matching the ComplaintType by name or slug under this category
-                        ct = ComplaintType.objects.filter(
-                            category__name__iexact=resolved_category_name,
-                            name__icontains=issue_type
-                        ).first()
-                        if not ct:
-                            ct = ComplaintType.objects.filter(
-                                category__name__iexact=resolved_category_name,
-                                slug__icontains=issue_type.replace(" ", "-")
-                            ).first()
-                    if not ct:
-                        # Fallback to the first complaint type under that category
+                    # Look up ComplaintType from DB if available
+                    ct = ComplaintType.objects.filter(name__icontains=resolved_type_name.split()[0]).first()
+                    if not ct and category_code:
                         ct = ComplaintType.objects.filter(category__name__iexact=resolved_category_name).first()
                     
-                    # If still not found (edge case), fallback to the first one in the DB
-                    if not ct:
-                        ct = ComplaintType.objects.first()
-
                     req_fields = []
                     if ct:
                         for rf in ct.required_fields.all():
@@ -97,26 +81,43 @@ class ComplaintAnalyzer:
                                 "display_name": rf.display_name,
                                 "is_required": rf.is_required
                             })
+                    else:
+                        req_fields = kr_result.get("required_fields", [])
 
                     retriever_result = {
-                        "complaint_type": ct.name if ct else data.get("category_display_name"),
+                        "complaint_type": resolved_type_name,
                         "category": resolved_category_name,
-                        "department": ct.department.name if (ct and ct.department) else data.get("department_name"),
-                        "priority": data.get("priority") or (ct.priority if ct else "medium"),
-                        "estimated_resolution_days": ct.estimated_resolution_days if ct else 7,
+                        "department": resolved_dept_name,
+                        "priority": resolved_priority,
+                        "estimated_resolution_days": kr_result.get("estimated_resolution_days") or (ct.estimated_resolution_days if ct else 3),
+                        "estimated_cost": kr_result.get("estimated_cost", 25000.00),
                         "required_fields": req_fields,
                         "matching_keywords": [category_code] if category_code else [],
                         "confidence_score": data.get("confidence", 0.90)
                     }
                 else:
-                    print(f"Warning: AI microservice returned status {response.status_code}, falling back to rules-based analyzer.")
-                    retriever_result = self.knowledge_retriever.retrieve(preprocessed_text)
+                    logger.warning(f"AI microservice returned status {response.status_code}, falling back to KnowledgeRetriever.")
+                    retriever_result = kr_result
             except Exception as e:
-                print(f"Warning: Failed to contact AI microservice: {str(e)}, falling back to rules-based analyzer.")
-                retriever_result = self.knowledge_retriever.retrieve(preprocessed_text)
+                logger.warning(f"Failed to contact AI microservice: {str(e)}, falling back to KnowledgeRetriever.")
+                retriever_result = kr_result
 
         # 2. Determine active complaint type
         active_type_name = retriever_result["complaint_type"] or session_data.get("complaint_type")
+        
+        # If no complaint type could be matched, ask for clarification instead of forcing a dummy category
+        if not active_type_name:
+            return {
+                "needs_clarification": True,
+                "clarification_prompt": "We couldn't clearly identify your civic issue. Please describe your complaint in a bit more detail (e.g., 'Street light not glowing near school' or 'Water pipeline leaking').",
+                "missing_fields": ["complaint_details"],
+                "is_complete": False,
+                "analysis": {
+                    "extracted_fields": {},
+                    "missing_required": ["complaint_details"],
+                    "confidence_score": 0.0
+                }
+            }
 
         if active_type_name and not retriever_result["complaint_type"]:
             # Load active type from database to avoid resetting parameters
