@@ -306,6 +306,8 @@ class CivicProjectSerializer(serializers.ModelSerializer):
             "ward_name",
             "estimated_cost",
             "allocated_budget",
+            "priority_score",
+            "priority_percentage",
             "status",
             "after_image",
             "resolution_remarks",

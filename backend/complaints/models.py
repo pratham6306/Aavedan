@@ -443,6 +443,8 @@ class CivicProject(BaseModel):
     
     estimated_cost = models.DecimalField(max_digits=12, decimal_places=2, default=350000.00)
     allocated_budget = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    priority_score = models.FloatField(default=0.0)
+    priority_percentage = models.FloatField(default=0.0)
     status = models.CharField(max_length=30, choices=PROJECT_STATUS_CHOICES, default="PROPOSED")
     
     after_image = models.ImageField(upload_to="projects/resolutions/", null=True, blank=True)

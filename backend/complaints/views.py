@@ -466,8 +466,7 @@ class CivicProjectListView(ListAPIView):
             first = comp_list[0]
             _, sub_title_suffix, sub_base_cost = get_sub_issue_details(first)
             proj_title = f"{first.district.name} {sub_title_suffix}"
-            additional_scale = min(total_interest - 3, 10) * 5000.00
-            calc_cost = sub_base_cost + additional_scale
+            calc_cost = sub_base_cost
 
             # Extract Ward deterministically from complaint landmark/address text
             import re
@@ -516,7 +515,7 @@ class CivicProjectListView(ListAPIView):
             first = comp_list[0]
             _, sub_title_suffix, sub_base_cost = get_sub_issue_details(first)
             proj_title = f"{first.district.name} Completed {sub_title_suffix}"
-            calc_cost = sum(float(c.estimated_cost) for c in comp_list) or sub_base_cost
+            calc_cost = sub_base_cost
 
             proj, created = CivicProject.objects.get_or_create(
                 title=proj_title,
@@ -541,7 +540,56 @@ class CivicProjectListView(ListAPIView):
             proj.save()
 
         from django.db.models import Count
-        qs = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0)
+        all_projects = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0).all()
+        
+        # Calculate 100-point Priority Score & District Relative Share (%)
+        projects_by_district = {}
+        for p in all_projects:
+            projects_by_district.setdefault(p.district_id, []).append(p)
+
+        severity_map = {"CRITICAL": 100.0, "HIGH": 75.0, "MEDIUM": 50.0, "LOW": 25.0}
+
+        for d_id, p_list in projects_by_district.items():
+            max_demand = 1.0
+            max_votes = 1.0
+            p_metrics = []
+
+            for p in p_list:
+                R = p.complaints.count()
+                L = sum(c.supports.count() for c in p.complaints.all())
+                V = p.votes.count()
+                demand = R + L
+                max_demand = max(max_demand, demand)
+                max_votes = max(max_votes, V)
+
+                max_sev = "MEDIUM"
+                for c in p.complaints.all():
+                    c_prio = (c.priority or "MEDIUM").upper()
+                    if severity_map.get(c_prio, 50.0) > severity_map.get(max_sev, 50.0):
+                        max_sev = c_prio
+                
+                p_metrics.append({
+                    "project": p,
+                    "sev_score": severity_map.get(max_sev, 50.0),
+                    "demand": demand,
+                    "votes": V
+                })
+
+            total_district_score = 0.0
+            for m in p_metrics:
+                demand_score = (m["demand"] / max_demand) * 100.0
+                vote_score = (m["votes"] / max_votes) * 100.0 if max_votes > 0 else 0.0
+                prio_score = (0.40 * m["sev_score"]) + (0.35 * demand_score) + (0.25 * vote_score)
+                m["prio_score"] = round(prio_score, 1)
+                total_district_score += m["prio_score"]
+
+            for m in p_metrics:
+                p = m["project"]
+                p.priority_score = m["prio_score"]
+                p.priority_percentage = round((m["prio_score"] / total_district_score * 100.0), 1) if total_district_score > 0 else round(100.0 / len(p_metrics), 1)
+                p.save()
+
+        qs = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0).order_by("-priority_score")
         district_id = self.request.query_params.get("district_id")
         state_id = self.request.query_params.get("state_id")
         if district_id:

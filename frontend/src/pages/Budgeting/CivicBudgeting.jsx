@@ -473,13 +473,39 @@ export default function CivicBudgeting() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-700 font-medium">
-                      Aggregated from <strong className="text-gov-700">{proj.complaints_count || 3}</strong> citizen grievances
+                  <div className="mt-3 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[11px] font-black px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                          (proj.priority_score || 50) >= 80 ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                          (proj.priority_score || 50) >= 60 ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                          'bg-indigo-100 text-indigo-800 border-indigo-300'
+                        }`}>
+                          🎯 Priority Score: {proj.priority_score ? proj.priority_score.toFixed(1) : '50.0'} / 100
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono font-black text-emerald-700">
+                        Base Budget: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    {/* District Priority Share (%) Progress Bar */}
+                    <div>
+                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-600 mb-1">
+                        <span>District Priority Weight:</span>
+                        <span className="text-gov-700 font-mono">{proj.priority_percentage ? proj.priority_percentage.toFixed(1) : '0.0'}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-gov-500 to-rose-500 h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(proj.priority_percentage || 10, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 font-medium pt-0.5">
+                      Aggregated from <strong className="text-gov-700">{proj.complaints_count || 1}</strong> grievances & <strong className="text-gov-700">{proj.votes_count || 0}</strong> citizen votes
                     </p>
-                    <span className="text-xs font-mono font-black text-emerald-700">
-                      Cost: ₹{Number(proj.estimated_cost).toLocaleString('en-IN')}
-                    </span>
                   </div>
                 </div>
 
