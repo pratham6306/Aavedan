@@ -42,7 +42,7 @@ class MemoryManager:
         # Merge nested entities dictionary
         if "entities" in kwargs and isinstance(kwargs["entities"], dict):
             for k, v in kwargs["entities"].items():
-                if v is not None:
+                if v is not None and str(v).strip() != "":
                     session["entities"][k] = v
 
         # Merge other keys

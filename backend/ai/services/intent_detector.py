@@ -42,7 +42,7 @@ class IntentDetector:
     ]
 
     OFFICE_PATTERNS = [
-        r"\boffice\b", r"\boffices\b", r"\bwhere\s+is\s+(the\s+)?office\b",
+        r"\boffice\b", r"\boffices\b", r"\bwhere\s+is\b.*\boffice\b",
         r"\bcontact\s+office\b", r"\boffice\s+address\b", r"\bdepartment\s+office\b"
     ]
 

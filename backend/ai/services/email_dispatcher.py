@@ -16,16 +16,45 @@ class EmailDispatcher:
         """
         Sends the compiled grievance report to the designated officer.
         """
-        complaint_type = session_data.get("complaint_type")
+        complaint_id = session_data.get("complaint_id")
+        if complaint_id:
+            try:
+                from complaints.models import Complaint
+                c_obj = Complaint.objects.select_related("state", "district", "category", "department").get(id=complaint_id)
+                session_data["complaint_type"] = session_data.get("complaint_type") or c_obj.title
+                session_data["category"] = session_data.get("category") or (c_obj.category.name if c_obj.category else "General")
+                session_data["department"] = session_data.get("department") or (c_obj.department.name if c_obj.department else None)
+                session_data["state"] = session_data.get("state") or (c_obj.state.name if c_obj.state else None)
+                session_data["district"] = session_data.get("district") or (c_obj.district.name if c_obj.district else None)
+                session_data["address"] = session_data.get("address") or c_obj.address
+                session_data["landmark"] = session_data.get("landmark") or c_obj.landmark
+                session_data["description"] = session_data.get("description") or c_obj.description
+            except Exception:
+                pass
+
+        complaint_type = session_data.get("complaint_type") or "Civic Grievance"
         category = session_data.get("category", "General")
         department = session_data.get("department")
         priority = session_data.get("priority", "MEDIUM")
         entities = session_data.get("entities", {})
         
-        state = session_data.get("state") or entities.get("state")
-        district = session_data.get("district") or entities.get("district")
-        address = session_data.get("address") or entities.get("address", "Not provided")
-        landmark = session_data.get("landmark") or entities.get("landmark", "Not provided")
+        state_val = session_data.get("state") or entities.get("state")
+        district_val = session_data.get("district") or entities.get("district")
+        address_val = session_data.get("address") or entities.get("address")
+        landmark_val = session_data.get("landmark") or entities.get("landmark")
+
+        def _clean_str(val, default="Not provided"):
+            if val is None:
+                return default
+            s = str(val).strip()
+            if not s or s.lower() in ["none", "null", "not provided"]:
+                return default
+            return s
+
+        state = _clean_str(state_val)
+        district = _clean_str(district_val)
+        address = _clean_str(address_val)
+        landmark = _clean_str(landmark_val)
         
         # 3-line formal description generator for offline & preview handoffs
         gen_desc = session_data.get("generated_description")
@@ -279,16 +308,46 @@ class EmailDispatcher:
         """
         Constructs and returns the email headers and body preview without sending it.
         """
-        complaint_type = session_data.get("complaint_type")
+        complaint_id = session_data.get("complaint_id")
+        if complaint_id:
+            try:
+                from complaints.models import Complaint
+                c_obj = Complaint.objects.select_related("state", "district", "category", "department").get(id=complaint_id)
+                session_data["complaint_type"] = session_data.get("complaint_type") or c_obj.title
+                session_data["category"] = session_data.get("category") or (c_obj.category.name if c_obj.category else "General")
+                session_data["department"] = session_data.get("department") or (c_obj.department.name if c_obj.department else None)
+                session_data["state"] = session_data.get("state") or (c_obj.state.name if c_obj.state else None)
+                session_data["district"] = session_data.get("district") or (c_obj.district.name if c_obj.district else None)
+                session_data["address"] = session_data.get("address") or c_obj.address
+                session_data["landmark"] = session_data.get("landmark") or c_obj.landmark
+                session_data["description"] = session_data.get("description") or c_obj.description
+            except Exception:
+                pass
+
+        complaint_type = session_data.get("complaint_type") or "Civic Grievance"
         category = session_data.get("category", "General")
         department = session_data.get("department")
         priority = session_data.get("priority", "MEDIUM")
         entities = session_data.get("entities", {})
         
-        state = session_data.get("state") or entities.get("state")
-        district = session_data.get("district") or entities.get("district")
-        address = session_data.get("address") or entities.get("address", "Not provided")
-        landmark = session_data.get("landmark") or entities.get("landmark", "Not provided")
+        state_val = session_data.get("state") or entities.get("state")
+        district_val = session_data.get("district") or entities.get("district")
+        address_val = session_data.get("address") or entities.get("address")
+        landmark_val = session_data.get("landmark") or entities.get("landmark")
+
+        def _clean_str(val, default="Not provided"):
+            if val is None:
+                return default
+            s = str(val).strip()
+            if not s or s.lower() in ["none", "null", "not provided"]:
+                return default
+            return s
+
+        state = _clean_str(state_val)
+        district = _clean_str(district_val)
+        address = _clean_str(address_val)
+        landmark = _clean_str(landmark_val)
+        
         # 3-line formal description generator for offline & preview handoffs
         gen_desc = session_data.get("generated_description")
         user_desc = session_data.get("description")

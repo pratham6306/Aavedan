@@ -261,21 +261,24 @@ class ComplaintDuplicateCheckView(APIView):
         latitude = request.data.get("latitude")
         longitude = request.data.get("longitude")
 
-        if not (category_id and department_id and state_id and district_id):
+        if not (category_id and district_id):
             return Response(
-                {"error": "Missing required fields (category, department, state, district)."},
+                {"error": "Missing required fields (category, district)."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Base query for active, pending complaints in the same state/district and category/department
+        # Base query for active, pending complaints in the same district and category
         qs = Complaint.objects.filter(
             is_deleted=False,
             is_verified_resolved=False,
-            state_id=state_id,
             district_id=district_id,
-            category_id=category_id,
-            department_id=department_id
+            category_id=category_id
         ).exclude(status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"])
+
+        if state_id:
+            qs = qs.filter(state_id=state_id)
+        if department_id:
+            qs = qs.filter(department_id=department_id)
 
         new_text = (str(request.data.get("title", "")) + " " + str(request.data.get("description", ""))).lower()
 
@@ -399,197 +402,198 @@ class BudgetAnalyticsView(APIView):
             "department_budgets": dept_budgets
         }, status=status.HTTP_200_OK)
 
+def recalculate_civic_projects():
+    def get_sub_issue_details(comp):
+        text = comp.title + " " + (comp.description or "")
+        res = _kr.retrieve(text)
+        sub_title = res.get("complaint_type") or f"{comp.category.name if comp.category else 'Civic'} Infrastructure Project"
+        sub_cost = float(res.get("estimated_cost", 100000.00))
+        sub_key = sub_title.lower().replace(" ", "_")
+        return (sub_key, sub_title, sub_cost)
+
+    # Purge stale old generic projects that mixed different sub-issues together
+    CivicProject.objects.filter(title__icontains="Electricity Civic Infrastructure Project").delete()
+
+    # Auto-cluster complaints by (district, category, sub_issue_key)
+    grouped_pending = {}
+    active_complaints = Complaint.objects.filter(
+        is_deleted=False
+    ).exclude(
+        status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"]
+    ).select_related("district", "category", "department", "state").all()
+    
+    for c in active_complaints:
+        if not c.district or not c.category:
+            continue
+        sub_key, _, _ = get_sub_issue_details(c)
+        key = (c.district.id, c.category.id, sub_key)
+        grouped_pending.setdefault(key, []).append(c)
+
+    grouped_resolved = {}
+    resolved_complaints = Complaint.objects.filter(
+        is_deleted=False,
+        status__name__iexact="resolved"
+    ).select_related("district", "category", "department", "state").all()
+
+    for c in resolved_complaints:
+        if not c.district or not c.category:
+            continue
+        sub_key, _, _ = get_sub_issue_details(c)
+        key = (c.district.id, c.category.id, sub_key)
+        grouped_resolved.setdefault(key, []).append(c)
+
+    # Process Pending Clusters according to strict 3-tier rule matrix
+    for (dist_id, cat_id, sub_key), comp_list in grouped_pending.items():
+        num_tickets = len(comp_list)
+        total_upvotes = sum(c.supports.count() for c in comp_list)
+
+        is_eligible = (
+            (num_tickets >= 3) or
+            (num_tickets == 2 and total_upvotes >= 2) or
+            (num_tickets == 1 and total_upvotes >= 3)
+        )
+
+        if not is_eligible:
+            continue
+
+        first = comp_list[0]
+        _, sub_title_suffix, sub_base_cost = get_sub_issue_details(first)
+        proj_title = f"{first.district.name} {sub_title_suffix}"
+        calc_cost = sub_base_cost
+
+        import re
+        ward_label = "Central Ward"
+        for c in comp_list:
+            loc_str = f"{c.landmark or ''} {c.address or ''} {c.description or ''}"
+            match = re.search(r"\bward\s*(\d+)\b", loc_str, re.IGNORECASE)
+            if match:
+                ward_label = f"Ward {match.group(1)}"
+                break
+
+        proj, created = CivicProject.objects.get_or_create(
+            title=proj_title,
+            district=first.district,
+            category=first.category,
+            defaults={
+                "state": first.state,
+                "department": first.department,
+                "ward_name": ward_label,
+                "estimated_cost": calc_cost,
+                "allocated_budget": calc_cost + 50000.00,
+                "status": "PROPOSED"
+            }
+        )
+        
+        for c in comp_list:
+            proj.complaints.add(c)
+        proj.estimated_cost = calc_cost
+        proj.save()
+
+    # Process Resolved Clusters into COMPLETED Projects
+    for (dist_id, cat_id, sub_key), comp_list in grouped_resolved.items():
+        num_tickets = len(comp_list)
+        total_upvotes = sum(c.supports.count() for c in comp_list)
+
+        is_eligible = (
+            (num_tickets >= 3) or
+            (num_tickets == 2 and total_upvotes >= 2) or
+            (num_tickets == 1 and total_upvotes >= 3)
+        )
+
+        if not is_eligible:
+            continue
+
+        first = comp_list[0]
+        _, sub_title_suffix, sub_base_cost = get_sub_issue_details(first)
+        proj_title = f"{first.district.name} Completed {sub_title_suffix}"
+        calc_cost = sub_base_cost
+
+        proj, created = CivicProject.objects.get_or_create(
+            title=proj_title,
+            district=first.district,
+            category=first.category,
+            defaults={
+                "state": first.state,
+                "department": first.department,
+                "ward_name": f"Ward {random.randint(1, 15)}",
+                "estimated_cost": calc_cost,
+                "allocated_budget": calc_cost,
+                "status": "COMPLETED"
+            }
+        )
+        for c in comp_list:
+            for old_proj in c.civic_projects.all():
+                if old_proj.id != proj.id:
+                    old_proj.complaints.remove(c)
+            proj.complaints.add(c)
+        proj.status = "COMPLETED"
+        proj.estimated_cost = calc_cost
+        proj.save()
+
+    from django.db.models import Count
+    all_projects = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0).all()
+    
+    projects_by_district = {}
+    for p in all_projects:
+        projects_by_district.setdefault(p.district_id, []).append(p)
+
+    severity_map = {"CRITICAL": 100.0, "HIGH": 75.0, "MEDIUM": 50.0, "LOW": 25.0}
+
+    for d_id, p_list in projects_by_district.items():
+        max_demand = 1.0
+        max_votes = 1.0
+        p_metrics = []
+
+        for p in p_list:
+            R = p.complaints.count()
+            L = sum(c.supports.count() for c in p.complaints.all())
+            V = p.votes.count()
+            demand = R + L
+            max_demand = max(max_demand, demand)
+            max_votes = max(max_votes, V)
+
+            max_sev = "MEDIUM"
+            for c in p.complaints.all():
+                c_prio = (c.priority or "MEDIUM").upper()
+                if severity_map.get(c_prio, 50.0) > severity_map.get(max_sev, 50.0):
+                    max_sev = c_prio
+            
+            p_metrics.append({
+                "project": p,
+                "sev_score": severity_map.get(max_sev, 50.0),
+                "demand": demand,
+                "votes": V
+            })
+
+        total_district_score = 0.0
+        for m in p_metrics:
+            demand_score = (m["demand"] / max_demand) * 100.0
+            vote_score = (m["votes"] / max_votes) * 100.0 if max_votes > 0 else 0.0
+            prio_score = (0.40 * m["sev_score"]) + (0.35 * demand_score) + (0.25 * vote_score)
+            m["prio_score"] = round(prio_score, 1)
+            total_district_score += m["prio_score"]
+
+        for m in p_metrics:
+            p = m["project"]
+            p.priority_score = m["prio_score"]
+            p.priority_percentage = round((m["prio_score"] / total_district_score * 100.0), 1) if total_district_score > 0 else round(100.0 / len(p_metrics), 1)
+            p.save()
+
 
 class CivicProjectListView(ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = CivicProjectSerializer
 
     def get_queryset(self):
-        def get_sub_issue_details(comp):
-            text = comp.title + " " + (comp.description or "")
-            res = _kr.retrieve(text)
-            sub_title = res.get("complaint_type") or f"{comp.category.name if comp.category else 'Civic'} Infrastructure Project"
-            sub_cost = float(res.get("estimated_cost", 100000.00))
-            sub_key = sub_title.lower().replace(" ", "_")
-            return (sub_key, sub_title, sub_cost)
-
-        # Purge stale old generic projects that mixed different sub-issues together
-        CivicProject.objects.filter(title__icontains="Electricity Civic Infrastructure Project").delete()
-
-        # Auto-cluster complaints by (district, category, sub_issue_key)
-        grouped_pending = {}
-        active_complaints = Complaint.objects.filter(
-            is_deleted=False
-        ).exclude(
-            status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"]
-        ).select_related("district", "category", "department", "state").all()
-        
-        for c in active_complaints:
-            if not c.district or not c.category:
-                continue
-            sub_key, _, _ = get_sub_issue_details(c)
-            key = (c.district.id, c.category.id, sub_key)
-            grouped_pending.setdefault(key, []).append(c)
-
-        grouped_resolved = {}
-        resolved_complaints = Complaint.objects.filter(
-            is_deleted=False,
-            status__name__iexact="resolved"
-        ).select_related("district", "category", "department", "state").all()
-
-        for c in resolved_complaints:
-            if not c.district or not c.category:
-                continue
-            sub_key, _, _ = get_sub_issue_details(c)
-            key = (c.district.id, c.category.id, sub_key)
-            grouped_resolved.setdefault(key, []).append(c)
-
-        # Process Pending Clusters according to strict 3-tier rule matrix
-        for (dist_id, cat_id, sub_key), comp_list in grouped_pending.items():
-            num_tickets = len(comp_list)
-            total_upvotes = sum(c.supports.count() for c in comp_list)
-            total_interest = num_tickets + total_upvotes
-
-            # Strict 3-Tier Clustering Rules:
-            # Rule 1: 1 real ticket AND >= 3 upvotes
-            # Rule 2: 2 real tickets AND >= 2 upvotes
-            # Rule 3: >= 3 real tickets (any upvotes)
-            is_eligible = (
-                (num_tickets >= 3) or
-                (num_tickets == 2 and total_upvotes >= 2) or
-                (num_tickets == 1 and total_upvotes >= 3)
-            )
-
-            if not is_eligible:
-                continue
-
-            first = comp_list[0]
-            _, sub_title_suffix, sub_base_cost = get_sub_issue_details(first)
-            proj_title = f"{first.district.name} {sub_title_suffix}"
-            calc_cost = sub_base_cost
-
-            # Extract Ward deterministically from complaint landmark/address text
-            import re
-            ward_label = "Central Ward"
-            for c in comp_list:
-                loc_str = f"{c.landmark or ''} {c.address or ''} {c.description or ''}"
-                match = re.search(r"\bward\s*(\d+)\b", loc_str, re.IGNORECASE)
-                if match:
-                    ward_label = f"Ward {match.group(1)}"
-                    break
-
-            proj, created = CivicProject.objects.get_or_create(
-                title=proj_title,
-                district=first.district,
-                category=first.category,
-                defaults={
-                    "state": first.state,
-                    "department": first.department,
-                    "ward_name": ward_label,
-                    "estimated_cost": calc_cost,
-                    "allocated_budget": calc_cost + 50000.00,
-                    "status": "PROPOSED"
-                }
-            )
-            
-            # Ensure complaints are attached to this project
-            for c in comp_list:
-                proj.complaints.add(c)
-            proj.estimated_cost = calc_cost
-            proj.save()
-
-        # Process Resolved Clusters into COMPLETED Projects
-        for (dist_id, cat_id, sub_key), comp_list in grouped_resolved.items():
-            num_tickets = len(comp_list)
-            total_upvotes = sum(c.supports.count() for c in comp_list)
-
-            is_eligible = (
-                (num_tickets >= 3) or
-                (num_tickets == 2 and total_upvotes >= 2) or
-                (num_tickets == 1 and total_upvotes >= 3)
-            )
-
-            if not is_eligible:
-                continue
-
-            first = comp_list[0]
-            _, sub_title_suffix, sub_base_cost = get_sub_issue_details(first)
-            proj_title = f"{first.district.name} Completed {sub_title_suffix}"
-            calc_cost = sub_base_cost
-
-            proj, created = CivicProject.objects.get_or_create(
-                title=proj_title,
-                district=first.district,
-                category=first.category,
-                defaults={
-                    "state": first.state,
-                    "department": first.department,
-                    "ward_name": f"Ward {random.randint(1, 15)}",
-                    "estimated_cost": calc_cost,
-                    "allocated_budget": calc_cost,
-                    "status": "COMPLETED"
-                }
-            )
-            for c in comp_list:
-                for old_proj in c.civic_projects.all():
-                    if old_proj.id != proj.id:
-                        old_proj.complaints.remove(c)
-                proj.complaints.add(c)
-            proj.status = "COMPLETED"
-            proj.estimated_cost = calc_cost
-            proj.save()
-
         from django.db.models import Count
-        all_projects = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0).all()
         
-        # Calculate 100-point Priority Score & District Relative Share (%)
-        projects_by_district = {}
-        for p in all_projects:
-            projects_by_district.setdefault(p.district_id, []).append(p)
+        # Only run heavy clustering recalculation if no projects exist or explicit refresh requested
+        force_refresh = self.request.query_params.get("refresh") == "true"
+        if force_refresh or not CivicProject.objects.exists():
+            recalculate_civic_projects()
 
-        severity_map = {"CRITICAL": 100.0, "HIGH": 75.0, "MEDIUM": 50.0, "LOW": 25.0}
-
-        for d_id, p_list in projects_by_district.items():
-            max_demand = 1.0
-            max_votes = 1.0
-            p_metrics = []
-
-            for p in p_list:
-                R = p.complaints.count()
-                L = sum(c.supports.count() for c in p.complaints.all())
-                V = p.votes.count()
-                demand = R + L
-                max_demand = max(max_demand, demand)
-                max_votes = max(max_votes, V)
-
-                max_sev = "MEDIUM"
-                for c in p.complaints.all():
-                    c_prio = (c.priority or "MEDIUM").upper()
-                    if severity_map.get(c_prio, 50.0) > severity_map.get(max_sev, 50.0):
-                        max_sev = c_prio
-                
-                p_metrics.append({
-                    "project": p,
-                    "sev_score": severity_map.get(max_sev, 50.0),
-                    "demand": demand,
-                    "votes": V
-                })
-
-            total_district_score = 0.0
-            for m in p_metrics:
-                demand_score = (m["demand"] / max_demand) * 100.0
-                vote_score = (m["votes"] / max_votes) * 100.0 if max_votes > 0 else 0.0
-                prio_score = (0.40 * m["sev_score"]) + (0.35 * demand_score) + (0.25 * vote_score)
-                m["prio_score"] = round(prio_score, 1)
-                total_district_score += m["prio_score"]
-
-            for m in p_metrics:
-                p = m["project"]
-                p.priority_score = m["prio_score"]
-                p.priority_percentage = round((m["prio_score"] / total_district_score * 100.0), 1) if total_district_score > 0 else round(100.0 / len(p_metrics), 1)
-                p.save()
-
-        qs = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0).order_by("-priority_score")
+        qs = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0).select_related("district", "category", "department", "state").prefetch_related("complaints", "votes").order_by("-priority_score")
+        
         district_id = self.request.query_params.get("district_id")
         state_id = self.request.query_params.get("state_id")
         if district_id:

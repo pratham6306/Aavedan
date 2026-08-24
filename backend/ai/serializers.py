@@ -59,7 +59,20 @@ class ChatResponseSerializer(serializers.Serializer):
     )
     
     entities = serializers.DictField(
-        required=False
+        required=False,
+        allow_null=True
+    )
+
+    state = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+
+    district = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
     )
     
     missing_fields = serializers.ListField(

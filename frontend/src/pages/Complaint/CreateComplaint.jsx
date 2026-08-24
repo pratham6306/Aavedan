@@ -37,6 +37,7 @@ import { requiredRule } from '../../utils/validators';
 import { departments } from '../../utils/helpers';
 import locationService from '../../services/locationService';
 import complaintService from '../../services/complaintService';
+import aiService from '../../services/aiService';
 import MapPicker from '../../components/MapPicker';
 
 /* ─── max images allowed ─── */
@@ -181,29 +182,34 @@ export default function CreateComplaint() {
 
 
   const handleMapLocationSelect = useCallback((loc) => {
-    setValue('address', loc.address || '');
+    if (loc.address && !loc.address.startsWith("State:") && !loc.address.startsWith("District:")) {
+      setValue('address', loc.address);
+    }
     setValue('latitude', loc.latitude || '');
     setValue('longitude', loc.longitude || '');
 
     if (loc.state && dbStates.length > 0) {
-      const matchedState = dbStates.find((s) => s.name.toLowerCase() === loc.state.toLowerCase());
+      isAutoFilling.current = true;
+      const matchedState = findFuzzyMatch(dbStates, loc.state);
       if (matchedState) {
-        setValue('state', matchedState.id.toString());
+        const stateIdStr = matchedState.id.toString();
+        setValue('state', stateIdStr, { shouldValidate: true, shouldDirty: true });
         setLoadingLocations(true);
         locationService.getDistricts(matchedState.id)
           .then((districtsData) => {
             setDbDistricts(districtsData);
             if (loc.district) {
-              const matchedDistrict = districtsData.find(
-                (d) => d.name.toLowerCase() === loc.district.toLowerCase()
-              );
+              const matchedDistrict = findFuzzyMatch(districtsData, loc.district);
               if (matchedDistrict) {
-                setValue('district', matchedDistrict.id.toString());
+                setValue('district', matchedDistrict.id.toString(), { shouldValidate: true, shouldDirty: true });
               }
             }
           })
           .catch((err) => console.error('Error setting map district:', err))
-          .finally(() => setLoadingLocations(false));
+          .finally(() => {
+            setLoadingLocations(false);
+            setTimeout(() => { isAutoFilling.current = false; }, 500);
+          });
       }
     }
   }, [dbStates, setValue]);
@@ -227,7 +233,15 @@ export default function CreateComplaint() {
     });
     if (matched) return matched;
 
-    // 3. Devanagari Hindi / Indic transliteration fallback map
+    // 3. Token-word overlap matching (e.g. "Road & Infrastructure" vs "Roads & Infrastructure", "Electricity Distribution Department" vs "Electricity Department")
+    const targetTokens = targetLower.split(/[\s&/,\-_]+/).filter(t => t.length > 2);
+    matched = items.find((item) => {
+      const itemTokens = item.name.toLowerCase().split(/[\s&/,\-_]+/).filter(t => t.length > 2);
+      return targetTokens.some(tt => itemTokens.some(it => it.includes(tt) || tt.includes(it)));
+    });
+    if (matched) return matched;
+
+    // 4. Devanagari Hindi / Indic transliteration fallback map
     const HINDI_MAP = {
       'बिहार': 'bihar', 'ओडिशा': 'odisha', 'उड़ीसा': 'odisha', 'उत्तर प्रदेश': 'uttar pradesh',
       'पश्चिम बंगाल': 'west bengal', 'महाराष्ट्र': 'maharashtra', 'मध्य प्रदेश': 'madhya pradesh',
@@ -261,6 +275,13 @@ export default function CreateComplaint() {
       try {
         const districtsData = await locationService.getDistricts(selectedState);
         setDbDistricts(districtsData);
+        const currentDist = watch('district');
+        if (currentDist) {
+          const isValidForState = districtsData.some((d) => d.id.toString() === currentDist);
+          if (!isValidForState) {
+            setValue('district', '');
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch districts', err);
       } finally {
@@ -268,7 +289,7 @@ export default function CreateComplaint() {
       }
     };
     fetchDistricts();
-  }, [selectedState, setValue]);
+  }, [selectedState, setValue, watch]);
 
   /* ── fuzzy duplicate grievance checker ── */
   useEffect(() => {
@@ -333,8 +354,12 @@ export default function CreateComplaint() {
       }
 
       // Match State & District
-      if (state && dbStates.length > 0) {
-        const matchedState = findFuzzyMatch(dbStates, state);
+      let targetState = state;
+      if (!targetState && district) {
+        targetState = 'Bihar';
+      }
+      if (targetState && dbStates.length > 0) {
+        const matchedState = findFuzzyMatch(dbStates, targetState);
         if (matchedState) {
           const stateIdStr = matchedState.id.toString();
           setValue('state', stateIdStr, { shouldValidate: true, shouldDirty: true });
@@ -343,16 +368,16 @@ export default function CreateComplaint() {
             setLoadingLocations(true);
             const districtsData = await locationService.getDistricts(stateIdStr);
             setDbDistricts(districtsData);
+            setLoadingLocations(false);
 
             if (district && districtsData.length > 0) {
               const matchedDistrict = findFuzzyMatch(districtsData, district);
               if (matchedDistrict) {
-                setValue('district', matchedDistrict.id.toString(), { shouldValidate: true, shouldDirty: true });
+                setValue('district', matchedDistrict.id.toString(), { shouldValidate: true, shouldDirty: true, shouldTouch: true });
               }
             }
           } catch (err) {
             console.error("Failed to load auto-fill districts:", err);
-          } finally {
             setLoadingLocations(false);
           }
         }
@@ -366,7 +391,87 @@ export default function CreateComplaint() {
     autoFillForm();
   }, [location.state, dbCategories, dbDepartments, dbStates, setValue]);
 
-  const handleAIAssist = () => {
+  const handleAIAssist = async () => {
+    const descText = watch('description') || '';
+
+    if (descText.trim().length >= 10) {
+      try {
+        toast.info("✨ AI analyzing description & auto-filling form...");
+        const sessId = `session_form_${Date.now()}`;
+        const res = await aiService.sendChatMessage(descText, sessId);
+
+        const aiCat = res.category;
+        const aiDept = res.department;
+        const aiState = res.entities?.state;
+        const aiDistrict = res.entities?.district;
+        const aiAddress = res.entities?.address;
+        const aiLandmark = res.entities?.landmark;
+
+        // 1. Auto-fill Title if empty
+        if (!watch('title') && res.complaint_type) {
+          setValue('title', res.complaint_type, { shouldValidate: true, shouldDirty: true });
+        }
+        // 2. Auto-fill Address & Landmark if empty and valid
+        if (!watch('address') && aiAddress && !aiAddress.startsWith('State:') && !aiAddress.startsWith('District:')) {
+          setValue('address', aiAddress, { shouldValidate: true, shouldDirty: true });
+        }
+        if (!watch('landmark') && aiLandmark && aiLandmark !== 'None') {
+          setValue('landmark', aiLandmark, { shouldValidate: true, shouldDirty: true });
+        }
+
+        // 3. Auto-fill Category
+        if (aiCat && dbCategories.length > 0) {
+          const matched = findFuzzyMatch(dbCategories, aiCat);
+          if (matched) setValue('category', matched.id.toString(), { shouldValidate: true, shouldDirty: true });
+        }
+
+        // 4. Auto-fill Department
+        if (aiDept && dbDepartments.length > 0) {
+          const matched = findFuzzyMatch(dbDepartments, aiDept);
+          if (matched) setValue('department', matched.id.toString(), { shouldValidate: true, shouldDirty: true });
+        }
+
+        // 5. Auto-fill State & District
+        let targetState = aiState;
+        if (!targetState && aiDistrict) {
+          targetState = 'Bihar';
+        }
+        if (targetState && dbStates.length > 0) {
+          isAutoFilling.current = true;
+          const matchedState = findFuzzyMatch(dbStates, targetState);
+          if (matchedState) {
+            const stateIdStr = matchedState.id.toString();
+            setValue('state', stateIdStr, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+
+            setLoadingLocations(true);
+            try {
+              const districtsData = await locationService.getDistricts(stateIdStr);
+              setDbDistricts(districtsData);
+              setLoadingLocations(false);
+
+              if (aiDistrict && districtsData.length > 0) {
+                const matchedDistrict = findFuzzyMatch(districtsData, aiDistrict);
+                if (matchedDistrict) {
+                  setValue('district', matchedDistrict.id.toString(), { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                }
+              }
+            } catch (dErr) {
+              console.error("Failed to load districts for AI state:", dErr);
+              setLoadingLocations(false);
+            } finally {
+              setTimeout(() => { isAutoFilling.current = false; }, 500);
+            }
+          }
+        }
+
+        toast.success("✨ Form fields auto-filled by AI!");
+      } catch (err) {
+        console.error("AI Assist classification failed:", err);
+      }
+    } else {
+      toast.info("Please enter a short description of your issue first so AI can auto-fill details!");
+    }
+
     const currentValues = {
       title: watch('title'),
       description: watch('description'),
@@ -450,7 +555,6 @@ export default function CreateComplaint() {
 
       toast.success('Complaint submitted successfully!');
       if (result?.data?.id) {
-        sessionStorage.setItem('trigger_ai_assistance_for_complaint_id', String(result.data.id));
         navigate(`/complaints/${result.data.id}`);
       } else {
         navigate('/complaints');
@@ -677,7 +781,7 @@ export default function CreateComplaint() {
               >
                 <option value="">Select State</option>
                 {dbStates.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                  <option key={s.id} value={s.id.toString()}>{s.name}</option>
                 ))}
               </select>
               {errors.state && <p className="form-error">{errors.state.message}</p>}
@@ -687,12 +791,12 @@ export default function CreateComplaint() {
               <select
                 id="district"
                 className={`form-input ${errors.district ? 'form-input-error' : ''}`}
-                disabled={!selectedState || loadingLocations}
+                disabled={!selectedState}
                 {...register('district', requiredRule('District is required'))}
               >
                 <option value="">{loadingLocations ? 'Loading districts...' : 'Select District'}</option>
                 {dbDistricts.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id.toString()}>{d.name}</option>
                 ))}
               </select>
               {errors.district && <p className="form-error">{errors.district.message}</p>}

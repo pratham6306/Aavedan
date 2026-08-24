@@ -193,11 +193,19 @@ class ComplaintAnalyzer:
                         if not val:
                             missing_fields.append(name)
             else:
-                # For fallback/preloaded complaints, make sure district and address are present
-                for req_f in ["district", "address"]:
-                    val = session_data.get(req_f) or session_data.get("entities", {}).get(req_f)
-                    if not val:
-                        missing_fields.append(req_f)
+                # For fallback/preloaded complaints, make sure district is present
+                dist_val = session_data.get("district") or session_data.get("entities", {}).get("district")
+                if not dist_val:
+                    missing_fields.append("district")
+                
+                addr_val = session_data.get("address") or session_data.get("entities", {}).get("address")
+                if not addr_val:
+                    if dist_val:
+                        default_addr = session_data.get("description") or f"Main Area, {dist_val}"
+                        if isinstance(session_data.get("entities"), dict):
+                            session_data["entities"]["address"] = default_addr
+                    else:
+                        missing_fields.append("address")
             
             # Sort missing fields logically: state, then district, then address, then landmark, then any others
             logical_order = ["state", "district", "address", "landmark"]

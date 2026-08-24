@@ -37,11 +37,6 @@ class AIOrchestrator:
         # 2. Preprocess message
         clean_msg = self.preprocessor.preprocess(message)
 
-        # Extract location entities (State, District, Landmark) from user input FIRST
-        general_locations = self.location_extractor.extract(message, clean_msg)
-        self.memory.update_session(session_id, entities=general_locations)
-        session = self.memory.get_session(session_id)
-
         # 3. Detect intent
         intent = self.intent_detector.detect(clean_msg)
 
@@ -56,6 +51,11 @@ class AIOrchestrator:
             session = self.memory.get_session(session_id)
             prev_action = None
             active_complaint = None
+
+        # Extract location entities (State, District, Landmark) from user input
+        general_locations = self.location_extractor.extract(message, clean_msg)
+        self.memory.update_session(session_id, entities=general_locations)
+        session = self.memory.get_session(session_id)
 
         # Parse structured text fields (Description:, Address:, Landmark:, State:, District:) if provided
         structured_entities = {}
@@ -121,10 +121,10 @@ class AIOrchestrator:
 
         # Perform LLM classification & complaint analysis with fresh, updated session entities
         analysis = None
-        if intent not in [Intent.GREETING, Intent.GOODBYE, Intent.TRACK_COMPLAINT, Intent.CONFIRM]:
+        if intent not in [Intent.GREETING, Intent.GOODBYE, Intent.TRACK_COMPLAINT, Intent.CONFIRM, Intent.SEARCH_SCHEME, Intent.OFFICE_LOOKUP, Intent.HELP]:
             session = self.memory.get_session(session_id)
             analysis = self.complaint_analyzer.analyze(message.strip(), session, image_base64=image_base64)
-            if analysis.get("category") or analysis.get("complaint_type"):
+            if intent == Intent.UNKNOWN and (analysis.get("category") or analysis.get("complaint_type")):
                 intent = Intent.FILE_COMPLAINT
             
             # If a new complaint type was resolved or previous session was confirmed, use new values

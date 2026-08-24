@@ -294,6 +294,45 @@ class GrievanceEmailPreviewAPIView(APIView):
 
         session_id = str(serializer.validated_data["session_id"])
         memory = MemoryManager()
+
+        # Check if complaint_id or entities were passed in request body
+        complaint_id = request.data.get("complaint_id")
+        preloaded_entities = request.data.get("entities")
+
+        if complaint_id:
+            try:
+                c_obj = Complaint.objects.select_related("state", "district", "category", "department").get(id=complaint_id)
+                memory.update_session(
+                    session_id,
+                    entities={
+                        "state": c_obj.state.name if c_obj.state else None,
+                        "district": c_obj.district.name if c_obj.district else None,
+                        "address": c_obj.address,
+                        "landmark": c_obj.landmark,
+                    },
+                    state=c_obj.state.name if c_obj.state else None,
+                    district=c_obj.district.name if c_obj.district else None,
+                    complaint_type=c_obj.title,
+                    category=c_obj.category.name if c_obj.category else None,
+                    department=c_obj.department.name if c_obj.department else None,
+                    description=c_obj.description
+                )
+            except Exception as e:
+                print(f"Warning: Failed to fetch complaint_id {complaint_id} for email preview: {str(e)}")
+        elif preloaded_entities and isinstance(preloaded_entities, dict):
+            memory.update_session(
+                session_id,
+                entities=preloaded_entities,
+                state=preloaded_entities.get("state"),
+                district=preloaded_entities.get("district"),
+                address=preloaded_entities.get("address"),
+                landmark=preloaded_entities.get("landmark"),
+                complaint_type=preloaded_entities.get("complaint_type") or preloaded_entities.get("title"),
+                category=preloaded_entities.get("category"),
+                department=preloaded_entities.get("department"),
+                description=preloaded_entities.get("description")
+            )
+
         session_data = memory.get_session(session_id)
 
         complaint_type = session_data.get("complaint_type")

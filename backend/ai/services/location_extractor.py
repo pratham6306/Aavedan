@@ -26,51 +26,47 @@ class LocationExtractor:
         # ----------------------------
         # 1. Context-Aware Extraction
         # ----------------------------
+        # Always run database location scanning first so district/state mentions anywhere in user input are captured!
+        self._extract_db_locations(preprocessed_text, entities)
+
         if awaiting_field:
-            # First check if structured 'State: X, District: Y' text was sent
+            # Check if structured 'State: X, District: Y' text was sent
             if "state:" in text.lower() or "district:" in text.lower():
-                self._extract_db_locations(preprocessed_text, entities)
-                for part in text.split(","):
+                lines_and_parts = re.split(r"[\n,]+", text)
+                for part in lines_and_parts:
                     if "state:" in part.lower():
                         st_val = part.split(":")[1].strip()
-                        st_obj = State.objects.filter(name__iexact=st_val).first() or State.objects.filter(name__icontains=st_val).first()
-                        if st_obj:
-                            entities["state"] = st_obj.name
+                        if st_val:
+                            st_obj = State.objects.filter(name__iexact=st_val).first() or State.objects.filter(name__icontains=st_val).first()
+                            if st_obj:
+                                entities["state"] = st_obj.name
                     elif "district:" in part.lower():
                         dt_val = part.split(":")[1].strip()
-                        dt_obj = District.objects.filter(name__iexact=dt_val).first() or District.objects.filter(name__icontains=dt_val).first()
-                        if dt_obj:
-                            entities["district"] = dt_obj.name
-                            if not entities.get("state"):
-                                entities["state"] = dt_obj.state.name
-                if entities.get("state") or entities.get("district"):
+                        if dt_val:
+                            dt_obj = District.objects.filter(name__iexact=dt_val).first() or District.objects.filter(name__icontains=dt_val).first()
+                            if dt_obj:
+                                entities["district"] = dt_obj.name
+                                if not entities.get("state"):
+                                    entities["state"] = dt_obj.state.name
+                if entities.get("state") and entities.get("district"):
                     return entities
 
             field = awaiting_field.lower().strip()
             if field == "state":
-                # Check if it matches a state in the DB or known Indian states
-                state_obj = State.objects.filter(name__iexact=text.strip()).first()
-                if not state_obj:
-                    # Case insensitive search on partial match
-                    state_obj = State.objects.filter(name__icontains=text.strip()).first()
-                if state_obj:
-                    entities["state"] = state_obj.name
-                else:
-                    # Do NOT accept random invalid text like "hello" as state
-                    entities["state"] = None
+                self._extract_db_locations(preprocessed_text, entities)
+                if not entities.get("state"):
+                    state_obj = State.objects.filter(name__iexact=text.strip()).first() or State.objects.filter(name__icontains=text.strip()).first()
+                    if state_obj:
+                        entities["state"] = state_obj.name
                 return entities
             
             elif field == "district":
-                # Check if it matches a district in the DB
-                dist_obj = District.objects.filter(name__iexact=text.strip()).first()
-                if not dist_obj:
-                    dist_obj = District.objects.filter(name__icontains=text.strip()).first()
-                if dist_obj:
-                    entities["district"] = dist_obj.name
-                    entities["state"] = dist_obj.state.name
-                else:
-                    # Do NOT accept random invalid text like "hello" as district
-                    entities["district"] = None
+                self._extract_db_locations(preprocessed_text, entities)
+                if not entities.get("district"):
+                    dist_obj = District.objects.filter(name__iexact=text.strip()).first() or District.objects.filter(name__icontains=text.strip()).first()
+                    if dist_obj:
+                        entities["district"] = dist_obj.name
+                        entities["state"] = dist_obj.state.name
                 return entities
             
             elif field == "address":
@@ -88,7 +84,7 @@ class LocationExtractor:
         # ----------------------------
         self._extract_db_locations(preprocessed_text, entities)
 
-        # 2b. Explicit Address: field extraction
+        # 2b. Explicit or Implicit Address extraction
         if "Address:" in text:
             try:
                 addr_val = text.split("Address:")[1]
@@ -100,6 +96,17 @@ class LocationExtractor:
                     entities["address"] = addr_val
             except Exception:
                 pass
+
+        if not entities["address"]:
+            # Auto-extract address from street/road/bypass/ward/colony patterns or rich location text
+            addr_patterns = r"\b([a-zA-Z0-9\s,\.\-']+\b(?:road|rd|bypass|pass|sh\d*|nh\d*|street|st|colony|nagar|chowk|gali|ward|sector|marg|cross|lane|block|apartment|housing|slum|village)\b[a-zA-Z0-9\s,\.\-']*)"
+            match_addr = re.search(addr_patterns, text, re.IGNORECASE)
+            if match_addr:
+                clean_addr = match_addr.group(1).strip()
+                if len(clean_addr) >= 4:
+                    entities["address"] = clean_addr
+            elif entities.get("district") and len(text.strip().split()) >= 3:
+                entities["address"] = text.strip()
 
         # 3. Extract Landmark using Prepositions
         # e.g., "near KIIT Square", "behind block 4"

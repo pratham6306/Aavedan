@@ -195,6 +195,11 @@ export default function FloatingAIAssistant() {
       setIsOpen(true);
       setPreloadedEntities(data);
 
+      if (data.directPreview) {
+        handleOpenPreview(isAnonymous);
+        return;
+      }
+
       const prompt = `Please help me file an official grievance email for this complaint:
 Category: ${data.category || ''}
 Description: ${data.description || ''}
@@ -251,7 +256,7 @@ Landmark: ${data.landmark || ''}`;
     setLoadingPreview(true);
     setSmtpError(null);
     try {
-      const response = await aiService.getEmailPreview(sessionId, anonVal);
+      const response = await aiService.getEmailPreview(sessionId, anonVal, preloadedEntities);
       setPreviewData(response);
       setIsPreviewOpen(true);
     } catch (err) {
@@ -879,25 +884,40 @@ function ChatLocationWidget({ onConfirmLocation }) {
       async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`);
           if (res.ok) {
             const data = await res.json();
             const addr = data.address || {};
-            const stateFound = addr.state || "";
-            const distFound = addr.state_district || addr.county || addr.city || addr.district || "";
+            
+            const HINDI_TO_ENG = {
+              'बिहार': 'Bihar', 'ओडिशा': 'Odisha', 'उड़ीसा': 'Odisha', 'उत्तर प्रदेश': 'Uttar Pradesh',
+              'पश्चिम बंगाल': 'West Bengal', 'महाराष्ट्र': 'Maharashtra', 'मध्य प्रदेश': 'Madhya Pradesh',
+              'राजस्थान': 'Rajasthan', 'दिल्ली': 'Delhi', 'पंजाब': 'Punjab', 'हरियाणा': 'Haryana',
+              'मधेपुरा': 'Madhepura', 'खगड़िया': 'Khagaria', 'पटना': 'Patna', 'गया': 'Gaya',
+              'मुजफ्फरपुर': 'Muzaffarpur', 'भागलपुर': 'Bhagalpur', 'पूर्णिया': 'Purnia',
+              'कटिहार': 'Katihar', 'समस्तीपुर': 'Samastipur', 'दरभंगा': 'Darbhanga',
+              'सहरसा': 'Saharsa', 'सुपौल': 'Supaul', 'अररिया': 'Araria', 'किशनगंज': 'Kishanganj',
+              'कटक': 'Cuttack', 'खुर्दा': 'Khordha', 'भुवनेश्वर': 'Bhubaneswar', 'पुरी': 'Puri'
+            };
 
-            const matchedSt = statesList.find(s => s.toLowerCase() === stateFound.toLowerCase()) || "Odisha";
+            let stateFound = addr.state || "";
+            let distFound = addr.state_district || addr.county || addr.city || addr.district || "";
+
+            if (HINDI_TO_ENG[stateFound]) stateFound = HINDI_TO_ENG[stateFound];
+            if (HINDI_TO_ENG[distFound]) distFound = HINDI_TO_ENG[distFound];
+
+            const matchedSt = statesList.find(s => s.toLowerCase() === stateFound.toLowerCase()) || (stateFound || "Odisha");
             setSelectedState(matchedSt);
 
             const matchedDistList = fallbackDistrictData[matchedSt] || districtsList;
-            const matchedDist = matchedDistList.find(d => distFound.toLowerCase().includes(d.toLowerCase())) || matchedDistList[0] || "Khordha";
+            const matchedDist = matchedDistList.find(d => d.toLowerCase() === distFound.toLowerCase() || distFound.toLowerCase().includes(d.toLowerCase()) || d.toLowerCase().includes(distFound.toLowerCase())) || (distFound || matchedDistList[0] || "Khordha");
             setSelectedDistrict(matchedDist);
 
             setDetectedAddress(`${matchedDist}, ${matchedSt}`);
             toast.success(`📍 GPS Located: ${matchedDist}, ${matchedSt}`);
           } else {
-            setSelectedState("Odisha");
-            setSelectedDistrict("Khordha");
+            if (!selectedState) setSelectedState("Odisha");
+            if (!selectedDistrict) setSelectedDistrict("Khordha");
           }
         } catch (e) {
           console.error("GPS Reverse Geocode Error:", e);

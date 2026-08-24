@@ -217,7 +217,8 @@ export default function ComplaintDetail() {
         address: complaint.address || '',
         state: complaint.state?.name || complaint.state || '',
         district: complaint.district?.name || complaint.district || '',
-        landmark: complaint.landmark || ''
+        landmark: complaint.landmark || '',
+        directPreview: true
       }
     });
     window.dispatchEvent(event);

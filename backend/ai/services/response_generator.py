@@ -117,6 +117,8 @@ class ResponseGenerator:
             "generated_description": desc_text,
             "office": office,
             "entities": entities,
+            "state": state,
+            "district": district,
             "missing_fields": missing_fields,
             "next_action": next_action_str
         }

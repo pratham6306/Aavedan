@@ -40,7 +40,7 @@ function LocationMarker({ position, setPosition, onGeocode }) {
   );
 }
 
-export default function MapPicker({ onLocationSelect, defaultLat = 20.296059, defaultLng = 85.824539 }) {
+export default function MapPicker({ onLocationSelect, defaultLat = 25.915705, defaultLng = 86.786143 }) {
   const [position, setPosition] = useState([defaultLat, defaultLng]);
   const [loading, setLoading] = useState(false);
 
@@ -54,13 +54,9 @@ export default function MapPicker({ onLocationSelect, defaultLat = 20.296059, de
           handleReverseGeocode(latitude, longitude);
         },
         (err) => {
-          console.log("Geolocation access denied or unavailable, using defaults.");
-          // Geocode defaults
-          handleReverseGeocode(defaultLat, defaultLng);
+          console.log("Browser geolocation permission not granted. Map ready for click or AI assist.");
         }
       );
-    } else {
-      handleReverseGeocode(defaultLat, defaultLng);
     }
   }, []);
 

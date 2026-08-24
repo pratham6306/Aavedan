@@ -39,11 +39,14 @@ export const sendGrievanceEmail = async (sessionId, isAnonymous = false) => {
  * @param {boolean} isAnonymous - Whether the grievance is sent anonymously.
  * @returns {Promise<Object>} API Response containing sender_email, receiver_email, subject, body_text.
  */
-export const getEmailPreview = async (sessionId, isAnonymous = false) => {
-  const response = await api.post('/ai/chat/email-preview/', {
+export const getEmailPreview = async (sessionId, isAnonymous = false, extraData = null) => {
+  const payload = {
     session_id: sessionId,
-    is_anonymous: isAnonymous
-  });
+    is_anonymous: isAnonymous,
+    ...(extraData?.complaint_id && { complaint_id: extraData.complaint_id }),
+    ...(extraData && { entities: extraData })
+  };
+  const response = await api.post('/ai/chat/email-preview/', payload);
   return response.data;
 };
 
