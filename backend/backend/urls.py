@@ -22,11 +22,17 @@ from django.conf.urls.static import static
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("accounts.urls")),
+    path("api/v1/auth/", include("accounts.urls")),
     path("api/complaints/", include("complaints.urls")),
+    path("api/v1/complaints/", include("complaints.urls")),
     path("api/notifications/", include("notifications.urls")),
+    path("api/v1/notifications/", include("notifications.urls")),
     path("api/locations/", include("locations.urls")),
+    path("api/v1/locations/", include("locations.urls")),
     path("api/schemes/", include("schemes.urls")),
+    path("api/v1/schemes/", include("schemes.urls")),
     path("api/ai/", include("ai.urls")),
+    path("api/v1/ai/", include("ai.urls")),
 ]
 
 if settings.DEBUG:

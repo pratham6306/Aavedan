@@ -45,6 +45,10 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "is_anonymous",
+            "is_ngo_assisted",
+            "ngo_name",
+            "rural_citizen_name",
+            "rural_citizen_phone",
         )
 
     def validate(self, attrs):
@@ -88,6 +92,10 @@ class ComplaintListSerializer(serializers.ModelSerializer):
             "supports_count",
             "supported_by_user",
             "is_anonymous",
+            "is_ngo_assisted",
+            "ngo_name",
+            "rural_citizen_name",
+            "rural_citizen_phone",
             "estimated_cost",
             "budget_allocated",
             "after_image",
@@ -162,6 +170,10 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             "ai_confidence",
             "is_ai_processed",
             "is_anonymous",
+            "is_ngo_assisted",
+            "ngo_name",
+            "rural_citizen_name",
+            "rural_citizen_phone",
             "estimated_cost",
             "budget_allocated",
             "after_image",
@@ -237,6 +249,8 @@ class CivicProjectResolutionProofSerializer(serializers.ModelSerializer):
     rejected_by_user = serializers.SerializerMethodField()
     complaint_title = serializers.SerializerMethodField()
 
+    rejection_reasons_list = serializers.SerializerMethodField()
+
     class Meta:
         from .models import CivicProjectResolutionProof
         model = CivicProjectResolutionProof
@@ -253,8 +267,14 @@ class CivicProjectResolutionProofSerializer(serializers.ModelSerializer):
             "rejected_by_user",
             "is_rejected",
             "rejection_reason",
+            "rejection_reasons_list",
             "created_at",
         )
+
+    def get_rejection_reasons_list(self, obj):
+        if not obj.rejection_reason:
+            return []
+        return [r.strip() for r in obj.rejection_reason.split("\n") if r.strip()]
 
     def get_verified_count(self, obj):
         return obj.verified_by.count()
@@ -284,6 +304,8 @@ class CivicProjectSerializer(serializers.ModelSerializer):
     district = serializers.StringRelatedField()
     state = serializers.StringRelatedField()
     complaints_count = serializers.SerializerMethodField()
+    total_supports_count = serializers.SerializerMethodField()
+    has_ngo_assisted = serializers.SerializerMethodField()
     resolved_complaints_count = serializers.SerializerMethodField()
     votes_count = serializers.SerializerMethodField()
     voted_by_user = serializers.SerializerMethodField()
@@ -315,6 +337,8 @@ class CivicProjectSerializer(serializers.ModelSerializer):
             "rejected_remarks",
             "is_rejected",
             "complaints_count",
+            "total_supports_count",
+            "has_ngo_assisted",
             "resolved_complaints_count",
             "votes_count",
             "voted_by_user",
@@ -328,6 +352,14 @@ class CivicProjectSerializer(serializers.ModelSerializer):
 
     def get_complaints_count(self, obj):
         return obj.complaints.count()
+
+    def get_total_supports_count(self, obj):
+        if hasattr(obj, 'total_supports'):
+            return obj.total_supports
+        return sum(c.supports.count() for c in obj.complaints.all())
+
+    def get_has_ngo_assisted(self, obj):
+        return obj.complaints.filter(is_ngo_assisted=True).exists()
 
     def get_resolved_complaints_count(self, obj):
         return obj.complaints.filter(status__name__iexact="resolved").count()

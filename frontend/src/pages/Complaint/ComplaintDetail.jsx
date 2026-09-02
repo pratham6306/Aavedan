@@ -343,6 +343,11 @@ export default function ComplaintDetail() {
                   <HiCheckCircle className="w-3.5 h-3.5" /> VERIFIED RESOLVED
                 </span>
               )}
+              {complaint.is_ngo_assisted && (
+                <span className="badge bg-amber-50 text-amber-900 border border-amber-300 font-bold flex items-center gap-1">
+                  🤝 NGO AUTHENTICATED ({complaint.ngo_name || 'Pratham Rural Seva NGO'}) {complaint.rural_citizen_name ? `• For: ${complaint.rural_citizen_name}` : ''}
+                </span>
+              )}
             </div>
           </div>
 

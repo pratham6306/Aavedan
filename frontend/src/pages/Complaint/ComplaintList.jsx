@@ -580,7 +580,28 @@ function ComplaintCard({ complaint }) {
         <span>{formatRelativeTime(created_at)}</span>
       </div>
 
-      {/* Complainant & Support Count Row */}
+      {/* NGO Authenticated Badge */}
+      {complaint.is_ngo_assisted && (
+        <div className="mb-3 p-2.5 bg-amber-50/90 rounded-xl border border-amber-200 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-950">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-sm">🤝</span>
+            <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded font-black tracking-wider uppercase shadow-2xs">
+              NGO AUTHENTICATED
+            </span>
+            <span className="font-bold text-amber-900 text-xs">
+              {complaint.ngo_name || 'Pratham Rural Seva NGO'}
+            </span>
+          </div>
+
+          {complaint.rural_citizen_name && (
+            <span className="text-[11px] text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md font-medium border border-amber-200/60">
+              For: <strong className="font-bold text-amber-950">{complaint.rural_citizen_name}</strong>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* footer details */}
       <div className="flex items-center justify-between text-xs text-gray-500 mb-4 border-t border-gray-100 pt-3 mt-auto">
         <span className="flex items-center gap-1">
           <span className={`w-2 h-2 rounded-full ${is_anonymous ? 'bg-amber-400 animate-pulse' : 'bg-gov-400'}`} />

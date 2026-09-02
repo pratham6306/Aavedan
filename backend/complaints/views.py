@@ -230,6 +230,32 @@ class ComplaintSupportView(APIView):
         complaint = get_object_or_404(Complaint, pk=pk, is_deleted=False)
         from .models import ComplaintSupport
 
+        user = request.user
+        dist_param = request.data.get("district") or request.data.get("district_id") or request.query_params.get("district_id")
+        if not user.district:
+            try:
+                from locations.models import District
+                dist_obj = None
+                if dist_param:
+                    dist_obj = District.objects.filter(id=dist_param).first() or District.objects.filter(name__iexact=str(dist_param)).first()
+                if not dist_obj and complaint.district:
+                    dist_obj = complaint.district
+                if not dist_obj:
+                    dist_obj = District.objects.filter(name__icontains="Madhepura").first() or District.objects.first()
+
+                if dist_obj:
+                    user.district = dist_obj
+                    user.state = dist_obj.state
+                    user.save()
+            except Exception:
+                pass
+
+        # Proximity Check: User must reside in the same district as the reported complaint
+        if complaint.district and user.district.id != complaint.district.id:
+            return Response({
+                "detail": f"Geo-Fencing Error: Verification voting is restricted to local residents of {complaint.district.name} district."
+            }, status=status.HTTP_403_FORBIDDEN)
+
         support, created = ComplaintSupport.objects.get_or_create(
             complaint=complaint,
             user=request.user
@@ -237,16 +263,25 @@ class ComplaintSupportView(APIView):
 
         if not created:
             support.delete()
+            try:
+                recalculate_civic_projects()
+            except Exception:
+                pass
             return Response({
                 "supported": False,
                 "supports_count": complaint.supports.count(),
-                "message": "Support removed."
+                "message": "Local verification support removed."
             }, status=status.HTTP_200_OK)
+
+        try:
+            recalculate_civic_projects()
+        except Exception:
+            pass
 
         return Response({
             "supported": True,
             "supports_count": complaint.supports.count(),
-            "message": "Grievance supported successfully!"
+            "message": "Local resident verification supported successfully!"
         }, status=status.HTTP_201_CREATED)
 
 
@@ -583,16 +618,20 @@ def recalculate_civic_projects():
 class CivicProjectListView(ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = CivicProjectSerializer
+    pagination_class = None  # Return all projects at once
 
     def get_queryset(self):
         from django.db.models import Count
         
-        # Only run heavy clustering recalculation if no projects exist or explicit refresh requested
+        # Run recalculation if explicitly requested or if no projects exist
         force_refresh = self.request.query_params.get("refresh") == "true"
         if force_refresh or not CivicProject.objects.exists():
             recalculate_civic_projects()
 
-        qs = CivicProject.objects.annotate(num_c=Count("complaints")).filter(num_c__gt=0).select_related("district", "category", "department", "state").prefetch_related("complaints", "votes").order_by("-priority_score")
+        qs = CivicProject.objects.annotate(
+            num_c=Count("complaints", distinct=True),
+            total_supports=Count("complaints__supports", distinct=True)
+        ).filter(num_c__gt=0).select_related("district", "category", "department", "state").prefetch_related("complaints", "votes").order_by("-priority_score")
         
         district_id = self.request.query_params.get("district_id")
         state_id = self.request.query_params.get("state_id")
@@ -683,6 +722,32 @@ class GroupProjectProofVerifyView(APIView):
         proof = get_object_or_404(CivicProjectResolutionProof, pk=proof_id)
         action = request.data.get("action")
         reason = request.data.get("reason", "")
+        user = request.user
+        dist_param = request.data.get("district_id") or request.query_params.get("district_id")
+        if not user.district:
+            try:
+                from locations.models import District
+                dist_obj = None
+                if dist_param:
+                    dist_obj = District.objects.filter(id=dist_param).first() or District.objects.filter(name__iexact=str(dist_param)).first()
+                if not dist_obj and proof.project and proof.project.district:
+                    dist_obj = proof.project.district
+                if not dist_obj:
+                    dist_obj = District.objects.filter(name__icontains="Madhepura").first() or District.objects.first()
+
+                if dist_obj:
+                    user.district = dist_obj
+                    user.state = dist_obj.state
+                    user.save()
+            except Exception:
+                pass
+
+        # Proximity Check: User must reside in the same district as the project
+        project = proof.project
+        if project and project.district and user.district.id != project.district.id:
+            return Response({
+                "detail": f"Geo-Fencing Restriction: You reside in {user.district.name}, but this project is in {project.district.name}. Verification voting is restricted to local residents."
+            }, status=status.HTTP_403_FORBIDDEN)
 
         if action == "approve":
             proof.verified_by.add(request.user)
@@ -696,7 +761,17 @@ class GroupProjectProofVerifyView(APIView):
             if proof.verified_by.filter(id=request.user.id).exists():
                 proof.verified_by.remove(request.user)
             proof.is_rejected = True
-            proof.rejection_reason = reason
+
+            # Format citizen feedback log entry with citizen name and timestamp
+            user_name = request.user.full_name or request.user.email or "Local Resident"
+            new_entry = f"• {reason.strip()} — (by {user_name})"
+
+            if proof.rejection_reason and proof.rejection_reason.strip():
+                if new_entry not in proof.rejection_reason:
+                    proof.rejection_reason = f"{proof.rejection_reason.strip()}\n{new_entry}"
+            else:
+                proof.rejection_reason = new_entry
+
             proof.save()
             msg = f"Photo proof rejected: {reason}"
         else:

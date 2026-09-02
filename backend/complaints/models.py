@@ -168,6 +168,39 @@ class Complaint(BaseModel):
         blank=True,
     )
 
+    # NGO-Assisted Rural Registration Fields
+    is_ngo_assisted = models.BooleanField(
+        default=False,
+        help_text="Filed by registered NGO on behalf of rural citizen",
+    )
+    ngo_name = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Name of assisting NGO",
+    )
+    rural_citizen_name = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Name of rural citizen beneficiary",
+    )
+    rural_citizen_phone = models.CharField(
+        max_length=15,
+        blank=True,
+        help_text="Mobile phone number of rural citizen beneficiary",
+    )
+
+    # Citizen Resolution Rejection with Photo Evidence
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text="Citizen rejection feedback when officer resolution is disputed",
+    )
+    rejection_image = models.ImageField(
+        upload_to="complaints/rejections/",
+        null=True,
+        blank=True,
+        help_text="Citizen photo proof showing issue remains unresolved",
+    )
+
     resolved_at = models.DateTimeField(
         null=True,
         blank=True,

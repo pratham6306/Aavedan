@@ -18,6 +18,7 @@ import {
   HiOutlineCloudArrowUp,
   HiOutlineExclamationTriangle,
   HiOutlineShieldCheck,
+  HiOutlineShieldExclamation,
   HiOutlineCheckBadge,
   HiOutlineHandThumbUp,
   HiOutlineUser,
@@ -62,11 +63,51 @@ export default function CivicBudgeting() {
   const [isSubmittingProof, setIsSubmittingProof] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
+  /* ── Citizen Rejection Modal State ── */
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectProofId, setRejectProofId] = useState(null);
+  const [rejectReasonText, setRejectReasonText] = useState('');
+
   /* ── Fetch filter options ── */
   useEffect(() => {
     api.get('/locations/states/').then((res) => setStatesList(res.data.results || res.data || [])).catch(() => {});
     api.get('/complaints/departments/').then((res) => setDepartmentsList(res.data.results || res.data || [])).catch(() => {});
     api.get('/complaints/categories/').then((res) => setCategoriesList(res.data.results || res.data || [])).catch(() => {});
+  }, []);
+
+  /* ── Universal Location Auto-Detector Effect ── */
+  useEffect(() => {
+    if (navigator.geolocation && !selectedDistrict) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
+            const data = await res.json();
+            const address = data.address || {};
+            const distName = address.state_district || address.district || address.county || address.city;
+
+            if (distName) {
+              // Sync district to user profile in backend database!
+              api.post('/accounts/update-location/', { district_name: distName })
+                .then((locRes) => {
+                  if (locRes.data?.district_id) {
+                    if (locRes.data.state_id) setSelectedState(locRes.data.state_id.toString());
+                    setSelectedDistrict(locRes.data.district_id.toString());
+                  }
+                })
+                .catch(() => {});
+            }
+          } catch (e) {
+            console.error("Auto-location fetch failed:", e);
+          }
+        },
+        () => {},
+        { timeout: 5000 }
+      );
+    }
   }, []);
 
   /* ── Fetch districts when state changes ── */
@@ -218,7 +259,11 @@ export default function CivicBudgeting() {
   const handleProofVerify = async (proofId, action, reason = '') => {
     setIsVerifying(true);
     try {
-      const res = await api.post(`/complaints/projects/proofs/${proofId}/verify/`, { action, reason });
+      const res = await api.post(`/complaints/projects/proofs/${proofId}/verify/`, {
+        action,
+        reason,
+        district_id: selectedDistrict || undefined,
+      });
       if (res.status === 200) {
         toast.success(res.data.message);
         if (selectedProject) {
@@ -226,7 +271,7 @@ export default function CivicBudgeting() {
         }
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to verify photo proof.');
+      toast.error(err.response?.data?.detail || err.response?.data?.error || 'Failed to verify photo proof.');
     } finally {
       setIsVerifying(false);
     }
@@ -434,9 +479,16 @@ export default function CivicBudgeting() {
               <div key={proj.id} className="card card-hover p-6 flex flex-col justify-between space-y-4 border-2 border-slate-200/80">
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-200">
-                      {proj.ward_name || 'Ward Central'} • {proj.category}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-200">
+                        {proj.ward_name || 'Ward Central'} • {proj.category}
+                      </span>
+                      {proj.has_ngo_assisted && (
+                        <span className="text-[10px] font-black text-white bg-gradient-to-r from-amber-500 to-amber-600 px-2 py-0.5 rounded-md shadow-2xs uppercase flex items-center gap-1">
+                          🤝 NGO AUTHENTICATED
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1.5">
                       {proj.is_rejected && (
                         <span className="text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md border border-rose-300 flex items-center gap-1">
@@ -503,8 +555,11 @@ export default function CivicBudgeting() {
                       </div>
                     </div>
 
-                    <p className="text-[10px] text-slate-500 font-medium pt-0.5">
-                      Aggregated from <strong className="text-gov-700">{proj.complaints_count || 1}</strong> grievances & <strong className="text-gov-700">{proj.votes_count || 0}</strong> citizen votes
+                    <p className="text-[10px] text-slate-500 font-medium pt-0.5 flex flex-wrap items-center justify-between gap-1">
+                      <span>Aggregated from <strong className="text-gov-700">{proj.complaints_count || 1}</strong> grievances with <strong className="text-emerald-700 font-bold">{proj.total_supports_count || 0}</strong> total likes</span>
+                      <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                        🗳️ {proj.votes_count || 0} Ward Fund Votes
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -715,11 +770,24 @@ export default function CivicBudgeting() {
                                 />
                                 <div className="space-y-1.5 text-xs text-emerald-950 flex-1">
                                   <p><strong>Photo Description / Remarks:</strong> {proof.remarks || 'Geotagged site completion proof.'}</p>
-                                  {proof.is_rejected && (
-                                    <p className="text-rose-700 font-bold bg-rose-100 p-1.5 rounded border border-rose-200">
+                                  {(proof.rejection_reasons_list && proof.rejection_reasons_list.length > 0) ? (
+                                    <div className="mt-2 p-2.5 bg-rose-100/90 rounded-xl border border-rose-300 space-y-1">
+                                      <p className="text-[11px] font-black text-rose-950 uppercase tracking-wide flex items-center gap-1">
+                                        ⚠️ Citizen Rejection Feedback Audit Log ({proof.rejection_reasons_list.length} Entries)
+                                      </p>
+                                      <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
+                                        {proof.rejection_reasons_list.map((rItem, rIdx) => (
+                                          <div key={rIdx} className="text-xs text-rose-900 bg-white/90 p-1.5 rounded-lg border border-rose-200 font-medium shadow-2xs">
+                                            {rItem}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : proof.is_rejected ? (
+                                    <p className="text-rose-700 font-bold bg-rose-100 p-1.5 rounded border border-rose-200 text-xs">
                                       ⚠️ Rejected: {proof.rejection_reason || 'Citizen requested re-inspection.'}
                                     </p>
-                                  )}
+                                  ) : null}
                                 </div>
                               </div>
 
@@ -735,11 +803,12 @@ export default function CivicBudgeting() {
                                 </button>
                                 <button
                                   onClick={() => {
-                                    const reason = prompt('Enter rejection reason for this specific photo:');
-                                    if (reason) handleProofVerify(proof.id, 'reject', reason);
+                                    setRejectProofId(proof.id);
+                                    setRejectReasonText('');
+                                    setRejectModalOpen(true);
                                   }}
                                   disabled={isVerifying || proof.rejected_by_user}
-                                  className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs py-1.5 px-3 rounded-xl font-bold flex-1 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                  className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs py-1.5 px-3 rounded-xl font-bold flex-1 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                   <HiXMark className="w-4 h-4" />
                                   {proof.rejected_by_user ? 'Rejected Photo' : `Reject Photo (${proof.rejected_count || 0})`}
@@ -840,6 +909,70 @@ export default function CivicBudgeting() {
                     </div>
                   </>
                 ) : null}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Citizen Resolution Rejection Modal with Photo & Feedback ── */}
+      <AnimatePresence>
+        {rejectModalOpen && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-rose-950 uppercase tracking-wide flex items-center gap-2">
+                  <HiOutlineShieldExclamation className="w-5 h-5 text-rose-600" />
+                  Dispute Officer Resolution Proof
+                </h3>
+                <button onClick={() => setRejectModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                  <HiXMark className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                If the officer's resolution photo is incomplete or fake, provide your feedback below. Geo-fenced security ensures only local residents of this district can dispute resolution proofs.
+              </p>
+
+              <div>
+                <label className="form-label text-slate-800 font-bold text-xs mb-1 block">
+                  Rejection Reason / Feedback <span className="text-danger">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={rejectReasonText}
+                  onChange={(e) => setRejectReasonText(e.target.value)}
+                  placeholder="Explain why the resolution is incomplete (e.g., road repair unfinished, street light still not working)..."
+                  className="form-input text-xs w-full border-rose-200 focus:ring-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setRejectModalOpen(false)}
+                  className="btn bg-gray-100 hover:bg-gray-200 text-slate-700 text-xs px-4 py-2 rounded-xl font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!rejectReasonText.trim()) {
+                      toast.error("Please enter a rejection reason.");
+                      return;
+                    }
+                    handleProofVerify(rejectProofId, 'reject', rejectReasonText.trim());
+                    setRejectModalOpen(false);
+                  }}
+                  disabled={isVerifying}
+                  className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs px-4 py-2 rounded-xl font-bold cursor-pointer"
+                >
+                  Confirm Rejection
+                </button>
               </div>
             </motion.div>
           </div>

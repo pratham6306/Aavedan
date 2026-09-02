@@ -62,6 +62,8 @@ class LoginView(GenericAPIView):
                     "full_name": user.full_name,
                     "email": user.email,
                     "phone": user.phone,
+                    "is_ngo": user.is_ngo,
+                    "ngo_name": user.ngo_name,
                 },
                 "tokens": {
                     "refresh": str(refresh),
@@ -292,6 +294,8 @@ class GoogleAuthView(GenericAPIView):
                     "full_name": user.full_name,
                     "email": user.email,
                     "phone": user.phone,
+                    "is_ngo": user.is_ngo,
+                    "ngo_name": user.ngo_name,
                     "is_staff": user.is_staff,
                 },
                 "tokens": {
@@ -301,3 +305,33 @@ class GoogleAuthView(GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class UpdateLocationView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        district_name = request.data.get("district_name") or request.data.get("district")
+        district_id = request.data.get("district_id")
+        
+        from locations.models import District
+        dist = None
+        if district_id:
+            dist = District.objects.filter(id=district_id).first()
+        elif district_name:
+            dist = District.objects.filter(name__iexact=str(district_name).strip()).first()
+            
+        if dist:
+            user = request.user
+            user.district = dist
+            user.state = dist.state
+            user.save()
+            return Response({
+                "message": f"Active district updated to {dist.name}, {dist.state.name}.",
+                "district_id": dist.id,
+                "district_name": dist.name,
+                "state_id": dist.state.id,
+                "state_name": dist.state.name
+            }, status=status.HTTP_200_OK)
+        
+        return Response({"error": "District not found"}, status=status.HTTP_400_BAD_REQUEST)

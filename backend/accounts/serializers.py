@@ -143,6 +143,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "full_name",
             "email",
             "phone",
+            "is_ngo",
+            "ngo_name",
             "is_email_verified",
             "is_phone_verified",
             "created_at",

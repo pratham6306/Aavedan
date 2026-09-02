@@ -6,7 +6,8 @@ import api from './api';
  */
 export const getStates = async () => {
   const response = await api.get('/locations/states/');
-  return response.data;
+  const data = response.data;
+  return Array.isArray(data) ? data : (data?.results || []);
 };
 
 /**
@@ -15,10 +16,12 @@ export const getStates = async () => {
  * @returns {Promise<Array>} List of district objects.
  */
 export const getDistricts = async (stateId) => {
+  if (!stateId) return [];
   const response = await api.get('/locations/districts/', {
     params: { state_id: stateId }
   });
-  return response.data;
+  const data = response.data;
+  return Array.isArray(data) ? data : (data?.results || []);
 };
 
 const locationService = {

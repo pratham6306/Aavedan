@@ -12,16 +12,20 @@ class CustomUserAdmin(UserAdmin):
         "email",
         "phone",
         "full_name",
+        "is_ngo",
+        "ngo_name",
         "is_staff",
         "is_active",
     )
 
-    search_fields = ("email", "phone", "full_name")
+    search_fields = ("email", "phone", "full_name", "ngo_name")
     ordering = ("id",)
 
     fieldsets = (
         (None, {"fields": ("email", "phone", "password")}),
         ("Personal Info", {"fields": ("full_name",)}),
+        ("Location", {"fields": ("state", "district")}),
+        ("NGO Partner Info", {"fields": ("is_ngo", "ngo_name")}),
         ("Verification", {"fields": ("is_email_verified", "is_phone_verified")}),
         ("Permissions", {
             "fields": (

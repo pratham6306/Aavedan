@@ -31,6 +31,14 @@ class User(AbstractUser):
     is_email_verified = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
 
+    # Location for Geo-fencing & Local Resident Verification
+    state = models.ForeignKey('locations.State', on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+    district = models.ForeignKey('locations.District', on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+
+    # NGO Partner Account Fields
+    is_ngo = models.BooleanField(default=False, help_text="Designates if this user account is a verified NGO partner")
+    ngo_name = models.CharField(max_length=150, blank=True, help_text="Name of verified NGO partner organization")
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

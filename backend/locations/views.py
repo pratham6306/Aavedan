@@ -4,14 +4,16 @@ from .models import State, District
 from .serializers import StateSerializer, DistrictSerializer
 
 class StateListView(ListAPIView):
-    serializer_class = StateSerializer
+    authentication_classes = []
     permission_classes = [AllowAny]
-    queryset = State.objects.all().order_name() if hasattr(State.objects, 'order_name') else State.objects.all().order_by('name')
+    serializer_class = StateSerializer
+    queryset = State.objects.all().order_by('name')
     pagination_class = None  # disable pagination to get all states at once
 
 class DistrictListView(ListAPIView):
-    serializer_class = DistrictSerializer
+    authentication_classes = []
     permission_classes = [AllowAny]
+    serializer_class = DistrictSerializer
     pagination_class = None  # disable pagination
 
     def get_queryset(self):

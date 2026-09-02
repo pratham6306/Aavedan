@@ -35,9 +35,10 @@ import { useCreateComplaint, useUploadImages } from '../../hooks/useComplaints';
 import { useSpeechToText } from '../../hooks/useSpeechToText';
 import { requiredRule } from '../../utils/validators';
 import { departments } from '../../utils/helpers';
-import locationService from '../../services/locationService';
 import complaintService from '../../services/complaintService';
+import locationService from '../../services/locationService';
 import aiService from '../../services/aiService';
+import api from '../../services/api';
 import MapPicker from '../../components/MapPicker';
 
 /* ─── max images allowed ─── */
@@ -104,6 +105,47 @@ export default function CreateComplaint() {
   const watchLatitude      = watch('latitude');
   const watchLongitude     = watch('longitude');
 
+  /* ── NGO Assisted Registration State ── */
+  const [isNgoAssisted, setIsNgoAssisted] = useState(false);
+  const [ruralCitizenName, setRuralCitizenName] = useState('');
+  const [ruralCitizenPhone, setRuralCitizenPhone] = useState('');
+  const [isNgoUser, setIsNgoUser] = useState(false);
+  const [userNgoName, setUserNgoName] = useState('');
+
+  const [showNgoPermissionModal, setShowNgoPermissionModal] = useState(false);
+
+  useEffect(() => {
+    try {
+      const storedUserStr = localStorage.getItem('user');
+      if (storedUserStr) {
+        const storedUser = JSON.parse(storedUserStr);
+        if (storedUser.is_ngo) {
+          setIsNgoUser(true);
+          setUserNgoName(storedUser.ngo_name || 'Pratham Rural Seva NGO');
+        }
+      }
+    } catch (e) {}
+
+    api.get('/auth/profile/').then((res) => {
+      const data = res.data || {};
+      if (data.is_ngo) {
+        setIsNgoUser(true);
+        setUserNgoName(data.ngo_name || 'Pratham Rural Seva NGO');
+        try {
+          const storedUserStr = localStorage.getItem('user');
+          if (storedUserStr) {
+            const storedUser = JSON.parse(storedUserStr);
+            storedUser.is_ngo = true;
+            storedUser.ngo_name = data.ngo_name || 'Pratham Rural Seva NGO';
+            localStorage.setItem('user', JSON.stringify(storedUser));
+          }
+        } catch (e) {}
+      }
+    }).catch((err) => {
+      console.error("Failed to fetch profile:", err);
+    });
+  }, []);
+
   /* ── Speech to Text Dictation ── */
   const getSpeechLanguage = () => {
     const match = document.cookie.match(/googtrans=\/en\/([a-z]{2})/i);
@@ -151,11 +193,14 @@ export default function CreateComplaint() {
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
 
+  const lastMapLocationRef = useRef(null);
+
   useEffect(() => {
     const fetchStates = async () => {
       try {
         const statesData = await locationService.getStates();
-        setDbStates(statesData);
+        const list = Array.isArray(statesData) ? statesData : (statesData?.results || []);
+        setDbStates(list);
       } catch (err) {
         console.error('Failed to fetch states', err);
       }
@@ -170,8 +215,8 @@ export default function CreateComplaint() {
           complaintService.getCategories(),
           complaintService.getDepartments(),
         ]);
-        setDbCategories(cats);
-        setDbDepartments(depts);
+        setDbCategories(Array.isArray(cats) ? cats : (cats?.results || []));
+        setDbDepartments(Array.isArray(depts) ? depts : (depts?.results || []));
       } catch (err) {
         console.error('Failed to fetch categories/departments', err);
       }
@@ -179,9 +224,10 @@ export default function CreateComplaint() {
     fetchMetadata();
   }, []);
 
-
-
   const handleMapLocationSelect = useCallback((loc) => {
+    if (!loc) return;
+    lastMapLocationRef.current = loc;
+
     if (loc.address && !loc.address.startsWith("State:") && !loc.address.startsWith("District:")) {
       setValue('address', loc.address);
     }
@@ -197,9 +243,10 @@ export default function CreateComplaint() {
         setLoadingLocations(true);
         locationService.getDistricts(matchedState.id)
           .then((districtsData) => {
-            setDbDistricts(districtsData);
+            const distList = Array.isArray(districtsData) ? districtsData : (districtsData?.results || []);
+            setDbDistricts(distList);
             if (loc.district) {
-              const matchedDistrict = findFuzzyMatch(districtsData, loc.district);
+              const matchedDistrict = findFuzzyMatch(distList, loc.district);
               if (matchedDistrict) {
                 setValue('district', matchedDistrict.id.toString(), { shouldValidate: true, shouldDirty: true });
               }
@@ -213,6 +260,13 @@ export default function CreateComplaint() {
       }
     }
   }, [dbStates, setValue]);
+
+  /* ── Trigger handleMapLocationSelect once dbStates is loaded ── */
+  useEffect(() => {
+    if (dbStates.length > 0 && lastMapLocationRef.current && !watch('state')) {
+      handleMapLocationSelect(lastMapLocationRef.current);
+    }
+  }, [dbStates, handleMapLocationSelect, watch]);
 
   const findFuzzyMatch = (items, targetStr) => {
     if (!targetStr || !items || items.length === 0) return null;
@@ -541,6 +595,10 @@ export default function CreateComplaint() {
         latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
         longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
         is_anonymous: formData.is_anonymous,
+        is_ngo_assisted: isNgoAssisted,
+        ngo_name: isNgoAssisted ? (userNgoName || "Pratham Rural Seva NGO") : '',
+        rural_citizen_name: isNgoAssisted ? ruralCitizenName.trim() : '',
+        rural_citizen_phone: isNgoAssisted ? ruralCitizenPhone.trim() : '',
       };
 
       /* 2. Create complaint */
@@ -780,7 +838,7 @@ export default function CreateComplaint() {
                 {...register('state', requiredRule('State is required'))}
               >
                 <option value="">Select State</option>
-                {dbStates.map((s) => (
+                {(Array.isArray(dbStates) ? dbStates : []).map((s) => (
                   <option key={s.id} value={s.id.toString()}>{s.name}</option>
                 ))}
               </select>
@@ -795,7 +853,7 @@ export default function CreateComplaint() {
                 {...register('district', requiredRule('District is required'))}
               >
                 <option value="">{loadingLocations ? 'Loading districts...' : 'Select District'}</option>
-                {dbDistricts.map((d) => (
+                {(Array.isArray(dbDistricts) ? dbDistricts : []).map((d) => (
                   <option key={d.id} value={d.id.toString()}>{d.name}</option>
                 ))}
               </select>
@@ -879,6 +937,110 @@ export default function CreateComplaint() {
                 </button>
               )}
             />
+          </div>
+
+          {/* NGO Assisted Mode Section with Orange Golden Theme */}
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-300 mb-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-black text-amber-950 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    NGO Assisted Rural Registration Mode
+                  </p>
+                  {isNgoUser ? (
+                    <span className="text-[10px] bg-amber-500 text-white font-black px-2 py-0.5 rounded-full shadow-xs">
+                      VERIFIED NGO PARTNER
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-200 text-amber-900 font-extrabold px-2 py-0.5 rounded-full border border-amber-300">
+                      NGO PARTNER PORTAL
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-amber-800 font-medium mt-0.5">
+                  Filing on behalf of a rural citizen without smartphone/literacy access
+                </p>
+              </div>
+
+              {/* Security Permission Gate Toggle */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isNgoAssisted}
+                onClick={() => {
+                  if (!isNgoUser) {
+                    setShowNgoPermissionModal(true);
+                    return;
+                  }
+                  setIsNgoAssisted(!isNgoAssisted);
+                }}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out ${
+                  isNgoAssisted ? 'bg-amber-500 shadow-md ring-2 ring-amber-300' : 'bg-amber-200'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-1 ${
+                    isNgoAssisted ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* When NGO Assisted Mode is Toggled ON */}
+            {isNgoAssisted && (
+              <div className="p-4 bg-white/95 rounded-xl border border-amber-300 space-y-4 animate-fadeIn shadow-xs">
+                <div className="flex items-center justify-between border-b border-amber-100 pb-2">
+                  <h4 className="text-xs font-black text-amber-950 uppercase tracking-wide flex items-center gap-1.5">
+                    🤝 Beneficiary Rural Citizen Information
+                  </h4>
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
+                    Endorsing NGO: {userNgoName || "Pratham Rural Seva NGO"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* 1. Rural Citizen Name */}
+                  <div>
+                    <label className="form-label text-amber-950 font-bold text-xs">
+                      1. Citizen Full Name <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Ramesh Kumar"
+                      value={ruralCitizenName}
+                      onChange={(e) => setRuralCitizenName(e.target.value)}
+                      className="form-input text-xs border-amber-300 focus:ring-amber-500 bg-amber-50/40"
+                    />
+                  </div>
+
+                  {/* 2. Mobile Phone */}
+                  <div>
+                    <label className="form-label text-amber-950 font-bold text-xs">
+                      2. Mobile Phone Number <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="10-digit mobile number"
+                      value={ruralCitizenPhone}
+                      onChange={(e) => setRuralCitizenPhone(e.target.value)}
+                      className="form-input text-xs border-amber-300 focus:ring-amber-500 bg-amber-50/40"
+                    />
+                  </div>
+
+                  {/* 3. Rural District Location */}
+                  <div>
+                    <label className="form-label text-amber-950 font-bold text-xs">
+                      3. Rural District Location
+                    </label>
+                    <div className="form-input text-xs border-amber-300 bg-amber-100/50 font-bold text-amber-900 flex items-center justify-between">
+                      <span>{(dbDistricts || []).find(d => d.id?.toString() === selectedDistrict?.toString())?.name || (selectedState ? "Select District Above" : "Madhepura (Default)")}</span>
+                      <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-mono">Auto-Synced</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Category */}
@@ -1029,6 +1191,48 @@ export default function CreateComplaint() {
             )}
           </button>
         </motion.div>
+
+        {/* ── NGO Permission Gate Verification Modal ── */}
+        <AnimatePresence>
+          {showNgoPermissionModal && (
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-amber-300 space-y-4 text-slate-800"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-amber-950 uppercase tracking-wide flex items-center gap-2">
+                    🔒 NGO Partner Verification Required
+                  </h3>
+                  <button onClick={() => setShowNgoPermissionModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    ✕
+                  </button>
+                </div>
+
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-950 space-y-2">
+                  <p className="font-semibold text-amber-900">
+                    This account is currently registered as a standard citizen account.
+                  </p>
+                  <p className="text-amber-800 leading-relaxed">
+                    To maintain grievance authenticity and prevent unverified claims, <strong>NGO Assisted Registration Mode</strong> is strictly reserved for authenticated civil society organizations & NGO partner accounts.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNgoPermissionModal(false)}
+                    className="btn bg-amber-600 hover:bg-amber-700 text-white text-xs py-2.5 px-4 rounded-xl font-bold w-full cursor-pointer shadow-xs"
+                  >
+                    Got It / Close
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </form>
     </div>
   );
@@ -1039,8 +1243,8 @@ export default function CreateComplaint() {
    ==================================================================== */
 function SectionHeader({ icon: Icon, title, number }) {
   return (
-    <div className="flex items-center gap-3 mb-5">
-      <div className="w-9 h-9 rounded-lg bg-gov-100 flex items-center justify-center">
+    <div className="flex items-center gap-3 mb-5 border-b border-gray-100 pb-3">
+      <div className="w-9 h-9 rounded-lg bg-gov-100 text-gov-700 flex items-center justify-center font-bold text-sm shrink-0">
         <Icon className="w-5 h-5 text-gov-700" />
       </div>
       <div>
