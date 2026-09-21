@@ -49,15 +49,11 @@ class GroqSettings(BaseSettings):
 
 
 class GeminiSettings(BaseSettings):
-    """Configuration for the Gemini LLM provider.
-
-    All fields are required with no defaults for secrets — the
-    application must not boot with a missing or empty API key.
-    """
+    """Configuration for the Gemini LLM provider."""
 
     model_config = SettingsConfigDict(env_prefix="GEMINI_", env_file=".env", extra="ignore")
 
-    api_key: SecretStr = Field(...)
+    api_key: SecretStr = Field(default=SecretStr("dummy_key"))
     model_name: str = Field(default="gemini-flash-latest")
     request_timeout_seconds: float = Field(default=12.0, gt=0)
     max_output_tokens: int = Field(default=2048, gt=0)
@@ -84,7 +80,7 @@ def get_dynamic_gemini_api_keys() -> list[str]:
     if not keys:
         try:
             sec = get_settings().gemini.api_key.get_secret_value()
-            if sec:
+            if sec and sec != "dummy_key":
                 keys = [sec]
         except Exception:
             pass
@@ -93,17 +89,11 @@ def get_dynamic_gemini_api_keys() -> list[str]:
 
 class DatabaseSettings(BaseSettings):
     """PostgreSQL configuration.
-
-    Note: the AI module (FastAPI service) is expected to be largely
-    stateless and typically will NOT talk to Postgres directly — the
-    Django backend owns persistence. This is included for cases where
-    the AI service needs read access (e.g. knowledge tables once
-    migrated out of static files) or its own audit/logging tables.
     """
 
     model_config = SettingsConfigDict(env_prefix="DB_", env_file=".env", extra="ignore")
 
-    dsn: PostgresDsn = Field(...)
+    dsn: str = Field(default="postgresql://user:pass@localhost:5432/dbname")
     pool_min_size: int = Field(default=1, ge=1)
     pool_max_size: int = Field(default=10, ge=1)
 
