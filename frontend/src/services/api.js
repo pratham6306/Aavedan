@@ -25,10 +25,11 @@ const ACCESS_TOKEN_KEY = 'access_token';
 /** @type {string} localStorage key for the JWT refresh token */
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const rawBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = rawBaseURL.endsWith('/') ? rawBaseURL : `${rawBaseURL}/`;
 
 /** @type {string} Endpoint used to obtain a new access token */
-const REFRESH_ENDPOINT = `${API_BASE_URL}/auth/token/refresh/`;
+const REFRESH_ENDPOINT = `${API_BASE_URL}auth/token/refresh/`;
 
 // ---------------------------------------------------------------------------
 // Axios Instance
@@ -46,11 +47,15 @@ const api = axios.create({
 });
 
 // ---------------------------------------------------------------------------
-// Request Interceptor – Attach Access Token
+// Request Interceptor – Attach Access Token & Normalize URL
 // ---------------------------------------------------------------------------
 
 api.interceptors.request.use(
   (config) => {
+    if (config.url && config.url.startsWith('/') && !config.url.startsWith('http://') && !config.url.startsWith('https://')) {
+      config.url = config.url.substring(1);
+    }
+
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
 
     if (token) {
