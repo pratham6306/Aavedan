@@ -210,13 +210,16 @@ class MyComplaintListView(ListAPIView):
 
 class CategoryListAPIView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         from knowledge.models import ComplaintCategory
         categories = ComplaintCategory.objects.filter(is_active=True).values("id", "name")
         return Response(list(categories))
 
+
 class DepartmentListAPIView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         from departments.models import Department
         depts = Department.objects.filter(is_active=True).values("id", "name")
@@ -287,6 +290,7 @@ class ComplaintSupportView(APIView):
 
 class ComplaintDuplicateCheckView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request):
         category_id = request.data.get("category")

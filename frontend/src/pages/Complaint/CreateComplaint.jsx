@@ -268,6 +268,97 @@ export default function CreateComplaint() {
     }
   }, [dbStates, handleMapLocationSelect, watch]);
 
+  const handleDetectGPSLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      toast.error("GPS location is not supported by your browser.");
+      return;
+    }
+    toast.info("📍 Detecting GPS location & auto-selecting State & District...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`
+          );
+          const data = await response.json();
+          const addressData = data.address || {};
+          
+          const state = addressData.state || '';
+          let district = addressData.state_district || addressData.district || addressData.county || addressData.city || '';
+          district = district.replace(/\b(district|county|subdivision)\b/gi, '').trim();
+
+          const road = addressData.road || '';
+          const neighborhood = addressData.neighbourhood || addressData.suburb || '';
+          const city = addressData.city || addressData.town || addressData.village || '';
+          const formattedAddress = [road, neighborhood, city].filter(Boolean).join(', ');
+
+          await handleMapLocationSelect({
+            state,
+            district,
+            address: formattedAddress,
+            latitude: latitude.toFixed(6),
+            longitude: longitude.toFixed(6),
+          });
+          toast.success(`📍 GPS Location detected! State (${state}) & District (${district}) auto-selected.`);
+        } catch (err) {
+          console.error("GPS Reverse Geocode failed:", err);
+          toast.warning("GPS coordinates detected! State & District fallback applied.");
+        }
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        toast.error("Unable to access GPS location. Please select state and district manually.");
+      }
+    );
+  }, [handleMapLocationSelect]);
+
+  const hasAutoDetectedGPSRef = useRef(false);
+
+  /* 📍 Auto-Detect GPS Location on Component Mount / Page Reload 📍 */
+  useEffect(() => {
+    if (hasAutoDetectedGPSRef.current) return;
+    if (navigator.geolocation && !watch('latitude') && !watch('longitude')) {
+      hasAutoDetectedGPSRef.current = true;
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`
+            );
+            const data = await response.json();
+            const addressData = data.address || {};
+            
+            const state = addressData.state || '';
+            let district = addressData.state_district || addressData.district || addressData.county || addressData.city || '';
+            district = district.replace(/\b(district|county|subdivision)\b/gi, '').trim();
+
+            const road = addressData.road || '';
+            const neighborhood = addressData.neighbourhood || addressData.suburb || '';
+            const city = addressData.city || addressData.town || addressData.village || '';
+            const formattedAddress = [road, neighborhood, city].filter(Boolean).join(', ');
+
+            await handleMapLocationSelect({
+              state,
+              district,
+              address: formattedAddress,
+              latitude: latitude.toFixed(6),
+              longitude: longitude.toFixed(6),
+            });
+            toast.success(`📍 Auto-GPS: Location detected! State (${state}) & District (${district}) auto-loaded.`, { toastId: 'auto-gps-success-toast' });
+          } catch (err) {
+            console.error("Auto GPS Reverse Geocode failed:", err);
+          }
+        },
+        (err) => {
+          console.log("Auto GPS Geolocation permission pending or denied by browser.");
+        },
+        { timeout: 10000, maximumAge: 60000, enableHighAccuracy: true }
+      );
+    }
+  }, [handleMapLocationSelect]);
+
   const findFuzzyMatch = (items, targetStr) => {
     if (!targetStr || !items || items.length === 0) return null;
     const rawTarget = targetStr.toString().trim();

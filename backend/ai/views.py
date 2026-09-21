@@ -12,7 +12,7 @@ from .services.orchestrator import AIOrchestrator
 from .services.email_dispatcher import EmailDispatcher
 from .services.memory import MemoryManager
 from .services.office_finder import OfficeFinder
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 # Models for database sync
 from complaints.models import Complaint, ComplaintStatus
@@ -23,6 +23,7 @@ from categories.models import ComplaintCategory
 
 class ChatAPIView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
         serializer = ChatRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

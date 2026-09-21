@@ -5,7 +5,7 @@ services:
     env: python
     region: singapore
     buildCommand: "cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
-    startCommand: "cd backend && gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --workers 3"
+    startCommand: "cd backend && gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
@@ -21,9 +21,9 @@ services:
         fromService:
           type: web
           name: aavedan-ai
-          property: host
+          property: url
 
-  # 2. FastAPI AI Microservice (Groq / Gemini LLM Orchestrator)
+  # 2. FastAPI AI Microservice (Groq / Vision / LLM Orchestrator)
   - type: web
     name: aavedan-ai
     env: python
@@ -35,11 +35,6 @@ services:
         value: 3.11.9
       - key: GROQ_API_KEY
         sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: aavedan-redis
-          property: connectionString
 
 # 3. Managed PostgreSQL Database
 databases:
@@ -47,9 +42,3 @@ databases:
     region: singapore
     databaseName: aavedan_setu_db
     user: aavedan_user
-
-# 4. Managed Redis Cache (for AI session memory)
-redis:
-  - name: aavedan-redis
-    region: singapore
-    plan: free
