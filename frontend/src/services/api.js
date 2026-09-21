@@ -25,8 +25,21 @@ const ACCESS_TOKEN_KEY = 'access_token';
 /** @type {string} localStorage key for the JWT refresh token */
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
-const rawBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
-const API_BASE_URL = rawBaseURL.endsWith('/') ? rawBaseURL : `${rawBaseURL}/`;
+const getCleanBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (!envUrl) return '/api/';
+  
+  let trimmed = envUrl.trim();
+  if (!trimmed.endsWith('/')) {
+    trimmed += '/';
+  }
+  if (!trimmed.includes('/api/')) {
+    trimmed = `${trimmed.replace(/\/$/, '')}/api/`;
+  }
+  return trimmed;
+};
+
+const API_BASE_URL = getCleanBaseUrl();
 
 /** @type {string} Endpoint used to obtain a new access token */
 const REFRESH_ENDPOINT = `${API_BASE_URL}auth/token/refresh/`;
