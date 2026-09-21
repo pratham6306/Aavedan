@@ -25,8 +25,10 @@ const ACCESS_TOKEN_KEY = 'access_token';
 /** @type {string} localStorage key for the JWT refresh token */
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 /** @type {string} Endpoint used to obtain a new access token */
-const REFRESH_ENDPOINT = '/api/auth/token/refresh/';
+const REFRESH_ENDPOINT = `${API_BASE_URL}/auth/token/refresh/`;
 
 // ---------------------------------------------------------------------------
 // Axios Instance
@@ -37,7 +39,7 @@ const REFRESH_ENDPOINT = '/api/auth/token/refresh/';
  * All service modules should import this instead of using `axios` directly.
  */
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
