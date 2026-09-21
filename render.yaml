@@ -21,7 +21,7 @@ services:
         fromService:
           type: web
           name: aavedan-ai
-          property: url
+          property: host
 
   # 2. FastAPI AI Microservice (Groq / Vision / LLM Orchestrator)
   - type: web

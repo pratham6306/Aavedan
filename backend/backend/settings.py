@@ -215,4 +215,7 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Aavedan Saathi <no-reply@aavedan-saathi.gov.in>")
 
 # AI Microservice Configuration
-AI_SERVICE_URL = config("AI_SERVICE_URL", default="http://localhost:8010")
+_ai_url = config("AI_SERVICE_URL", default="http://localhost:8010")
+if _ai_url and not _ai_url.startswith(("http://", "https://")):
+    _ai_url = f"http://{_ai_url}"
+AI_SERVICE_URL = _ai_url
