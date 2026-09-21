@@ -54,11 +54,11 @@ class LoginSerializer(serializers.Serializer):
         identifier = attrs.get("identifier")
         password = attrs.get("password")
 
-        # Check whether identifier is email or phone
+        # Check whether identifier is email, phone, or username
         if "@" in identifier:
             user = User.objects.filter(email=identifier).first()
         else:
-            user = User.objects.filter(phone=identifier).first()
+            user = User.objects.filter(phone=identifier).first() or User.objects.filter(username=identifier).first()
 
         if user is None:
             raise serializers.ValidationError(
