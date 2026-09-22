@@ -11,28 +11,38 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             User = get_user_model()
-            username = os.getenv("ADMIN_USERNAME", "admin")
-            email = os.getenv("ADMIN_EMAIL", "admin@aavedan.gov.in")
-            password = os.getenv("ADMIN_PASSWORD", "Admin@123456")
-            phone = os.getenv("ADMIN_PHONE", "9999999990")
+            admin_configs = [
+                {
+                    "email": os.getenv("ADMIN_EMAIL", "admin@aavedan.gov.in"),
+                    "password": os.getenv("ADMIN_PASSWORD", "Admin@123456"),
+                    "phone": os.getenv("ADMIN_PHONE", "9999999990"),
+                    "name": "System Admin"
+                },
+                {
+                    "email": "admin@aavedansetu.gov.in",
+                    "password": "adminpassword123",
+                    "phone": "9999999991",
+                    "name": "Aavedan Admin"
+                }
+            ]
 
-            admin_user = User.objects.filter(username=username).first() or User.objects.filter(email=email).first()
-            if not admin_user:
-                self.stdout.write("Creating default admin superuser...")
-                User.objects.create_superuser(
-                    username=username,
-                    email=email,
-                    password=password,
-                    phone=phone,
-                    first_name="System",
-                    last_name="Admin"
-                )
-                self.stdout.write(self.style.SUCCESS(f"Superuser '{username}' created successfully!"))
-            else:
-                admin_user.set_password(password)
-                admin_user.is_superuser = True
-                admin_user.is_staff = True
-                admin_user.save()
-                self.stdout.write(self.style.SUCCESS(f"Updated superuser '{username}' password."))
+            for cfg in admin_configs:
+                u = User.objects.filter(email=cfg["email"]).first()
+                if not u:
+                    u = User.objects.create_superuser(
+                        email=cfg["email"],
+                        password=cfg["password"],
+                        phone=cfg["phone"],
+                        full_name=cfg["name"],
+                        is_staff=True,
+                        is_superuser=True
+                    )
+                    self.stdout.write(self.style.SUCCESS(f"Superuser '{cfg['email']}' created!"))
+                else:
+                    u.set_password(cfg["password"])
+                    u.is_superuser = True
+                    u.is_staff = True
+                    u.save()
+                    self.stdout.write(self.style.SUCCESS(f"Updated superuser '{cfg['email']}' password."))
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"Init admin skipped: {e}"))
