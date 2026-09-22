@@ -27,7 +27,12 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 
 const getCleanBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL;
-  if (!envUrl) return '/api/';
+  if (!envUrl) {
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return 'https://aavedan-backend-g7nc.onrender.com/api/';
+    }
+    return '/api/';
+  }
   
   let trimmed = envUrl.trim();
   if (!trimmed.endsWith('/')) {
