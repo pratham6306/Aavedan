@@ -26,7 +26,7 @@ const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
 const getCleanBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  const envUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL;
   if (!envUrl) return '/api/';
   
   let trimmed = envUrl.trim();
@@ -123,14 +123,19 @@ api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
-    const originalRequest = error.config;
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') ||
+                           originalRequest?.url?.includes('/auth/google') ||
+                           originalRequest?.url?.includes('/auth/register') ||
+                           originalRequest?.url?.includes('/auth/send-otp') ||
+                           originalRequest?.url?.includes('/auth/verify-otp');
 
-    // Only handle 401 errors that haven't already been retried and are
-    // NOT the refresh request itself (to avoid infinite loops).
+    // Only handle 401 errors that haven't already been retried, are
+    // NOT the refresh request itself, and are NOT login/auth attempts.
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      originalRequest.url !== REFRESH_ENDPOINT
+      originalRequest.url !== REFRESH_ENDPOINT &&
+      !isAuthEndpoint
     ) {
       // If a refresh is already in progress, queue this request.
       if (isRefreshing) {

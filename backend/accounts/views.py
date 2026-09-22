@@ -256,18 +256,29 @@ class GoogleAuthView(GenericAPIView):
 
         if token:
             try:
-                # Try verifying ID Token with Google OAuth
+                # 1. Try verifying ID Token (JWT) with Google OAuth
                 idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), clock_skew_in_seconds=10)
                 email = idinfo.get("email", email)
                 full_name = idinfo.get("name", full_name or (email and email.split("@")[0]))
-            except Exception as e:
-                # Fallback verification via Google API tokeninfo endpoint
+            except Exception:
+                # 2. Try verifying via Google userinfo endpoint using access token
                 try:
-                    resp = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={token}")
-                    if resp.status_code == 200:
-                        info = resp.json()
+                    userinfo_resp = requests.get(
+                        "https://www.googleapis.com/oauth2/v3/userinfo",
+                        headers={"Authorization": f"Bearer {token}"},
+                        timeout=5
+                    )
+                    if userinfo_resp.status_code == 200:
+                        info = userinfo_resp.json()
                         email = info.get("email", email)
                         full_name = info.get("name", full_name or (email and email.split("@")[0]))
+                    else:
+                        # 3. Fallback to access_token tokeninfo endpoint
+                        tokeninfo_resp = requests.get(f"https://oauth2.googleapis.com/tokeninfo?access_token={token}", timeout=5)
+                        if tokeninfo_resp.status_code == 200:
+                            info = tokeninfo_resp.json()
+                            email = info.get("email", email)
+                            full_name = info.get("name", full_name or (email and email.split("@")[0]))
                 except Exception:
                     pass
 

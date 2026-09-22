@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Bot, Sparkles, SendHorizontal, Mail, Mic, MicOff, RotateCcw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import aiService from '../../services/aiService';
+import api from '../../services/api';
 import { useSpeechToText } from '../../hooks/useSpeechToText';
 
 export default function FloatingAIAssistant() {
@@ -830,14 +831,12 @@ function ChatLocationWidget({ onConfirmLocation }) {
     async function loadStates() {
       const fullList = Object.keys(fallbackDistrictData);
       try {
-        const res = await fetch('/api/locations/states/');
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const merged = Array.from(new Set([...data.map(s => s.name), ...fullList])).sort();
-            setStatesList(merged);
-            return;
-          }
+        const res = await api.get('/locations/states/');
+        const data = res.data;
+        if (Array.isArray(data) && data.length > 0) {
+          const merged = Array.from(new Set([...data.map(s => s.name), ...fullList])).sort();
+          setStatesList(merged);
+          return;
         }
       } catch (e) {
         console.warn("Could not fetch states from backend API, using comprehensive offline list:", e);
@@ -856,14 +855,12 @@ function ChatLocationWidget({ onConfirmLocation }) {
     async function loadDistricts() {
       const fallbackDist = fallbackDistrictData[selectedState] || [];
       try {
-        const res = await fetch(`/api/locations/districts/?state=${encodeURIComponent(selectedState)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const mergedDist = Array.from(new Set([...data.map(d => d.name), ...fallbackDist])).sort();
-            setDistrictsList(mergedDist);
-            return;
-          }
+        const res = await api.get(`/locations/districts/?state=${encodeURIComponent(selectedState)}`);
+        const data = res.data;
+        if (Array.isArray(data) && data.length > 0) {
+          const mergedDist = Array.from(new Set([...data.map(d => d.name), ...fallbackDist])).sort();
+          setDistrictsList(mergedDist);
+          return;
         }
       } catch (e) {
         console.warn("Could not fetch districts from backend API, using offline list:", e);
