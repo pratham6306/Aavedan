@@ -3,9 +3,12 @@ import sys
 import django
 import random
 
-sys.path.append(r"e:\Starting new\gov_complaint_schemes\backend")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
-django.setup()
+try:
+    django.setup()
+except Exception:
+    pass
 
 from complaints.models import Complaint, ComplaintStatus, DepartmentBudget, CivicProject
 from departments.models import Department
