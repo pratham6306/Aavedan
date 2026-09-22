@@ -128,6 +128,8 @@ api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
+    const originalRequest = error.config;
+
     const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') ||
                            originalRequest?.url?.includes('/auth/google') ||
                            originalRequest?.url?.includes('/auth/register') ||

@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 
 class ChatRequestSerializer(serializers.Serializer):
-    session_id = serializers.UUIDField()
+    session_id = serializers.CharField(max_length=255)
     message = serializers.CharField(max_length=5000)
     entities = serializers.JSONField(required=False)
     image_base64 = serializers.CharField(required=False, allow_null=True, allow_blank=True)
@@ -85,7 +85,7 @@ class ChatResponseSerializer(serializers.Serializer):
 
 
 class SendEmailRequestSerializer(serializers.Serializer):
-    session_id = serializers.UUIDField()
+    session_id = serializers.CharField(max_length=255)
     is_anonymous = serializers.BooleanField(required=False, default=False)
 
 

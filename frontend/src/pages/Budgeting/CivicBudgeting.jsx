@@ -91,7 +91,7 @@ export default function CivicBudgeting() {
 
             if (distName) {
               // Sync district to user profile in backend database!
-              api.post('/accounts/update-location/', { district_name: distName })
+              api.post('/auth/update-location/', { district_name: distName })
                 .then((locRes) => {
                   if (locRes.data?.district_id) {
                     if (locRes.data.state_id) setSelectedState(locRes.data.state_id.toString());

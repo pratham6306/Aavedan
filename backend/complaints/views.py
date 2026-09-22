@@ -630,7 +630,10 @@ class CivicProjectListView(ListAPIView):
         # Run recalculation if explicitly requested or if no projects exist
         force_refresh = self.request.query_params.get("refresh") == "true"
         if force_refresh or not CivicProject.objects.exists():
-            recalculate_civic_projects()
+            try:
+                recalculate_civic_projects()
+            except Exception as err:
+                print(f"Warning: Failed recalculating civic projects: {err}")
 
         qs = CivicProject.objects.annotate(
             num_c=Count("complaints", distinct=True),
