@@ -45,7 +45,7 @@ class GroqSettings(BaseSettings):
     """Configuration for Groq Cloud API provider."""
     model_config = SettingsConfigDict(env_prefix="GROQ_", env_file=".env", extra="ignore")
     api_key: SecretStr = Field(default=SecretStr(""))
-    model_name: str = Field(default="qwen/qwen3.6-27b")
+    model_name: str = Field(default="qwen/qwen3.8-27b")
 
 
 class GeminiSettings(BaseSettings):

@@ -85,7 +85,7 @@ class GeminiClient:
                 "Authorization": f"Bearer {groq_key}",
                 "Content-Type": "application/json"
             }
-            groq_model = os.getenv("GROQ_MODEL", "groq/compound-mini")
+            groq_model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
             groq_payload = {
                 "model": groq_model,
                 "messages": [
