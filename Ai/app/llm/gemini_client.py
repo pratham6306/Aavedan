@@ -79,7 +79,7 @@ class GeminiClient:
             pass
 
         groq_key = os.getenv("GROQ_API_KEY") or ""
-        if groq_key and groq_key.startswith("gsk_"):
+        if not image_data and groq_key and groq_key.startswith("gsk_"):
             groq_url = "https://api.groq.com/openai/v1/chat/completions"
             groq_headers = {
                 "Authorization": f"Bearer {groq_key}",
