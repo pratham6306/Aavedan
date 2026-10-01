@@ -3,7 +3,7 @@ import random
 
 from rest_framework import status
 from rest_framework.generics import GenericAPIView, ListAPIView, ListAPIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -51,8 +51,7 @@ class ComplaintCreateView(GenericAPIView):
 
 class ComplaintListView(ListAPIView):
     serializer_class = ComplaintListSerializer
-    permission_classes = [AllowAny]
-    authentication_classes = []
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     queryset = Complaint.objects.filter(
         is_deleted=False,
@@ -210,8 +209,7 @@ class MyComplaintListView(ListAPIView):
         )
 
 class CategoryListAPIView(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = []
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request):
         from categories.models import ComplaintCategory
@@ -222,8 +220,7 @@ class CategoryListAPIView(APIView):
 
 
 class DepartmentListAPIView(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = []
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request):
         from departments.models import Department
