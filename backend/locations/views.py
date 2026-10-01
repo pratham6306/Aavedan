@@ -25,3 +25,29 @@ class DistrictListView(ListAPIView):
             else:
                 queryset = queryset.filter(state__name__iexact=state_param)
         return queryset
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+class SeedDatabaseView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            import seed_categories
+            import seed_departments
+            import seed_knowledge
+            import seed_locations
+            import seed_schemes
+            return Response({
+                "success": True,
+                "message": "Database seeded successfully with all Categories, Departments, Knowledge Base, 36 States/Districts, and Welfare Schemes!"
+            })
+        except Exception as e:
+            return Response({
+                "success": False,
+                "error": str(e)
+            }, status=500)
+

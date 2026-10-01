@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_exception_handlers
 from app.api.router import api_router
@@ -70,6 +71,14 @@ def create_app() -> FastAPI:
         title=settings.app.name,
         debug=settings.app.debug,
         lifespan=lifespan,
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     register_exception_handlers(app)

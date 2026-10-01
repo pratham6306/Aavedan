@@ -279,7 +279,8 @@ export default function CreateComplaint() {
         const { latitude, longitude } = pos.coords;
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`,
+            { headers: { 'Accept': 'application/json' } }
           );
           const data = await response.json();
           const addressData = data.address || {};
@@ -325,7 +326,8 @@ export default function CreateComplaint() {
           const { latitude, longitude } = pos.coords;
           try {
             const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`,
+              { headers: { 'Accept': 'application/json' } }
             );
             const data = await response.json();
             const addressData = data.address || {};
