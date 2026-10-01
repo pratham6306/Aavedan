@@ -84,24 +84,26 @@ schemes_list = [
 ]
 
 for s in schemes_list:
-    scheme, created = GovernmentScheme.objects.get_or_create(
-        scheme_code=s["scheme_code"],
-        defaults={
-            "category": s["category"],
-            "department": s["department"],
-            "state": s["state"],
-            "scheme_name": s["scheme_name"],
-            "description": s["description"],
-            "benefits": s["benefits"],
-            "eligibility": s["eligibility"],
-            "keywords": s["keywords"],
-            "official_website": s["official_website"],
-            "application_link": s["application_link"],
-            "helpline_number": s["helpline_number"],
-            "is_active": True
-        }
-    )
-    if created:
+    scheme = GovernmentScheme.objects.filter(scheme_name=s["scheme_name"]).first()
+    if not scheme:
+        scheme = GovernmentScheme.objects.filter(scheme_code=s["scheme_code"]).first()
+    
+    if not scheme:
+        scheme = GovernmentScheme.objects.create(
+            scheme_code=s["scheme_code"],
+            category=s["category"],
+            department=s["department"],
+            state=s["state"],
+            scheme_name=s["scheme_name"],
+            description=s["description"],
+            benefits=s["benefits"],
+            eligibility=s["eligibility"],
+            keywords=s["keywords"],
+            official_website=s["official_website"],
+            application_link=s["application_link"],
+            helpline_number=s["helpline_number"],
+            is_active=True
+        )
         print(f"Created Scheme: {s['scheme_name']}")
     else:
         print(f"Scheme already exists: {s['scheme_name']}")

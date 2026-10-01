@@ -54,3 +54,18 @@ urlpatterns += [
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]
 
+# Automatic empty database seeding check (works for runserver & gunicorn)
+try:
+    from locations.models import State
+    if State.objects.count() == 0:
+        print("⚡ Database is empty! Running automatic database seeding...")
+        import seed_categories
+        import seed_departments
+        import seed_knowledge
+        import seed_locations
+        import seed_schemes
+        print("✅ Automatic database seeding completed successfully!")
+except Exception as e:
+    pass
+
+
