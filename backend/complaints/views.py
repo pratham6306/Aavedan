@@ -30,21 +30,35 @@ class ComplaintCreateView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-        complaint = ComplaintService.create_complaint(
-            user=request.user,
-            validated_data=serializer.validated_data,
-        )
+            complaint = ComplaintService.create_complaint(
+                user=request.user,
+                validated_data=serializer.validated_data,
+            )
 
-        return Response(
-            {
-                "message": "Complaint created successfully.",
-                "data": ComplaintDetailSerializer(complaint).data,
-            },
-            status=status.HTTP_201_CREATED,
-        )
+            return Response(
+                {
+                    "message": "Complaint created successfully.",
+                    "data": ComplaintDetailSerializer(complaint).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as exc:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error creating complaint: {exc}")
+            
+            err_msg = str(exc)
+            if hasattr(exc, "detail"):
+                err_msg = exc.detail
+            
+            return Response(
+                {"detail": err_msg},
+                status=status.HTTP_400_BAD_REQUEST if hasattr(exc, "detail") else status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     
 

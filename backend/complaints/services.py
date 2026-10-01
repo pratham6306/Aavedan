@@ -31,6 +31,21 @@ class ComplaintService:
         if "priority" not in validated_data or not validated_data.get("priority"):
             validated_data["priority"] = kr_res.get("priority", "HIGH").upper()
 
+        # Robust Fallback for State & District to prevent null-value IntegrityError 500s
+        from locations.models import State, District
+        if not validated_data.get("state"):
+            if validated_data.get("district") and getattr(validated_data["district"], "state", None):
+                validated_data["state"] = validated_data["district"].state
+            else:
+                validated_data["state"] = State.objects.first()
+
+        if not validated_data.get("district"):
+            st_obj = validated_data.get("state")
+            if st_obj:
+                validated_data["district"] = District.objects.filter(state=st_obj).first()
+            if not validated_data.get("district"):
+                validated_data["district"] = District.objects.first()
+
         complaint = Complaint.objects.create(
             user=user,
             status=status,
