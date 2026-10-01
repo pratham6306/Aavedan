@@ -54,7 +54,13 @@ urlpatterns += [
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]
 
-# Automatic empty database seeding check (works for runserver & gunicorn)
+# Automatic database migration and empty database seeding check
+try:
+    from django.core.management import call_command
+    call_command('migrate', interactive=False)
+except Exception as m_err:
+    print(f"⚠️ Auto-migration status: {m_err}")
+
 try:
     from locations.models import State
     if State.objects.count() == 0:

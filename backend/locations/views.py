@@ -36,6 +36,9 @@ class SeedDatabaseView(APIView):
 
     def get(self, request):
         try:
+            from django.core.management import call_command
+            call_command('migrate', interactive=False)
+
             import seed_categories
             import seed_departments
             import seed_knowledge
@@ -43,7 +46,7 @@ class SeedDatabaseView(APIView):
             import seed_schemes
             return Response({
                 "success": True,
-                "message": "Database seeded successfully with all Categories, Departments, Knowledge Base, 36 States/Districts, and Welfare Schemes!"
+                "message": "Database migrated & seeded successfully with all Categories, Departments, Knowledge Base, 36 States/Districts, and Welfare Schemes!"
             })
         except Exception as e:
             return Response({
