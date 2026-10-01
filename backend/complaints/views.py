@@ -293,79 +293,127 @@ class ComplaintDuplicateCheckView(APIView):
     authentication_classes = []
 
     def post(self, request):
-        category_id = request.data.get("category")
-        department_id = request.data.get("department")
-        state_id = request.data.get("state")
-        district_id = request.data.get("district")
-        latitude = request.data.get("latitude")
-        longitude = request.data.get("longitude")
+        try:
+            category_id = request.data.get("category")
+            department_id = request.data.get("department")
+            state_id = request.data.get("state")
+            district_id = request.data.get("district")
+            latitude = request.data.get("latitude")
+            longitude = request.data.get("longitude")
 
-        if not (category_id and district_id):
-            return Response(
-                {"error": "Missing required fields (category, district)."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            from locations.models import District, State
+            from categories.models import ComplaintCategory
+            from departments.models import Department
 
-        # Base query for active, pending complaints in the same district and category
-        qs = Complaint.objects.filter(
-            is_deleted=False,
-            is_verified_resolved=False,
-            district_id=district_id,
-            category_id=category_id
-        ).exclude(status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"])
+            def safe_int(val):
+                if val is None or val == "" or str(val).lower() in ["none", "null", "undefined"]:
+                    return None
+                if str(val).isdigit():
+                    return int(val)
+                return None
 
-        if state_id:
-            qs = qs.filter(state_id=state_id)
-        if department_id:
-            qs = qs.filter(department_id=department_id)
+            cat_id = safe_int(category_id)
+            dist_id = safe_int(district_id)
+            st_id = safe_int(state_id)
+            dept_id = safe_int(department_id)
 
-        new_text = (str(request.data.get("title", "")) + " " + str(request.data.get("description", ""))).lower()
+            if not cat_id and category_id and isinstance(category_id, str):
+                c_obj = ComplaintCategory.objects.filter(name__iexact=category_id.strip()).first()
+                if not c_obj:
+                    c_obj = ComplaintCategory.objects.filter(name__icontains=category_id.strip()).first()
+                if c_obj:
+                    cat_id = c_obj.id
 
-        # Keyword signature extractor via Single Source of Truth KnowledgeRetriever
-        def get_sub_issue_signature(text):
-            res = _kr.retrieve(text)
-            return res.get("complaint_type") or "general"
+            if not dist_id and district_id and isinstance(district_id, str):
+                d_obj = District.objects.filter(name__iexact=district_id.strip()).first()
+                if not d_obj:
+                    d_obj = District.objects.filter(name__icontains=district_id.strip()).first()
+                if d_obj:
+                    dist_id = d_obj.id
 
-        new_sig = get_sub_issue_signature(new_text)
+            if not st_id and state_id and isinstance(state_id, str):
+                s_obj = State.objects.filter(name__iexact=state_id.strip()).first()
+                if not s_obj:
+                    s_obj = State.objects.filter(name__icontains=state_id.strip()).first()
+                if s_obj:
+                    st_id = s_obj.id
 
-        duplicates = []
+            if not dept_id and department_id and isinstance(department_id, str):
+                dp_obj = Department.objects.filter(name__iexact=department_id.strip()).first()
+                if not dp_obj:
+                    dp_obj = Department.objects.filter(name__icontains=department_id.strip()).first()
+                if dp_obj:
+                    dept_id = dp_obj.id
 
-        # Filter candidate complaints matching the sub-issue signature
-        candidate_qs = []
-        for c in qs:
-            c_text = (c.title + " " + (c.description or "")).lower()
-            c_sig = get_sub_issue_signature(c_text)
-            if new_sig == "general" or c_sig == new_sig:
-                candidate_qs.append(c)
+            if not (cat_id and dist_id):
+                return Response({
+                    "duplicate_found": False,
+                    "duplicates": []
+                }, status=status.HTTP_200_OK)
 
-        # Coordinate box comparison
-        if latitude and longitude:
-            try:
-                lat = float(latitude)
-                lon = float(longitude)
-                for c in candidate_qs:
-                    if c.latitude and c.longitude:
-                        c_lat = float(c.latitude)
-                        c_lon = float(c.longitude)
-                        # ~300 meter coordinate bounding box
-                        if abs(c_lat - lat) < 0.003 and abs(c_lon - lon) < 0.003:
-                            duplicates.append(c)
-            except ValueError:
-                pass
-        else:
-            # If no coordinates, return matching sub-issue complaints
-            duplicates = candidate_qs[:3]
+            qs = Complaint.objects.filter(
+                is_deleted=False,
+                is_verified_resolved=False,
+                district_id=dist_id,
+                category_id=cat_id
+            ).exclude(status__name__in=["Resolved", "VERIFIED_RESOLVED", "resolved"])
 
-        if duplicates:
+            if st_id:
+                qs = qs.filter(state_id=st_id)
+            if dept_id:
+                qs = qs.filter(department_id=dept_id)
+
+            new_text = (str(request.data.get("title", "")) + " " + str(request.data.get("description", ""))).lower()
+
+            def get_sub_issue_signature(text):
+                res = _kr.retrieve(text)
+                return res.get("complaint_type") or "general"
+
+            new_sig = get_sub_issue_signature(new_text)
+
+            duplicates = []
+            candidate_qs = []
+            for c in qs:
+                c_text = (c.title + " " + (c.description or "")).lower()
+                c_sig = get_sub_issue_signature(c_text)
+                if new_sig == "general" or c_sig == new_sig:
+                    candidate_qs.append(c)
+
+            if latitude and longitude:
+                try:
+                    lat = float(latitude)
+                    lon = float(longitude)
+                    for c in candidate_qs:
+                        if c.latitude and c.longitude:
+                            c_lat = float(c.latitude)
+                            c_lon = float(c.longitude)
+                            if abs(c_lat - lat) < 0.003 and abs(c_lon - lon) < 0.003:
+                                duplicates.append(c)
+                except ValueError:
+                    pass
+            else:
+                duplicates = candidate_qs[:3]
+
+            if duplicates:
+                return Response({
+                    "duplicate_found": True,
+                    "duplicates": ComplaintListSerializer(duplicates, many=True).data
+                }, status=status.HTTP_200_OK)
+
             return Response({
-                "duplicate_found": True,
-                "duplicates": ComplaintListSerializer(duplicates, many=True).data
+                "duplicate_found": False,
+                "duplicates": []
             }, status=status.HTTP_200_OK)
 
-        return Response({
-            "duplicate_found": False,
-            "duplicates": []
-        }, status=status.HTTP_200_OK)
+        except Exception as err:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error checking duplicate complaints: {err}")
+            return Response({
+                "duplicate_found": False,
+                "duplicates": [],
+                "error": str(err)
+            }, status=status.HTTP_200_OK)
 
 
 from django.db.models import Sum, Count

@@ -55,10 +55,16 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
         district = attrs.get("district")
         state = attrs.get("state")
 
-        if district.state != state:
-            raise serializers.ValidationError(
-                "District does not belong to the selected state."
-            )
+        if district and state:
+            if hasattr(district, "state_id") and hasattr(state, "id"):
+                if district.state_id != state.id:
+                    raise serializers.ValidationError(
+                        "District does not belong to the selected state."
+                    )
+            elif hasattr(district, "state") and district.state != state:
+                raise serializers.ValidationError(
+                    "District does not belong to the selected state."
+                )
 
         return attrs
 class ComplaintListSerializer(serializers.ModelSerializer):
