@@ -51,7 +51,8 @@ class ComplaintCreateView(GenericAPIView):
 
 class ComplaintListView(ListAPIView):
     serializer_class = ComplaintListSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     queryset = Complaint.objects.filter(
         is_deleted=False,
@@ -209,20 +210,26 @@ class MyComplaintListView(ListAPIView):
         )
 
 class CategoryListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get(self, request):
-        from knowledge.models import ComplaintCategory
+        from categories.models import ComplaintCategory
         categories = ComplaintCategory.objects.filter(is_active=True).values("id", "name")
+        if not categories:
+            categories = ComplaintCategory.objects.all().values("id", "name")
         return Response(list(categories))
 
 
 class DepartmentListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get(self, request):
         from departments.models import Department
         depts = Department.objects.filter(is_active=True).values("id", "name")
+        if not depts:
+            depts = Department.objects.all().values("id", "name")
         return Response(list(depts))
 
 
