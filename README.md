@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**SIH 2026 · Problem Statements S36 & S1**
+
 
 *An intelligent, Human-in-the-Loop Agentic AI system that empowers citizens to file, track, and resolve public grievances through conversational AI — with community-driven participatory budgeting, weighted priority scoring, smart duplicate detection, Google OAuth 2.0, and automated official email dispatching.*
 
